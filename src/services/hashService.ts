@@ -106,12 +106,18 @@ export interface ResultadoVerificacion {
   };
 }
 
+// Cualquier registro encadenado con la misma estructura que un evento de producción
+type RegistroEncadenado = Omit<EventoLote, 'tipo'> & { tipo: string };
+
 /**
- * Verifica la integridad completa de la cadena de hashes del lote
+ * Verifica la integridad completa de una cadena de hashes. Por defecto es la cadena de
+ * producción del lote, que parte del hash génesis; otras cadenas (como las entregas) parten
+ * del hash con el que se anclan, indicado en hashInicial.
  */
 export async function verificarIntegridadCadena(
   codigoLote: string,
-  eventos: EventoLote[]
+  eventos: RegistroEncadenado[],
+  hashInicial: string = HASH_GENESIS
 ): Promise<ResultadoVerificacion> {
   if (!eventos || eventos.length === 0) {
     return {
@@ -121,7 +127,7 @@ export async function verificarIntegridadCadena(
     };
   }
 
-  let hashEsperadoAnterior = HASH_GENESIS;
+  let hashEsperadoAnterior = hashInicial;
 
   for (let i = 0; i < eventos.length; i++) {
     const ev = eventos[i];

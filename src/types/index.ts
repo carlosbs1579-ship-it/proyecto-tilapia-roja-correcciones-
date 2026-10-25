@@ -83,6 +83,35 @@ export interface Lote {
   observacionesIniciales?: string;
 }
 
+// ---------- Entregas a clientes (posteriores al sellado del lote) ----------
+
+export type TipoRegistroEntrega =
+  | 'Asignación de cliente'
+  | 'Reasignación de cliente'
+  | 'Entrega completada'
+  | 'Anulación de asignación';
+
+/**
+ * Acción sobre una entrega. Tiene la misma estructura y el mismo cálculo de hash que un evento de
+ * producción; datos.entregaId identifica a qué entrega pertenece.
+ */
+export interface RegistroEntrega extends Omit<EventoLote, 'tipo'> {
+  tipo: TipoRegistroEntrega;
+}
+
+/**
+ * Documento entregas/{codigoLote}: cadena propia de registros de entrega, anclada al hash del
+ * último evento de producción del lote sellado. No modifica el documento del lote.
+ */
+export interface EntregasLote {
+  codigoLote: string;
+  granjaId: string;
+  hashAnclaje: string; // hash del último evento de producción en el momento del primer registro
+  registros: RegistroEntrega[];
+  creadoEn: string;
+  actualizadoEn: string;
+}
+
 export interface EstanqueConfig {
   codigo: string;
   nombre: string;

@@ -31,6 +31,20 @@
       },
       "required": ["codigo", "consecutivo", "estanque", "producto", "modalidad", "origen", "fechaSiembra", "cantidadSembrada", "pesoInicialPromedioG", "estado", "eventos", "resumen", "creadoPor"]
     },
+    "Entregas": {
+      "title": "Entregas",
+      "description": "Cadena de registros de entrega a clientes de un lote sellado, anclada al hash del último evento de producción",
+      "type": "object",
+      "properties": {
+        "codigoLote": { "type": "string", "description": "Código del lote sellado (igual al ID del documento)" },
+        "granjaId": { "type": "string", "description": "Granja a la que pertenece el lote" },
+        "hashAnclaje": { "type": "string", "description": "Hash del último evento de producción con el que se ancla la cadena" },
+        "registros": { "type": "array", "description": "Acciones de entrega (asignación, reasignación, entrega completada, anulación) encadenadas por hash; solo se agregan" },
+        "creadoEn": { "type": "string", "description": "Fecha de creación" },
+        "actualizadoEn": { "type": "string", "description": "Fecha del último registro" }
+      },
+      "required": ["codigoLote", "granjaId", "hashAnclaje", "registros"]
+    },
     "Contador": {
       "title": "Contador",
       "description": "Contador atómico para códigos de lote y consecutivos globales",
@@ -78,6 +92,10 @@
     "/lotes/{codigo}": {
       "schema": "Lote",
       "description": "Colección de lotes de tilapia con código único como ID de documento"
+    },
+    "/entregas/{codigoLote}": {
+      "schema": "Entregas",
+      "description": "Entregas a clientes de cada lote sellado; separadas del documento del lote"
     },
     "/contadores/{contadorId}": {
       "schema": "Contador",

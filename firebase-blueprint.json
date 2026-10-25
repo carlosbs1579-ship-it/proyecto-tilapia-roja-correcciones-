@@ -1,0 +1,95 @@
+{
+  "entities": {
+    "Lote": {
+      "title": "Lote",
+      "description": "Lote de cultivo de tilapia roja con trazabilidad completa y cadena de hashes",
+      "type": "object",
+      "properties": {
+        "codigo": { "type": "string", "description": "Código único en formato AAAAMMDD-LETRA-ESTANQUE" },
+        "consecutivo": { "type": "number", "description": "Consecutivo global incremental" },
+        "estanque": { "type": "string", "description": "Identificador del estanque (ej: E1, E2)" },
+        "producto": { "type": "string", "description": "Nombre fijo del producto" },
+        "modalidad": { "type": "string", "description": "Modalidad de producción fija: Tilapia Pro" },
+        "origen": { "type": "string", "description": "Ubicación de origen: Cultivos Loré, Turbaco, Bolívar" },
+        "fechaSiembra": { "type": "string", "description": "Fecha de siembra en formato YYYY-MM-DD" },
+        "cantidadSembrada": { "type": "number", "description": "Cantidad de alevinos sembrados" },
+        "pesoInicialPromedioG": { "type": "number", "description": "Peso inicial promedio en gramos" },
+        "proveedorAlevinos": { "type": "string", "description": "Proveedor de alevinos opcional" },
+        "estado": { "type": "string", "enum": ["activo", "cerrado"], "description": "Estado del lote" },
+        "fechaCierre": { "type": "string", "description": "Fecha de cierre en formato YYYY-MM-DD o null" },
+        "eventos": { "type": "array", "description": "Arreglo cronológico de eventos con cadena de hashes" },
+        "resumen": { "type": "object", "description": "Resumen e indicadores productivos calculados" },
+        "pdfPath": { "type": "string", "description": "Ruta en Cloud Storage del PDF" },
+        "pdfUrl": { "type": "string", "description": "URL pública directa del PDF" },
+        "versionPdf": { "type": "number", "description": "Número de versión incremental del PDF" },
+        "pdfActualizadoEn": { "type": "string", "description": "Timestamp ISO de última actualización del PDF" },
+        "granjaId": { "type": "string", "description": "Granja a la que pertenece el lote; sus miembros autorizados lo comparten" },
+        "creadoPor": { "type": "string", "description": "Email del operario que creó el lote" },
+        "creadoPorUid": { "type": "string", "description": "UID de Firebase Auth del operario que creó el lote" },
+        "creadoEn": { "type": "string", "description": "Timestamp ISO o Firestore de creación" },
+        "actualizadoEn": { "type": "string", "description": "Timestamp ISO o Firestore de última actualización" }
+      },
+      "required": ["codigo", "consecutivo", "estanque", "producto", "modalidad", "origen", "fechaSiembra", "cantidadSembrada", "pesoInicialPromedioG", "estado", "eventos", "resumen", "creadoPor"]
+    },
+    "Contador": {
+      "title": "Contador",
+      "description": "Contador atómico para códigos de lote y consecutivos globales",
+      "type": "object",
+      "properties": {
+        "valor": { "type": "number", "description": "Valor numérico actual del contador" },
+        "actualizadoEn": { "type": "string", "description": "Fecha de actualización" }
+      },
+      "required": ["valor"]
+    },
+    "Configuracion": {
+      "title": "Configuracion",
+      "description": "Configuración del sistema: estanques, rangos de referencia y ficha nutricional",
+      "type": "object",
+      "properties": {
+        "estanques": { "type": "array", "description": "Lista de estanques configurados" },
+        "rangosReferencia": { "type": "object", "description": "Rangos de calidad de agua" },
+        "fichaNutricional": { "type": "object", "description": "Ficha nutricional referencial por 100g" },
+        "actualizadoPor": { "type": "string", "description": "Email de quien actualizó" },
+        "actualizadoEn": { "type": "string", "description": "Timestamp de actualización" }
+      },
+      "required": ["estanques", "rangosReferencia", "fichaNutricional"]
+    },
+    "Usuario": {
+      "title": "Usuario",
+      "description": "Perfil de operario y permisos granulares asignados por el administrador",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "ID de usuario de Firebase Auth" },
+        "email": { "type": "string", "description": "Correo del operario" },
+        "displayName": { "type": "string", "description": "Nombre del operario" },
+        "rol": { "type": "string", "enum": ["admin", "operario", "consulta"], "description": "Rol del usuario en la granja" },
+        "granjaId": { "type": "string", "description": "Granja a la que pertenece el usuario" },
+        "cargo": { "type": "string", "description": "Posición asignada por el administrador" },
+        "estado": { "type": "string", "enum": ["activo", "pendiente", "inactivo"], "description": "Estado de autorización" },
+        "permisos": { "type": "object", "description": "Permisos específicos otorgados" },
+        "autorizadoPor": { "type": "string", "description": "Email del administrador que autorizó" },
+        "creadoEn": { "type": "string", "description": "Fecha de creación del perfil" },
+        "actualizadoEn": { "type": "string", "description": "Fecha de última actualización" }
+      },
+      "required": ["uid", "email", "cargo", "estado", "permisos"]
+    }
+  },
+  "firestore": {
+    "/lotes/{codigo}": {
+      "schema": "Lote",
+      "description": "Colección de lotes de tilapia con código único como ID de documento"
+    },
+    "/contadores/{contadorId}": {
+      "schema": "Contador",
+      "description": "Colección de contadores para transacciones concurrentes seguras"
+    },
+    "/configuracion/{docId}": {
+      "schema": "Configuracion",
+      "description": "Documentos de configuración global de la granja"
+    },
+    "/usuarios/{userId}": {
+      "schema": "Usuario",
+      "description": "Perfiles y permisos de operarios gestionados por el administrador"
+    }
+  }
+}

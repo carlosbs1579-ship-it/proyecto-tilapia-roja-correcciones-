@@ -1,0 +1,6 @@
+{
+  "name": "Cultivos Loré - Trazabilidad Tilapia Pro",
+  "description": "Sistema de trazabilidad inalterable de lotes de tilapia roja con cadena de hashes, generación de PDF, código QR y métricas productivas para Cultivos Loré en Turbaco, Bolívar.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

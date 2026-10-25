@@ -1,0 +1,22 @@
+rules_version = '2';
+
+// Reglas de Storage (Paso 4). No consultan los perfiles de Firestore porque la app usa una base
+// de datos con nombre (no la "(default)") y no está garantizado que las reglas de Storage puedan
+// leerla; por eso aquí se exige sesión real y se limita el tipo, el nombre y el tamaño del archivo.
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /lotes/{fileName} {
+      // Lectura pública para escanear el código QR y abrir el certificado PDF
+      allow read: if true;
+
+      // Solo PDFs de certificados de lote, de hasta 10 MB, subidos por un usuario con sesión
+      allow create, update: if request.auth != null
+        && fileName.matches('^[A-Za-z0-9_\\-]+\\.pdf$')
+        && request.resource.contentType == 'application/pdf'
+        && request.resource.size < 10 * 1024 * 1024;
+
+      // Los certificados no se borran desde la app
+      allow delete: if false;
+    }
+  }
+}

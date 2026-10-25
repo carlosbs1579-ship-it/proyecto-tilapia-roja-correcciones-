@@ -1,0 +1,102 @@
+rules_version = '2';
+
+// Reglas de seguridad para Cultivos Loré - Trazabilidad Tilapia Pro
+// Base de datos: "ai-studio-33039dd2-b725-497c-80b6-eb6761337ba9"
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Administrador Maestro: Carlos (carlosbs1579@gmail.com)
+    function isMasterAdmin() {
+      return isSignedIn()
+        && request.auth.token.email != null
+        && (request.auth.token.email == 'carlosbs1579@gmail.com'
+            || request.auth.token.email == 'CARLOSBS1579@GMAIL.COM'
+            || request.auth.token.email.matches('(?i)^carlosbs1579@gmail\\.com$'));
+    }
+
+    function perfilPath() {
+      return /databases/$(database)/documents/usuarios/$(request.auth.uid);
+    }
+
+    function tienePerfil() {
+      return isSignedIn() && exists(perfilPath());
+    }
+
+    function perfil() {
+      return get(perfilPath()).data;
+    }
+
+    function esActivo() {
+      return isMasterAdmin() || (tienePerfil() && perfil().get('estado', '') == 'activo');
+    }
+
+    function esAdminGranja() {
+      return isMasterAdmin() || (esActivo() && perfil().get('rol', '') == 'admin');
+    }
+
+    function tienePermiso(permiso) {
+      return isMasterAdmin()
+        || esAdminGranja()
+        || (esActivo()
+            && perfil().get('rol', '') != 'consulta'
+            && perfil().get('permisos', {}).get(permiso, false) == true);
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // ---------- Diagnóstico de Conexión ----------
+    match /test/{docId} {
+      allow read, write: if true;
+    }
+
+    // ---------- Lotes ----------
+    // Lectura pública para trazabilidad oficial (QR de teléfonos, consulta y panel)
+    match /lotes/{codigo} {
+      allow read: if true;
+
+      // Creación: Solo lotes activos nuevos con los permisos correspondientes
+      allow create: if (isMasterAdmin() || (isSignedIn() && tienePermiso('crearLotes')))
+                    && request.resource.data.estado == 'activo';
+
+      // Modificación o cierre: Solo permitido si el lote actualmente está ACTIVO (no sellado)
+      // Una vez cerrado/sellado (resource.data.estado == 'cerrado'), queda estrictamente bloqueado.
+      allow update: if (!('estado' in resource.data) || resource.data.estado == 'activo')
+                    && (
+                      // Caso A: Incorporar eventos o modificar alevinos/piscina mientras el lote está activo
+                      (request.resource.data.estado == 'activo'
+                        && (isMasterAdmin() || (isSignedIn() && (tienePermiso('registrarEventos') || tienePermiso('crearLotes')))))
+                      // Caso B: Cerrar o sellar el lote activo
+                      || (request.resource.data.estado == 'cerrado'
+                        && (isMasterAdmin() || (isSignedIn() && tienePermiso('cerrarLotes'))))
+                    );
+
+      // Eliminación: Reservada únicamente para el Administrador Maestro
+      allow delete: if isMasterAdmin();
+    }
+
+    // ---------- Contadores ----------
+    match /contadores/{contadorId} {
+      allow read, write: if true;
+    }
+
+    // ---------- Configuración General ----------
+    match /configuracion/{docId} {
+      allow read: if true;
+      allow write: if isMasterAdmin() || esAdminGranja() || tienePermiso('gestionarConfiguracion') || tienePermiso('gestionarEstanques');
+    }
+
+    // ---------- Perfiles de Usuario ----------
+    match /usuarios/{userId} {
+      allow read, write: if isMasterAdmin();
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn();
+      allow delete: if isMasterAdmin() || esAdminGranja();
+    }
+  }
+}

@@ -60,6 +60,18 @@ service cloud.firestore {
     }
 
     // ---------- Lotes ----------
+    // Campos que identifican al lote y su origen: ninguna actualización puede cambiarlos.
+    // Así, escribir un lote nuevo sobre el código de uno existente queda rechazado.
+    function camposFijosDelLoteIntactos() {
+      return request.resource.data.get('codigo', null) == resource.data.get('codigo', null)
+        && request.resource.data.get('consecutivo', null) == resource.data.get('consecutivo', null)
+        && request.resource.data.get('granjaId', null) == resource.data.get('granjaId', null)
+        && request.resource.data.get('fechaSiembra', null) == resource.data.get('fechaSiembra', null)
+        && request.resource.data.get('creadoPor', null) == resource.data.get('creadoPor', null)
+        && request.resource.data.get('creadoPorUid', null) == resource.data.get('creadoPorUid', null)
+        && request.resource.data.get('creadoEn', null) == resource.data.get('creadoEn', null);
+    }
+
     // Lectura pública para trazabilidad oficial (QR de teléfonos, consulta y panel)
     match /lotes/{codigo} {
       allow read: if true;
@@ -71,6 +83,7 @@ service cloud.firestore {
       // Modificación o cierre: Solo permitido si el lote actualmente está ACTIVO (no sellado)
       // Una vez cerrado/sellado (resource.data.estado == 'cerrado'), queda estrictamente bloqueado.
       allow update: if (!('estado' in resource.data) || resource.data.estado == 'activo')
+                    && camposFijosDelLoteIntactos()
                     && (
                       // Caso A: Incorporar eventos o modificar alevinos/piscina mientras el lote está activo
                       (request.resource.data.estado == 'activo'

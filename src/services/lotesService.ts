@@ -401,7 +401,8 @@ export async function modificarDatosSiembraOPiscina(params: ParamsModificarSiemb
             ...eventos[i],
             hashAnterior: eventos[i - 1].hash
           };
-          eventos[i].hash = await calcularHashEvento(eventos[i]);
+          // El hash incluye el código del lote, igual que al registrar y al verificar la cadena
+          eventos[i].hash = await calcularHashEvento({ ...eventos[i], codigoLote: lote.codigo });
         }
       }
 

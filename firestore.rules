@@ -97,6 +97,63 @@ service cloud.firestore {
       allow delete: if isMasterAdmin();
     }
 
+    // ---------- Entregas a clientes (posteriores al sellado) ----------
+    // Cadena propia por lote en entregas/{codigo}, anclada al hash del último evento de producción.
+    // El documento del lote no se toca. Solo se pueden agregar registros, de uno en uno.
+    function loteDeEntrega(codigo) {
+      return get(/databases/$(database)/documents/lotes/$(codigo)).data;
+    }
+
+    function hashCierre(lote) {
+      return lote.eventos[lote.eventos.size() - 1].hash;
+    }
+
+    function puedeGestionarEntregas(lote) {
+      return esAdminGranja()
+        && (isMasterAdmin() || lote.get('granjaId', 'cultivos-lore') == granjaUsuario());
+    }
+
+    // El último registro de la lista es el nuevo: índice siguiente, enlazado al anterior y firmado
+    // con el correo de quien tiene la sesión
+    function registroNuevoValido(cantidadAnterior, hashAnteriorEsperado) {
+      let registros = request.resource.data.registros;
+      let nuevo = registros[cantidadAnterior];
+      return registros.size() == cantidadAnterior + 1
+        && nuevo.indice == cantidadAnterior
+        && nuevo.hashAnterior == hashAnteriorEsperado
+        && nuevo.registradoPor.lower() == correoSesion()
+        && nuevo.tipo in ['Asignación de cliente', 'Reasignación de cliente', 'Entrega completada', 'Anulación de asignación']
+        && nuevo.datos.entregaId is string;
+    }
+
+    match /entregas/{codigo} {
+      // Lectura pública de las entregas de UN lote (vista del QR); listar, solo administradores
+      allow get: if true;
+      allow list: if esAdminGranja();
+
+      allow create: if isValidId(codigo)
+        && exists(/databases/$(database)/documents/lotes/$(codigo))
+        && loteDeEntrega(codigo).estado == 'cerrado'
+        && puedeGestionarEntregas(loteDeEntrega(codigo))
+        && request.resource.data.keys().hasOnly(['codigoLote', 'granjaId', 'hashAnclaje', 'registros', 'creadoEn', 'actualizadoEn'])
+        && request.resource.data.codigoLote == codigo
+        && request.resource.data.granjaId == loteDeEntrega(codigo).get('granjaId', 'cultivos-lore')
+        && request.resource.data.hashAnclaje == hashCierre(loteDeEntrega(codigo))
+        && registroNuevoValido(0, request.resource.data.hashAnclaje);
+
+      // Agregar un registro: los anteriores deben quedar idénticos
+      allow update: if loteDeEntrega(codigo).estado == 'cerrado'
+        && puedeGestionarEntregas(loteDeEntrega(codigo))
+        && soloCambia(['registros', 'actualizadoEn'])
+        && request.resource.data.registros[0:resource.data.registros.size()] == resource.data.registros
+        && registroNuevoValido(
+             resource.data.registros.size(),
+             resource.data.registros[resource.data.registros.size() - 1].hash
+           );
+
+      allow delete: if false;
+    }
+
     // ---------- Contadores ----------
     // Solo quien puede crear lotes usa los contadores, y solo pueden avanzar de uno en uno
     match /contadores/{contadorId} {

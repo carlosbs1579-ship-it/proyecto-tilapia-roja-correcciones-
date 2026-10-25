@@ -4,6 +4,7 @@ import { db } from '../firebase/firebaseConfig';
 import { Lote, ConfiguracionGeneral } from '../types';
 import { verificarIntegridadCadena } from '../services/hashService';
 import { descargarPdfLoteLocal } from '../services/pdfService';
+import { EntregasPublicas } from './EntregasPublicas';
 import { CONFIG_DEFAULT, formatearFechaColombia } from '../utils/constants';
 import {
   ShieldCheck,
@@ -478,6 +479,9 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
             </div>
           )}
         </div>
+
+        {/* DESTINO COMERCIAL: entregas posteriores al sellado, separadas de la producción */}
+        {lote.estado === 'cerrado' && <EntregasPublicas lote={lote} />}
 
         {/* FICHA NUTRICIONAL */}
         <div className="bg-white rounded-2xl shadow-xs border border-slate-200 p-6 space-y-4">

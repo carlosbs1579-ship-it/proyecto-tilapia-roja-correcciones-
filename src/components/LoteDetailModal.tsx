@@ -29,7 +29,8 @@ import { cerrarLote, escucharLoteIndividual, modificarDatosSiembraOPiscina } fro
 import { previsualizarPdfLote, generarYSubirPdfLote, descargarPdfLoteLocal } from '../services/pdfService';
 import { formatearFechaColombia } from '../utils/constants';
 import { evaluarParametroAgua } from '../services/calculosService';
-import { esAdminMaestro, verificarPermiso } from '../services/usuariosService';
+import { esAdminMaestro, esAdministrador, verificarPermiso } from '../services/usuariosService';
+import { EntregasPanel } from './EntregasPanel';
 
 interface LoteDetailModalProps {
   isOpen: boolean;
@@ -473,6 +474,15 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
                 <p className="text-[10px] text-slate-400">Mediciones fuera de rango</p>
               </div>
             </div>
+
+            {/* ENTREGAS A CLIENTES (solo lotes sellados; cadena aparte de la producción) */}
+            {lote.estado === 'cerrado' && (
+              <EntregasPanel
+                lote={lote}
+                userEmail={userEmail}
+                puedeGestionar={esAdmin || esAdministrador(perfilActual)}
+              />
+            )}
 
             {/* SECCIÓN DE HISTORIAL Y LÍNEA DE TIEMPO */}
             <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">

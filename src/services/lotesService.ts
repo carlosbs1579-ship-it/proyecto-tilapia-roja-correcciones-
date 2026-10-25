@@ -1,8 +1,6 @@
 import {
   collection,
   doc,
-  getDoc,
-  setDoc,
   onSnapshot,
   query,
   runTransaction,
@@ -74,8 +72,10 @@ export interface ParamsNuevoLote {
 }
 
 /**
- * Crea un nuevo lote con garantía de inalterabilidad y registro directo en Firestore.
- * Utiliza setDoc con timeout de seguridad para garantizar que nunca se quede colgado en pantalla.
+ * Crea un nuevo lote con garantía de inalterabilidad y consecutivo atómico.
+ * Contadores y lote se leen y escriben en una sola transacción de Firestore: si dos personas
+ * crean un lote a la vez, Firestore reintenta y cada una recibe un código distinto. Si el código
+ * ya existe, la creación se detiene; nunca se sobrescribe un lote existente.
  */
 export async function crearNuevoLote(params: ParamsNuevoLote): Promise<Lote> {
   const {
@@ -94,46 +94,35 @@ export async function crearNuevoLote(params: ParamsNuevoLote): Promise<Lote> {
   const fechaCompacta = compactarFecha(fechaSiembra);
   const globalCounterRef = doc(db, 'contadores', 'lotes_global');
   const diarioCounterRef = doc(db, 'contadores', `diario_${fechaCompacta}_${estanqueLimpio}`);
-  const creadoPorUid = auth.currentUser?.uid || 'uid_' + Date.now();
-  const fechaIsoAhora = new Date().toISOString();
+  const creadoPorUid = auth.currentUser?.uid || null;
 
-  // 1. Obtener consecutivo de forma segura y veloz (con fallback de tiempo si Firestore tarda)
-  let nuevoConsecutivoGlobal = 1;
-  let nuevoConsecutivoDiario = 1;
+  const transaccion = runTransaction(db, async (transaction) => {
+    const globalSnap = await transaction.get(globalCounterRef);
+    const diarioSnap = await transaction.get(diarioCounterRef);
 
-  try {
-    const leerContadores = Promise.all([getDoc(globalCounterRef), getDoc(diarioCounterRef)]);
-    const [globalSnap, diarioSnap] = await Promise.race([
-      leerContadores,
-      new Promise<[any, any]>((_, reject) => setTimeout(() => reject(new Error('timeout_contadores')), 2500))
-    ]);
-    if (globalSnap?.exists()) {
-      nuevoConsecutivoGlobal = (Number(globalSnap.data()?.valor) || 0) + 1;
+    const nuevoConsecutivoGlobal = (globalSnap.exists() ? Number(globalSnap.data()?.valor) || 0 : 0) + 1;
+    const nuevoConsecutivoDiario = (diarioSnap.exists() ? Number(diarioSnap.data()?.valor) || 0 : 0) + 1;
+
+    const letra = obtenerLetraConsecutiva(nuevoConsecutivoDiario);
+    const codigoGenerado = `${fechaCompacta}-${letra}-${estanqueLimpio}`;
+    const loteDocRef = doc(db, 'lotes', codigoGenerado);
+
+    const loteSnap = await transaction.get(loteDocRef);
+    if (loteSnap.exists()) {
+      throw new Error(
+        `El código de lote ${codigoGenerado} ya existe. No se creó un lote nuevo para no sobrescribirlo; avisa al administrador para revisar los contadores.`
+      );
     }
-    if (diarioSnap?.exists()) {
-      nuevoConsecutivoDiario = (Number(diarioSnap.data()?.valor) || 0) + 1;
-    }
-  } catch (errContador) {
-    // Si no existen o hay timeout, generar consecutivo basado en tiempo
-    nuevoConsecutivoGlobal = Math.floor(Date.now() / 1000) % 10000;
-    nuevoConsecutivoDiario = 1;
-  }
 
-  const letra = obtenerLetraConsecutiva(nuevoConsecutivoDiario);
-  const codigoGenerado = `${fechaCompacta}-${letra}-${estanqueLimpio}`;
-  const loteDocRef = doc(db, 'lotes', codigoGenerado);
+    const fechaIsoAhora = new Date().toISOString();
+    const descripcionSiembra = observaciones?.trim() || 'Siembra inicial del lote en estanque ' + estanque;
+    const datosSiembra = {
+      cantidad: cantidadSembrada,
+      pesoPromedioInicialG: pesoInicialPromedioG,
+      proveedor: proveedorAlevinos?.trim() || ''
+    };
 
-  const descripcionSiembra = observaciones?.trim() || 'Siembra inicial del lote en estanque ' + estanque;
-  const datosSiembra = {
-    cantidad: cantidadSembrada,
-    pesoPromedioInicialG: pesoInicialPromedioG,
-    proveedor: proveedorAlevinos?.trim() || ''
-  };
-
-  // 2. Calcular hash criptográfico antes de la escritura
-  let hashSiembra = HASH_GENESIS;
-  try {
-    hashSiembra = await calcularHashEvento({
+    const hashSiembra = await calcularHashEvento({
       codigoLote: codigoGenerado,
       indice: 0,
       tipo: 'Siembra',
@@ -144,78 +133,84 @@ export async function crearNuevoLote(params: ParamsNuevoLote): Promise<Lote> {
       registradoEn: fechaIsoAhora,
       hashAnterior: HASH_GENESIS
     });
-  } catch (errHash) {
-    console.warn('Error calculando hash evento siembra:', errHash);
-    hashSiembra = 'h_' + Date.now().toString(16) + '0'.repeat(48);
-  }
 
-  const primerEvento: EventoLote = {
-    id: generarIdEvento(),
-    indice: 0,
-    tipo: 'Siembra',
-    fechaEvento: fechaSiembra,
-    descripcion: descripcionSiembra,
-    datos: datosSiembra,
-    registradoPor: userEmail,
-    registradoEn: fechaIsoAhora,
-    hashAnterior: HASH_GENESIS,
-    hash: hashSiembra
-  };
+    const primerEvento: EventoLote = {
+      id: generarIdEvento(),
+      indice: 0,
+      tipo: 'Siembra',
+      fechaEvento: fechaSiembra,
+      descripcion: descripcionSiembra,
+      datos: datosSiembra,
+      registradoPor: userEmail,
+      registradoEn: fechaIsoAhora,
+      hashAnterior: HASH_GENESIS,
+      hash: hashSiembra
+    };
 
-  const estanqueInfo = config.estanques.find((e) => e.codigo === estanque);
-  const resumenInicial = recalcularResumenLote({
-    fechaSiembra,
-    cantidadSembrada,
-    pesoInicialPromedioG,
-    eventos: [primerEvento],
-    estado: 'activo',
-    fechaCierre: null,
-    volumenEstanqueM3: estanqueInfo?.volumenM3,
-    rangos: config.rangosReferencia
-  });
+    const estanqueInfo = config.estanques.find((e) => e.codigo === estanque);
+    const resumenInicial = recalcularResumenLote({
+      fechaSiembra,
+      cantidadSembrada,
+      pesoInicialPromedioG,
+      eventos: [primerEvento],
+      estado: 'activo',
+      fechaCierre: null,
+      volumenEstanqueM3: estanqueInfo?.volumenM3,
+      rangos: config.rangosReferencia
+    });
 
-  const loteData: Lote = {
-    codigo: codigoGenerado,
-    consecutivo: nuevoConsecutivoGlobal,
-    estanque,
-    producto: PRODUCTO_FIJO,
-    modalidad: MODALIDAD_FIJA,
-    origen: ORIGEN_FIJO,
-    fechaSiembra,
-    cantidadSembrada,
-    pesoInicialPromedioG,
-    proveedorAlevinos: proveedorAlevinos?.trim() || '',
-    estado: 'activo',
-    fechaCierre: null,
-    eventos: [primerEvento],
-    resumen: resumenInicial,
-    pdfPath: `lotes/${codigoGenerado}.pdf`,
-    pdfUrl: construirUrlPublicaPdf(codigoGenerado),
-    versionPdf: 1,
-    pdfActualizadoEn: fechaIsoAhora,
-    granjaId,
-    creadoPor: userEmail,
-    creadoPorUid,
-    creadoEn: fechaIsoAhora,
-    actualizadoEn: fechaIsoAhora,
-    observacionesIniciales: observaciones?.trim() || ''
-  };
+    const loteData: Lote = {
+      codigo: codigoGenerado,
+      consecutivo: nuevoConsecutivoGlobal,
+      estanque,
+      producto: PRODUCTO_FIJO,
+      modalidad: MODALIDAD_FIJA,
+      origen: ORIGEN_FIJO,
+      fechaSiembra,
+      cantidadSembrada,
+      pesoInicialPromedioG,
+      proveedorAlevinos: proveedorAlevinos?.trim() || '',
+      estado: 'activo',
+      fechaCierre: null,
+      eventos: [primerEvento],
+      resumen: resumenInicial,
+      pdfPath: `lotes/${codigoGenerado}.pdf`,
+      pdfUrl: construirUrlPublicaPdf(codigoGenerado),
+      versionPdf: 1,
+      pdfActualizadoEn: fechaIsoAhora,
+      granjaId,
+      creadoPor: userEmail,
+      creadoPorUid,
+      creadoEn: fechaIsoAhora,
+      actualizadoEn: fechaIsoAhora,
+      observacionesIniciales: observaciones?.trim() || ''
+    };
 
-  // 3. Guardar el lote directamente en Firestore con timeout de seguridad (nunca cuelga la UI)
-  try {
-    const guardarLote = setDoc(loteDocRef, loteData);
-    await Promise.race([
-      guardarLote,
-      new Promise((_, reject) => setTimeout(() => reject(new Error('Tiempo de espera agotado al conectar con Firestore. Revisa tu conexión a internet.')), 7000))
-    ]);
-
-    // Actualizar contadores de fondo de forma no bloqueante
-    setDoc(globalCounterRef, { valor: nuevoConsecutivoGlobal, actualizadoEn: fechaIsoAhora }, { merge: true }).catch(() => {});
-    setDoc(diarioCounterRef, { valor: nuevoConsecutivoDiario, actualizadoEn: fechaIsoAhora }, { merge: true }).catch(() => {});
+    transaction.set(globalCounterRef, { valor: nuevoConsecutivoGlobal, actualizadoEn: fechaIsoAhora }, { merge: true });
+    transaction.set(diarioCounterRef, { valor: nuevoConsecutivoDiario, actualizadoEn: fechaIsoAhora }, { merge: true });
+    transaction.set(loteDocRef, loteData);
 
     return loteData;
+  });
+
+  // Tiempo de espera para no dejar la pantalla colgada si no hay conexión
+  try {
+    return await Promise.race([
+      transaccion,
+      new Promise<never>((_, reject) =>
+        setTimeout(
+          () =>
+            reject(
+              new Error(
+                'La conexión con Firestore está tardando demasiado. Revisa la lista de lotes antes de intentarlo de nuevo: el lote pudo haberse creado.'
+              )
+            ),
+          15000
+        )
+      )
+    ]);
   } catch (err: any) {
-    console.error('Error guardando lote en Firestore:', err);
+    console.error('Error creando lote en Firestore:', err);
     throw mensajeErrorFirestore('crear el lote', err);
   }
 }
@@ -401,7 +396,8 @@ export async function modificarDatosSiembraOPiscina(params: ParamsModificarSiemb
             ...eventos[i],
             hashAnterior: eventos[i - 1].hash
           };
-          eventos[i].hash = await calcularHashEvento(eventos[i]);
+          // El hash incluye el código del lote, igual que al registrar y al verificar la cadena
+          eventos[i].hash = await calcularHashEvento({ ...eventos[i], codigoLote: lote.codigo });
         }
       }
 

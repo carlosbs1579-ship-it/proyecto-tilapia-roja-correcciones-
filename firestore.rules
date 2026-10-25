@@ -5,17 +5,26 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // Todo lo que no se permite explícitamente queda denegado
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
     function isSignedIn() {
       return request.auth != null;
     }
 
-    // Administrador Maestro: Carlos (carlosbs1579@gmail.com)
+    function correoSesion() {
+      return request.auth.token.get('email', '').lower();
+    }
+
+    // Administrador Maestro: Carlos (carlosbs1579@gmail.com), solo con el correo verificado por el
+    // proveedor (Google lo verifica). Evita que una cuenta de correo y contraseña sin verificar
+    // con ese mismo correo obtenga control total.
     function isMasterAdmin() {
       return isSignedIn()
-        && request.auth.token.email != null
-        && (request.auth.token.email == 'carlosbs1579@gmail.com'
-            || request.auth.token.email == 'CARLOSBS1579@GMAIL.COM'
-            || request.auth.token.email.matches('(?i)^carlosbs1579@gmail\\.com$'));
+        && correoSesion() == 'carlosbs1579@gmail.com'
+        && request.auth.token.get('email_verified', false) == true;
     }
 
     function perfilPath() {
@@ -50,12 +59,19 @@ service cloud.firestore {
       return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
 
-    // ---------- Diagnóstico de Conexión ----------
-    match /test/{docId} {
-      allow read, write: if true;
+    // ---------- Lotes ----------
+    // Campos que identifican al lote y su origen: ninguna actualización puede cambiarlos.
+    // Así, escribir un lote nuevo sobre el código de uno existente queda rechazado.
+    function camposFijosDelLoteIntactos() {
+      return request.resource.data.get('codigo', null) == resource.data.get('codigo', null)
+        && request.resource.data.get('consecutivo', null) == resource.data.get('consecutivo', null)
+        && request.resource.data.get('granjaId', null) == resource.data.get('granjaId', null)
+        && request.resource.data.get('fechaSiembra', null) == resource.data.get('fechaSiembra', null)
+        && request.resource.data.get('creadoPor', null) == resource.data.get('creadoPor', null)
+        && request.resource.data.get('creadoPorUid', null) == resource.data.get('creadoPorUid', null)
+        && request.resource.data.get('creadoEn', null) == resource.data.get('creadoEn', null);
     }
 
-    // ---------- Lotes ----------
     // Lectura pública para trazabilidad oficial (QR de teléfonos, consulta y panel)
     match /lotes/{codigo} {
       allow read: if true;
@@ -67,6 +83,7 @@ service cloud.firestore {
       // Modificación o cierre: Solo permitido si el lote actualmente está ACTIVO (no sellado)
       // Una vez cerrado/sellado (resource.data.estado == 'cerrado'), queda estrictamente bloqueado.
       allow update: if (!('estado' in resource.data) || resource.data.estado == 'activo')
+                    && camposFijosDelLoteIntactos()
                     && (
                       // Caso A: Incorporar eventos o modificar alevinos/piscina mientras el lote está activo
                       (request.resource.data.estado == 'activo'
@@ -81,8 +98,18 @@ service cloud.firestore {
     }
 
     // ---------- Contadores ----------
+    // Solo quien puede crear lotes usa los contadores, y solo pueden avanzar de uno en uno
     match /contadores/{contadorId} {
-      allow read, write: if true;
+      allow read: if isValidId(contadorId) && tienePermiso('crearLotes');
+      allow create: if isValidId(contadorId)
+        && tienePermiso('crearLotes')
+        && request.resource.data.keys().hasOnly(['valor', 'actualizadoEn'])
+        && request.resource.data.valor == 1;
+      allow update: if isValidId(contadorId)
+        && tienePermiso('crearLotes')
+        && request.resource.data.keys().hasOnly(['valor', 'actualizadoEn'])
+        && request.resource.data.valor == resource.data.valor + 1;
+      allow delete: if false;
     }
 
     // ---------- Configuración General ----------
@@ -92,11 +119,66 @@ service cloud.firestore {
     }
 
     // ---------- Perfiles de Usuario ----------
+    function granjaUsuario() {
+      return perfil().get('granjaId', 'cultivos-lore');
+    }
+
+    function soloCambia(campos) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(campos);
+    }
+
+    function esPerfilMaestro(datos) {
+      return datos.get('email', '').lower() == 'carlosbs1579@gmail.com';
+    }
+
+    // Valores válidos que un administrador puede asignar a un perfil
+    function perfilAsignableValido() {
+      return request.resource.data.get('rol', 'operario') in ['admin', 'operario', 'consulta']
+        && request.resource.data.get('estado', 'pendiente') in ['activo', 'pendiente', 'inactivo']
+        && (isMasterAdmin() || request.resource.data.get('granjaId', 'cultivos-lore') == granjaUsuario());
+    }
+
     match /usuarios/{userId} {
-      allow read, write: if isMasterAdmin();
-      allow read: if isSignedIn();
-      allow create, update: if isSignedIn();
-      allow delete: if isMasterAdmin() || esAdminGranja();
+      // Cada usuario lee su propio perfil; los administradores leen todos (pestaña Usuarios)
+      allow read: if (isSignedIn() && request.auth.uid == userId) || esAdminGranja();
+
+      // Alta propia al primer ingreso: siempre operario pendiente, sin permisos, en la granja predeterminada
+      allow create: if isSignedIn()
+        && request.auth.uid == userId
+        && request.resource.data.uid == userId
+        && request.resource.data.email == correoSesion()
+        && request.resource.data.rol == 'operario'
+        && request.resource.data.estado == 'pendiente'
+        && request.resource.data.granjaId == 'cultivos-lore'
+        && !request.resource.data.permisos.values().hasAny([true]);
+
+      // El Administrador Maestro crea o actualiza su propio perfil con todos los permisos
+      allow create, update: if isMasterAdmin() && request.auth.uid == userId;
+
+      // Cambio propio permitido a cualquier usuario: solo el nombre visible
+      allow update: if isSignedIn()
+        && request.auth.uid == userId
+        && soloCambia(['displayName', 'actualizadoEn']);
+
+      // Un administrador crea perfiles de otros usuarios (si aún no existían)...
+      allow create: if esAdminGranja()
+        && request.auth.uid != userId
+        && !esPerfilMaestro(request.resource.data)
+        && perfilAsignableValido();
+
+      // ...y gestiona su rol, cargo, estado y permisos, sin cambiarles el correo.
+      // El perfil del Administrador Maestro solo lo modifica él mismo.
+      allow update: if esAdminGranja()
+        && !esPerfilMaestro(resource.data)
+        && (isMasterAdmin() || resource.data.get('granjaId', 'cultivos-lore') == granjaUsuario())
+        && soloCambia(['rol', 'granjaId', 'cargo', 'estado', 'permisos', 'autorizadoPor', 'actualizadoEn', 'email', 'displayName'])
+        && request.resource.data.get('email', '').lower() == resource.data.get('email', '').lower()
+        && perfilAsignableValido();
+
+      // Borrar perfiles: administradores de la misma granja; nunca el del Administrador Maestro
+      allow delete: if esAdminGranja()
+        && !esPerfilMaestro(resource.data)
+        && (isMasterAdmin() || resource.data.get('granjaId', 'cultivos-lore') == granjaUsuario());
     }
   }
 }

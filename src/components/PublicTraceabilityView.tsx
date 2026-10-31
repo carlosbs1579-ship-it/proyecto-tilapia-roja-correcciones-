@@ -41,6 +41,7 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
   const [lote, setLote] = useState<Lote | null>(loteInicial || null);
   const [cargando, setCargando] = useState(!loteInicial);
   const [error, setError] = useState<string | null>(null);
+  const [errorPdf, setErrorPdf] = useState<string | null>(null);
 
   // Estado de verificación criptográfica
   const [verificandoHash, setVerificandoHash] = useState(false);
@@ -127,10 +128,11 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
   const handleDescargarPdf = async () => {
     if (!lote) return;
     setDescargandoPdf(true);
+    setErrorPdf(null);
     try {
       await descargarPdfLoteLocal(lote, config);
     } catch (err: any) {
-      alert(`Error generando PDF: ${err.message || err}`);
+      setErrorPdf('No se pudo generar el PDF en este dispositivo. Intente de nuevo o use otro navegador.');
     } finally {
       setDescargandoPdf(false);
     }
@@ -310,6 +312,7 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
               <Download className="w-4 h-4" />
               <span>{descargandoPdf ? 'Generando PDF...' : 'Descargar Certificado Oficial (PDF)'}</span>
             </button>
+            {errorPdf && <p className="text-xs text-red-600 mt-2">{errorPdf}</p>}
           </div>
         </div>
 

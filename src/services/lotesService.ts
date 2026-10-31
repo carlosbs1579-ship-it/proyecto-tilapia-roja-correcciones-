@@ -42,7 +42,7 @@ export function obtenerLetraConsecutiva(consecutivo: number): string {
 /**
  * Traduce un error de Firestore a un mensaje comprensible para el operario
  */
-function mensajeErrorFirestore(accion: string, err: any): Error {
+export function mensajeErrorFirestore(accion: string, err: any): Error {
   const codigo = err?.code || '';
   if (codigo === 'permission-denied') {
     return new Error(`No tienes permiso para ${accion} en la base de datos de la granja.`);

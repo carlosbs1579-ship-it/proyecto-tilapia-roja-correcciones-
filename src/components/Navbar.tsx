@@ -49,7 +49,10 @@ const TABS_PRODUCCION: TabTipo[] = ['inicio', 'lotes', 'pedidos', 'analitica', '
  * Firestore según los roles asignados.
  */
 export function tabsDeFuncion(funcion: RolFuncional | null): TabTipo[] {
-  return funcion === 'courier' ? ['reparto'] : TABS_PRODUCCION;
+  if (funcion === 'courier') return ['reparto'];
+  // Sin función (visitante, cuenta pendiente o sin roles) no se muestran Configuración ni Personal
+  if (!funcion) return ['inicio', 'lotes', 'pedidos', 'analitica'];
+  return TABS_PRODUCCION;
 }
 
 interface NavbarProps {

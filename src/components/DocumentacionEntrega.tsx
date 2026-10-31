@@ -115,55 +115,41 @@ export const DocumentacionEntrega: React.FC<{
       {errorLectura && <p className="text-red-600">{errorLectura}</p>}
 
       {comprobantes.length > 0 && (
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead className="text-slate-500">
-              <tr>
-                <th className="py-1 pr-2">Versión</th>
-                <th className="py-1 pr-2">Emitido</th>
-                <th className="py-1 pr-2">Estado</th>
-                <th className="py-1 pr-2 text-right">Entregado</th>
-                <th className="py-1 pr-2 text-right">Pendiente</th>
-                <th className="py-1">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {comprobantes.map((c) => (
-                <tr key={c.id} className="border-t border-slate-100 align-top">
-                  <td className="py-1 pr-2 font-semibold">v{c.version}</td>
-                  <td className="py-1 pr-2">{formatearFechaColombia(c.emitidoEn)}</td>
-                  <td className="py-1 pr-2">{c.estadoEntrega === 'entregado' ? 'Entrega completa' : 'Entrega parcial'}</td>
-                  <td className="py-1 pr-2 text-right">{num(c.cantidadEntregada)} {c.unidad}</td>
-                  <td className="py-1 pr-2 text-right">{num(c.cantidadPendiente)} {c.unidad}</td>
-                  <td className="py-1">
-                    <div className="flex flex-wrap gap-1">
-                      <button type="button" onClick={() => verComprobantePdf(c, false)} className="px-1.5 py-0.5 rounded border border-slate-300 hover:bg-slate-100">
-                        Ver
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => descargarComprobantePdf(c, false)}
-                        className="flex items-center px-1.5 py-0.5 rounded border border-slate-300 hover:bg-slate-100"
-                      >
-                        <Download className="w-3 h-3 mr-0.5" />
-                        PDF
-                      </button>
-                      <button type="button" onClick={() => verificar(c)} className="px-1.5 py-0.5 rounded border border-slate-300 hover:bg-slate-100">
-                        Verificar
-                      </button>
-                    </div>
-                    {verificacion[c.id] && (
-                      <span className={`flex items-start mt-1 ${verificacion[c.id].ok ? 'text-emerald-700' : 'text-red-600'}`}>
-                        {verificacion[c.id].ok ? <ShieldCheck className="w-3 h-3 mr-1 shrink-0" /> : <ShieldAlert className="w-3 h-3 mr-1 shrink-0" />}
-                        {verificacion[c.id].mensaje}
-                      </span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <ul className="divide-y divide-slate-100 border border-slate-100 rounded">
+          {comprobantes.map((c) => (
+            <li key={c.id} className="p-2 space-y-1">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-slate-700">
+                  <strong>v{c.version}</strong> · {formatearFechaColombia(c.emitidoEn)} ·{' '}
+                  {c.estadoEntrega === 'entregado' ? 'Entrega completa' : 'Entrega parcial'} · entregado {num(c.cantidadEntregada)} {c.unidad}
+                  {c.cantidadPendiente > 0 && ` · pendiente ${num(c.cantidadPendiente)} ${c.unidad}`}
+                </span>
+                <span className="flex flex-wrap gap-1">
+                  <button type="button" onClick={() => verComprobantePdf(c, false)} className="px-1.5 py-0.5 rounded border border-slate-300 hover:bg-slate-100">
+                    Ver
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => descargarComprobantePdf(c, false)}
+                    className="flex items-center px-1.5 py-0.5 rounded border border-slate-300 hover:bg-slate-100"
+                  >
+                    <Download className="w-3 h-3 mr-0.5" />
+                    PDF
+                  </button>
+                  <button type="button" onClick={() => verificar(c)} className="px-1.5 py-0.5 rounded border border-slate-300 hover:bg-slate-100">
+                    Verificar
+                  </button>
+                </span>
+              </div>
+              {verificacion[c.id] && (
+                <span className={`flex items-start ${verificacion[c.id].ok ? 'text-emerald-700' : 'text-red-600'}`}>
+                  {verificacion[c.id].ok ? <ShieldCheck className="w-3 h-3 mr-1 shrink-0" /> : <ShieldAlert className="w-3 h-3 mr-1 shrink-0" />}
+                  {verificacion[c.id].mensaje}
+                </span>
+              )}
+            </li>
+          ))}
+        </ul>
       )}
 
       {url && (

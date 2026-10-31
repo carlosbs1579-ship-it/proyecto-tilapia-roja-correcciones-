@@ -2,8 +2,8 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { ref, uploadBytes } from 'firebase/storage';
 import { storage } from '../firebase/firebaseConfig';
-import { Lote, ConfiguracionGeneral } from '../types';
-import { construirUrlPublicaPdf, generarQrDataUrl } from './qrService';
+import { Lote, ConfiguracionGeneral, ComprobanteEntrega } from '../types';
+import { construirUrlConsultaEntrega, construirUrlPublicaPdf, generarQrDataUrl } from './qrService';
 import { verificarIntegridadCadena } from './hashService';
 import { formatearFechaColombia, getFechaHoyBogota } from '../utils/constants';
 import { evaluarParametroAgua } from './calculosService';
@@ -417,4 +417,185 @@ export async function previsualizarPdfLote(lote: Lote, config: ConfiguracionGene
   const { blob } = await generarLotePdfBlob(lote, config);
   const url = URL.createObjectURL(blob);
   window.open(url, '_blank');
+}
+
+// ---------- Comprobante de entrega (fase 5) ----------
+// Se genera a partir del registro inmutable del comprobante (o del contenido preliminar, que no se
+// guarda). Es independiente del certificado del lote: no lo modifica ni toca su hash.
+
+type ContenidoComprobante = Omit<ComprobanteEntrega, 'hashEventos' | 'hashComprobante'> &
+  Partial<Pick<ComprobanteEntrega, 'hashEventos' | 'hashComprobante'>>;
+
+const cantidadTexto = (n: number, unidad: string) => `${(Number(n) || 0).toLocaleString('es-CO')} ${unidad}`;
+
+export async function generarComprobantePdfBlob(c: ContenidoComprobante, opciones: { preliminar: boolean }): Promise<Blob> {
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const parcial = c.estadoEntrega === 'entrega_parcial' || c.cantidadPendiente > 0;
+  let y = 14;
+
+  // Encabezado con la misma identidad del certificado del lote
+  doc.setFillColor(3, 105, 161);
+  doc.rect(10, y, pageWidth - 20, 26, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(15);
+  doc.text(c.empresa.toUpperCase(), 16, y + 9);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+  doc.text(opciones.preliminar ? 'COMPROBANTE DE ENTREGA — PRELIMINAR' : 'COMPROBANTE DE ENTREGA', 16, y + 16);
+  doc.setFontSize(8);
+  doc.text(
+    opciones.preliminar
+      ? `Orden ${c.ordenId} · generado el ${formatearFechaColombia(c.emitidoEn)} · sin validez como comprobante definitivo`
+      : `N.º ${c.id.slice(0, 15)} · versión ${c.version} · orden ${c.ordenId} · emitido el ${formatearFechaColombia(c.emitidoEn)}`,
+    16,
+    y + 22
+  );
+  if (!opciones.preliminar && c.tokenConsulta) {
+    const qr = await generarQrDataUrl(construirUrlConsultaEntrega(c.tokenConsulta));
+    doc.addImage(qr, 'PNG', pageWidth - 44, y + 1, 24, 24);
+  }
+  y += 32;
+
+  // Estado de la entrega (una parcial nunca se presenta como completa)
+  doc.setFillColor(...((opciones.preliminar ? [100, 116, 139] : parcial ? [217, 119, 6] : [5, 150, 105]) as [number, number, number]));
+  doc.rect(10, y, pageWidth - 20, 9, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.text(
+    opciones.preliminar
+      ? 'DOCUMENTO PRELIMINAR · la entrega aún no está confirmada o el comprobante no se ha emitido'
+      : parcial
+      ? `ENTREGA PARCIAL · pendientes ${cantidadTexto(c.cantidadPendiente, c.unidad)}`
+      : 'ENTREGA COMPLETA',
+    14,
+    y + 6
+  );
+  y += 14;
+
+  doc.setTextColor(15, 23, 42);
+  autoTable(doc, {
+    startY: y,
+    theme: 'grid',
+    styles: { fontSize: 8.5, cellPadding: 2 },
+    headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42] },
+    head: [['Cliente', 'Logística']],
+    body: [[
+      `${c.cliente.nombre}\n${c.cliente.direccion || 'Dirección no registrada'}`,
+      [
+        `Repartidor: ${c.repartidor || '—'}`,
+        `Programada: ${c.fechas.programada || 'sin fecha'}`,
+        `Salida: ${c.fechas.salida ? formatearFechaColombia(c.fechas.salida) : '—'}`,
+        `Llegada: ${c.fechas.llegada ? formatearFechaColombia(c.fechas.llegada) : '—'}`,
+        `Confirmación de entrega: ${c.fechas.confirmacion ? formatearFechaColombia(c.fechas.confirmacion) : 'sin confirmar'}`
+      ].join('\n')
+    ]]
+  });
+  y = (doc as any).lastAutoTable.finalY + 5;
+
+  autoTable(doc, {
+    startY: y,
+    theme: 'grid',
+    styles: { fontSize: 8.5, cellPadding: 2, halign: 'right' },
+    headStyles: { fillColor: [3, 105, 161], textColor: [255, 255, 255], halign: 'right' },
+    head: [['Solicitada', 'Autorizada', 'Entregada', 'Liberada al cerrar', 'Pendiente']],
+    body: [[
+      cantidadTexto(c.cantidadSolicitada, c.unidad),
+      cantidadTexto(c.cantidadAutorizada, c.unidad),
+      cantidadTexto(c.cantidadEntregada, c.unidad),
+      cantidadTexto(c.cantidadLiberada, c.unidad),
+      cantidadTexto(c.cantidadPendiente, c.unidad)
+    ]]
+  });
+  y = (doc as any).lastAutoTable.finalY + 5;
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.text('Procedencia del producto (por lote y piscina)', 10, y);
+  autoTable(doc, {
+    startY: y + 2,
+    theme: 'striped',
+    styles: { fontSize: 8.5, cellPadding: 2 },
+    headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255] },
+    columnStyles: { 2: { halign: 'right' }, 3: { halign: 'right' } },
+    head: [['Lote', 'Piscina', 'Cantidad autorizada', 'Cantidad entregada']],
+    body: Object.entries(c.procedencias).map(([lote, p]) => [
+      lote,
+      p.estanque,
+      cantidadTexto(p.autorizada, c.unidad),
+      cantidadTexto(p.entregada, c.unidad)
+    ])
+  });
+  y = (doc as any).lastAutoTable.finalY + 5;
+
+  const observaciones: string[][] = [
+    ...c.entregas.map((e) => [
+      `Entrega ${formatearFechaColombia(e.fecha)}`,
+      `${Object.entries(e.cantidades).map(([l, n]) => `${l}: ${cantidadTexto(n, c.unidad)}`).join(', ')}` +
+        (e.faltante > 0 ? ` · faltaron ${cantidadTexto(e.faltante, c.unidad)}` : '') +
+        (e.observacion ? ` · ${e.observacion}` : '')
+    ]),
+    ...c.ajustes.map((a) => [
+      `Ajuste aprobado ${formatearFechaColombia(a.fecha)}`,
+      `${Object.entries(a.anterior).map(([l, n]) => `${l}: ${n}`).join(', ')} → ${Object.entries(a.nueva).map(([l, n]) => `${l}: ${n}`).join(', ')}` +
+        (a.motivo ? ` · ${a.motivo}` : '')
+    ]),
+    ...c.novedades.map((n) => [`Novedad ${formatearFechaColombia(n.fecha)}`, n.descripcion])
+  ];
+  if (observaciones.length) {
+    autoTable(doc, {
+      startY: y,
+      theme: 'grid',
+      styles: { fontSize: 8, cellPadding: 1.8 },
+      headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42] },
+      columnStyles: { 0: { cellWidth: 48 } },
+      head: [['Observaciones', 'Detalle']],
+      body: observaciones
+    });
+    y = (doc as any).lastAutoTable.finalY + 5;
+  }
+
+  // Verificación
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.setTextColor(71, 85, 105);
+  if (opciones.preliminar) {
+    doc.text('Documento preliminar: no tiene hash de verificación ni código de consulta.', 10, y);
+  } else {
+    const lineas = doc.splitTextToSize(
+      `Verificación: SHA-256 del comprobante ${c.hashComprobante} · SHA-256 de los eventos de entrega ${c.hashEventos}. ` +
+        'Son hashes guardados en Firebase (no una blockchain). Escanee el código QR para consultar la entrega y verificar el comprobante. ' +
+        'La trazabilidad de cada lote se consulta por separado con el QR del lote.',
+      pageWidth - 20
+    );
+    doc.text(lineas, 10, y);
+  }
+
+  if (opciones.preliminar) {
+    // Marca de agua para que nunca se confunda con un comprobante definitivo
+    doc.setTextColor(203, 213, 225);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(54);
+    doc.text('PRELIMINAR', pageWidth / 2, 170, { align: 'center', angle: 35 });
+  }
+  return doc.output('blob');
+}
+
+export async function verComprobantePdf(c: ContenidoComprobante, preliminar: boolean): Promise<void> {
+  const blob = await generarComprobantePdfBlob(c, { preliminar });
+  window.open(URL.createObjectURL(blob), '_blank');
+}
+
+export async function descargarComprobantePdf(c: ContenidoComprobante, preliminar: boolean): Promise<void> {
+  const blob = await generarComprobantePdfBlob(c, { preliminar });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = preliminar ? `Preliminar_${c.ordenId}.pdf` : `Comprobante_${c.ordenId}_v${c.version}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }

@@ -8,77 +8,101 @@ import {
   ChevronDown,
   ChevronUp,
   Layers,
-  Send,
-  Edit3,
-  History,
+  Search,
+  Bell,
   Truck,
   Repeat,
-  AlertTriangle
+  AlertTriangle,
+  History,
+  ListChecks
 } from 'lucide-react';
-import { AjusteDistribucion, Cliente, EstadoOrden, InventarioLote, Lote, OrdenEntrega, UsuarioPerfil } from '../types';
+import { Cliente, EstadoOrden, InventarioLote, Lote, OrdenEntrega, UsuarioPerfil } from '../types';
 import {
   ETIQUETA_ESTADO_ORDEN,
   Repartidor,
-  TRANSICIONES_MANUALES,
-  aprobarAjuste,
   calcularDisponibilidad,
-  cambiarEstadoOrden,
-  cambiarRepartidor,
   cantidadPendiente,
-  confirmarBorrador,
   escucharClientes,
   escucharInventario,
   escucharOrdenes,
-  escucharRepartidores,
-  liberarSaldoYCerrar,
-  rechazarAjuste,
-  reprogramarSaldo,
-  saldoLote
+  escucharRepartidores
 } from '../services/pedidosService';
 import { verificarPermiso } from '../services/usuariosService';
+import {
+  DEFINICION_INDICADOR,
+  ETIQUETA_ALERTA,
+  Indicador,
+  TipoAlerta,
+  calcularAlertas,
+  cumpleIndicador,
+  diaBogota,
+  todasLasNovedades,
+  todasLasSolicitudes
+} from '../services/seguimientoService';
 import { formatearFechaColombia } from '../utils/constants';
 import { NuevaOrdenModal } from './NuevaOrdenModal';
+import { DetalleOrdenOperador } from './DetalleOrdenOperador';
+import { SupervisionRepartidores } from './SupervisionRepartidores';
+import { SolicitudesPendientes } from './SolicitudesPendientes';
+import { NovedadesIncidencias } from './NovedadesIncidencias';
+import { HistorialEntregas } from './HistorialEntregas';
+import { EstadoOrdenBadge, num } from './entregasUi';
 
 interface PedidosTabProps {
   lotes: Lote[];
   perfilActual: UsuarioPerfil | null;
 }
 
-const ESTILO_ESTADO: Record<EstadoOrden, string> = {
-  borrador: 'bg-slate-100 text-slate-700 border-slate-300',
-  asignado: 'bg-sky-100 text-sky-800 border-sky-300',
-  en_preparacion: 'bg-indigo-100 text-indigo-800 border-indigo-300',
-  en_ruta: 'bg-violet-100 text-violet-800 border-violet-300',
-  entrega_parcial: 'bg-amber-100 text-amber-800 border-amber-300',
-  entregado: 'bg-emerald-100 text-emerald-800 border-emerald-300',
-  requiere_revision: 'bg-orange-100 text-orange-800 border-orange-300',
-  cancelado: 'bg-red-50 text-red-700 border-red-200'
+type Vista = 'pedidos' | 'repartidores' | 'solicitudes' | 'novedades' | 'historial' | 'lotes';
+
+const INDICADORES: Indicador[] = ['total', 'pendientes', 'asignados', 'en_preparacion', 'en_ruta', 'entrega_parcial', 'entregados', 'atencion'];
+
+const ESTILO_ALERTA: Record<TipoAlerta, string> = {
+  sin_iniciar_ruta: 'border-sky-200 bg-sky-50 text-sky-900',
+  retraso: 'border-red-200 bg-red-50 text-red-800',
+  entrega_parcial: 'border-amber-200 bg-amber-50 text-amber-900',
+  requiere_revision: 'border-orange-200 bg-orange-50 text-orange-900',
+  ajuste_pendiente: 'border-indigo-200 bg-indigo-50 text-indigo-900',
+  novedad_abierta: 'border-orange-200 bg-orange-50 text-orange-900',
+  conflicto_disponibilidad: 'border-red-300 bg-red-50 text-red-800',
+  entrega_sin_comprobante: 'border-violet-200 bg-violet-50 text-violet-900'
 };
 
-const num = (n: number) => (Number(n) || 0).toLocaleString('es-CO');
-
+/**
+ * Gestión de entregas: vista central del operador para crear y supervisar las órdenes de entrega
+ * de su granja, con indicadores, alertas, seguimiento por repartidor, solicitudes de ajuste,
+ * novedades e historial. Todo se calcula con los datos de Firebase en tiempo real.
+ */
 export const PedidosTab: React.FC<PedidosTabProps> = ({ lotes, perfilActual }) => {
   const puedeGestionar = verificarPermiso(perfilActual, 'gestionarPedidos');
   const granjaId = perfilActual?.granjaId || 'cultivos-lore';
 
-  const [vista, setVista] = useState<'ordenes' | 'lotes'>('ordenes');
+  const [vista, setVista] = useState<Vista>('pedidos');
   const [ordenes, setOrdenes] = useState<OrdenEntrega[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [inventario, setInventario] = useState<Record<string, InventarioLote>>({});
   const [repartidores, setRepartidores] = useState<Repartidor[]>([]);
   const [cargando, setCargando] = useState(true);
   const [errorCarga, setErrorCarga] = useState<string | null>(null);
-  const [filtroEstado, setFiltroEstado] = useState<FiltroOrdenes>('activas');
   const [abierta, setAbierta] = useState<string | null>(null);
   const [modalAbierto, setModalAbierto] = useState(false);
   const [ordenEditar, setOrdenEditar] = useState<OrdenEntrega | null>(null);
   const [mensaje, setMensaje] = useState<string | null>(null);
   const [errorAccion, setErrorAccion] = useState<string | null>(null);
   const [procesando, setProcesando] = useState(false);
-  const [motivo, setMotivo] = useState('');
-  const [nuevoRepartidor, setNuevoRepartidor] = useState('');
-  const [respuestaAjuste, setRespuestaAjuste] = useState('');
+  const [verAlertas, setVerAlertas] = useState(false);
 
+  // Filtros del listado
+  const [indicador, setIndicador] = useState<Indicador>('total');
+  const [filtroEstado, setFiltroEstado] = useState<'' | EstadoOrden>('');
+  const [filtroCliente, setFiltroCliente] = useState('');
+  const [filtroRepartidor, setFiltroRepartidor] = useState('');
+  const [campoFecha, setCampoFecha] = useState<'creacion' | 'programada'>('creacion');
+  const [desde, setDesde] = useState('');
+  const [hasta, setHasta] = useState('');
+  const [busqueda, setBusqueda] = useState('');
+
+  // Una sola suscripción por colección mientras la pestaña está abierta; se cancelan al salir
   useEffect(() => {
     if (!puedeGestionar) return;
     setCargando(true);
@@ -110,21 +134,30 @@ export const PedidosTab: React.FC<PedidosTabProps> = ({ lotes, perfilActual }) =
     return () => clearTimeout(t);
   }, [mensaje]);
 
-  const ordenesFiltradas = useMemo(
-    () =>
-      ordenes.filter((o) =>
-        filtroEstado === 'todas'
-          ? true
-          : filtroEstado === 'solicitudes'
-          ? solicitudesPendientes(o).length > 0
-          : filtroEstado === 'novedades'
-          ? conNovedadesActivas(o)
-          : filtroEstado === 'activas'
-          ? !['entregado', 'cancelado'].includes(o.estado)
-          : o.estado === filtroEstado
-      ),
-    [ordenes, filtroEstado]
+  const alertas = useMemo(() => calcularAlertas(ordenes, lotes, inventario), [ordenes, lotes, inventario]);
+  const ordenesConAlerta = useMemo(() => new Set(alertas.map((a) => a.ordenId).filter(Boolean) as string[]), [alertas]);
+  const solicitudesPendientes = useMemo(() => todasLasSolicitudes(ordenes).filter((s) => s.ajuste.estado === 'pendiente_aprobacion').length, [ordenes]);
+  const novedadesAbiertas = useMemo(() => todasLasNovedades(ordenes).filter((n) => n.atencion === 'pendiente' || n.atencion === 'en_revision').length, [ordenes]);
+
+  const clientesEnOrdenes = useMemo(() => Array.from(new Set(ordenes.map((o) => o.clienteNombre))).sort(), [ordenes]);
+  const repartidoresEnOrdenes = useMemo(
+    () => Array.from(new Map(ordenes.filter((o) => o.repartidorUid).map((o) => [o.repartidorUid as string, o.repartidorNombre || ''])).entries()),
+    [ordenes]
   );
+
+  const ordenesFiltradas = useMemo(() => {
+    const q = busqueda.trim().toLowerCase();
+    return ordenes.filter((o) => {
+      const fecha = campoFecha === 'creacion' ? diaBogota(o.creadoEn) : o.fechaProgramada || '';
+      return cumpleIndicador(o, indicador, ordenesConAlerta)
+        && (!filtroEstado || o.estado === filtroEstado)
+        && (!filtroCliente || o.clienteNombre === filtroCliente)
+        && (!filtroRepartidor || o.repartidorUid === filtroRepartidor)
+        && (!desde || (fecha && fecha >= desde))
+        && (!hasta || (fecha && fecha <= hasta))
+        && (!q || o.id.toLowerCase().includes(q) || o.clienteNombre.toLowerCase().includes(q));
+    });
+  }, [ordenes, indicador, ordenesConAlerta, filtroEstado, filtroCliente, filtroRepartidor, campoFecha, desde, hasta, busqueda]);
 
   // Órdenes vinculadas a cada lote (relación lote ↔ pedidos)
   const ordenesPorLote = useMemo(() => {
@@ -142,7 +175,7 @@ export const PedidosTab: React.FC<PedidosTabProps> = ({ lotes, perfilActual }) =
       <div className="max-w-2xl mx-auto bg-white rounded-xl border border-slate-200 shadow-xs p-6 flex items-start space-x-3 text-xs text-slate-700">
         <Lock className="w-5 h-5 text-slate-400 shrink-0" />
         <div>
-          <p className="font-bold text-sm text-slate-900">Pedidos restringidos</p>
+          <p className="font-bold text-sm text-slate-900">Gestión de entregas restringida</p>
           <p className="mt-1">Tu cuenta no tiene el permiso "Gestionar pedidos". Solicítalo al administrador en "Personal & Permisos".</p>
         </div>
       </div>
@@ -156,34 +189,56 @@ export const PedidosTab: React.FC<PedidosTabProps> = ({ lotes, perfilActual }) =
     try {
       await accion();
       setMensaje(exito);
-      setMotivo('');
-      setNuevoRepartidor('');
     } catch (err: any) {
       setErrorAccion(err.message || 'No fue posible completar la acción.');
+      throw err;
     } finally {
       setProcesando(false);
     }
   };
+  // Las secciones esperan una promesa que no rechace: el error ya queda en pantalla
+  const ejecutarSeguro = (accion: () => Promise<void>, exito: string) => ejecutar(accion, exito).catch(() => undefined);
 
-  const abrirNueva = () => {
-    setOrdenEditar(null);
-    setModalAbierto(true);
+  const abrirOrden = (id: string) => {
+    setVista('pedidos');
+    setIndicador('total');
+    setFiltroEstado('');
+    setFiltroCliente('');
+    setFiltroRepartidor('');
+    setDesde('');
+    setHasta('');
+    setBusqueda('');
+    setAbierta(id);
+    setErrorAccion(null);
   };
 
+  const pestañas: { id: Vista; etiqueta: string; icono: React.ReactNode; contador?: number }[] = [
+    { id: 'pedidos', etiqueta: 'Pedidos', icono: <ListChecks className="w-3.5 h-3.5" />, contador: ordenes.length },
+    { id: 'repartidores', etiqueta: 'Repartidores', icono: <Truck className="w-3.5 h-3.5" /> },
+    { id: 'solicitudes', etiqueta: 'Solicitudes', icono: <Repeat className="w-3.5 h-3.5" />, contador: solicitudesPendientes },
+    { id: 'novedades', etiqueta: 'Novedades', icono: <AlertTriangle className="w-3.5 h-3.5" />, contador: novedadesAbiertas },
+    { id: 'historial', etiqueta: 'Historial', icono: <History className="w-3.5 h-3.5" /> },
+    { id: 'lotes', etiqueta: 'Disponibilidad por lote', icono: <Layers className="w-3.5 h-3.5" /> }
+  ];
+  const campo = 'px-2.5 py-1.5 border border-slate-300 rounded-lg bg-white text-xs';
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-xl font-bold text-slate-900 tracking-tight flex items-center space-x-2">
             <ClipboardList className="w-5 h-5 text-sky-600" />
-            <span>Pedidos y órdenes de entrega</span>
+            <span>Gestión de entregas</span>
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            Órdenes vinculadas a los lotes cosechados, con reserva de cantidades y procedencia por lote y piscina
+            Órdenes de entrega de la granja, avance de los repartidores, solicitudes, novedades e historial (en tiempo real)
           </p>
         </div>
         <button
-          onClick={abrirNueva}
+          onClick={() => {
+            setOrdenEditar(null);
+            setModalAbierto(true);
+          }}
           className="inline-flex items-center space-x-2 px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-xs font-bold shadow-xs transition-colors shrink-0"
         >
           <Plus className="w-4 h-4" />
@@ -204,379 +259,225 @@ export const PedidosTab: React.FC<PedidosTabProps> = ({ lotes, perfilActual }) =
         </div>
       )}
 
-      <div className="flex items-center rounded-lg border border-slate-200 p-0.5 text-xs bg-white w-fit">
-        <button
-          onClick={() => setVista('ordenes')}
-          className={`px-3 py-1.5 rounded-md font-medium ${vista === 'ordenes' ? 'bg-slate-900 text-white font-bold' : 'text-slate-600 hover:text-slate-900'}`}
-        >
-          Órdenes ({ordenes.length})
-        </button>
-        <button
-          onClick={() => setVista('lotes')}
-          className={`px-3 py-1.5 rounded-md font-medium ${vista === 'lotes' ? 'bg-slate-900 text-white font-bold' : 'text-slate-600 hover:text-slate-900'}`}
-        >
-          Disponibilidad por lote
-        </button>
-      </div>
-
-      {vista === 'ordenes' && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-          {RESUMEN.map(({ id, etiqueta, contar, icono }) => (
+      {/* Indicadores (registros reales de Firebase) */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+        {INDICADORES.map((id) => {
+          const cantidad = ordenes.filter((o) => cumpleIndicador(o, id, ordenesConAlerta)).length;
+          const activo = vista === 'pedidos' && indicador === id;
+          return (
             <button
               key={id}
-              onClick={() => setFiltroEstado(id)}
-              className={'bg-white border rounded-xl p-3 text-left flex items-center justify-between ' +
-                (filtroEstado === id ? 'border-sky-500 ring-2 ring-sky-200' : 'border-slate-200')}
+              title={DEFINICION_INDICADOR[id].ayuda}
+              onClick={() => {
+                setVista('pedidos');
+                setIndicador(id);
+                setFiltroEstado('');
+              }}
+              className={'bg-white border rounded-xl p-3 text-left ' +
+                (activo ? 'border-sky-500 ring-2 ring-sky-200' : id === 'atencion' && cantidad > 0 ? 'border-orange-300' : 'border-slate-200')}
             >
-              <span>
-                <span className="block text-slate-500">{etiqueta}</span>
-                <strong className="text-lg text-slate-900">{ordenes.filter(contar).length}</strong>
-              </span>
-              {icono}
+              <span className="block text-slate-500">{DEFINICION_INDICADOR[id].etiqueta}</span>
+              <strong className={`text-lg ${id === 'atencion' && cantidad > 0 ? 'text-orange-700' : 'text-slate-900'}`}>{cargando ? '…' : cantidad}</strong>
             </button>
-          ))}
+          );
+        })}
+      </div>
+
+      {/* Alertas operativas */}
+      {alertas.length > 0 && (
+        <div className="bg-white border border-orange-200 rounded-xl p-3 text-xs space-y-2">
+          <button onClick={() => setVerAlertas(!verAlertas)} className="w-full flex items-center justify-between">
+            <span className="flex items-center space-x-1.5 font-bold text-orange-900">
+              <Bell className="w-4 h-4" />
+              <span>{alertas.length} alerta(s) operativa(s)</span>
+              <span className="font-normal text-slate-500">
+                · {Array.from(new Set(alertas.map((a) => a.tipo))).map((t) => `${ETIQUETA_ALERTA[t]} (${alertas.filter((a) => a.tipo === t).length})`).join(' · ')}
+              </span>
+            </span>
+            {verAlertas ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </button>
+          {verAlertas && (
+            <div className="space-y-1">
+              {alertas.map((a) => (
+                <div key={a.id} className={`border rounded-lg px-3 py-1.5 flex flex-wrap items-center justify-between gap-2 ${ESTILO_ALERTA[a.tipo]}`}>
+                  <span>
+                    <strong>{ETIQUETA_ALERTA[a.tipo]}</strong>
+                    {a.ordenId && <span className="font-mono"> · {a.ordenId}</span>}
+                    <span> · {a.detalle}</span>
+                  </span>
+                  {a.ordenId ? (
+                    <button onClick={() => abrirOrden(a.ordenId!)} className="font-semibold underline">Ver pedido</button>
+                  ) : (
+                    <button onClick={() => setVista('lotes')} className="font-semibold underline">Ver lote</button>
+                  )}
+                </div>
+              ))}
+              <p className="text-[10px] text-slate-500">
+                Las alertas se calculan con condiciones verificables (sin fecha programada no se marca retraso). Al resolverse
+                desaparecen; lo ocurrido queda en el historial de cada pedido.
+              </p>
+            </div>
+          )}
         </div>
       )}
 
-      {vista === 'ordenes' ? (
+      {/* Secciones */}
+      <div className="flex flex-wrap gap-1 text-xs">
+        {pestañas.map((p) => (
+          <button
+            key={p.id}
+            onClick={() => setVista(p.id)}
+            className={`inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg font-medium border ${
+              vista === p.id ? 'bg-slate-900 text-white border-slate-900 font-bold' : 'bg-white text-slate-600 border-slate-200 hover:text-slate-900'
+            }`}
+          >
+            {p.icono}
+            <span>{p.etiqueta}</span>
+            {p.contador !== undefined && p.contador > 0 && (
+              <span className={`px-1.5 rounded-full text-[10px] ${vista === p.id ? 'bg-white/20' : 'bg-slate-100'}`}>{p.contador}</span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {vista === 'pedidos' && (
         <div className="bg-white rounded-xl border border-slate-200 shadow-xs">
-          <div className="px-5 py-3 border-b border-slate-100 flex flex-wrap items-center gap-2 text-xs">
-            <span className="text-slate-500">Mostrar:</span>
-            <select
-              value={filtroEstado}
-              onChange={(e) => setFiltroEstado(e.target.value as any)}
-              className="px-2.5 py-1 border border-slate-300 rounded-lg bg-white"
-            >
-              <option value="activas">En curso</option>
-              <option value="todas">Todas</option>
-              <option value="solicitudes">Con ajustes por aprobar</option>
-              <option value="novedades">Con novedades</option>
-              {(Object.keys(ETIQUETA_ESTADO_ORDEN) as EstadoOrden[]).map((e) => (
-                <option key={e} value={e}>{ETIQUETA_ESTADO_ORDEN[e]}</option>
-              ))}
-            </select>
+          <div className="px-4 py-3 border-b border-slate-100 space-y-2 text-xs">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-bold text-slate-800">{DEFINICION_INDICADOR[indicador].etiqueta}</span>
+              {indicador !== 'total' && (
+                <button onClick={() => setIndicador('total')} className="text-sky-700 underline">ver todos</button>
+              )}
+              <span className="text-slate-500">· {ordenesFiltradas.length} pedido(s)</span>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
+              <label className="relative col-span-2 md:col-span-1">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
+                <input className={campo + ' w-full pl-8'} placeholder="Pedido o cliente" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
+              </label>
+              <select className={campo} value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value as any)}>
+                <option value="">Todos los estados</option>
+                {(Object.keys(ETIQUETA_ESTADO_ORDEN) as EstadoOrden[]).map((e) => <option key={e} value={e}>{ETIQUETA_ESTADO_ORDEN[e]}</option>)}
+              </select>
+              <select className={campo} value={filtroCliente} onChange={(e) => setFiltroCliente(e.target.value)}>
+                <option value="">Todos los clientes</option>
+                {clientesEnOrdenes.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+              <select className={campo} value={filtroRepartidor} onChange={(e) => setFiltroRepartidor(e.target.value)}>
+                <option value="">Todos los repartidores</option>
+                {repartidoresEnOrdenes.map(([uid, nombre]) => <option key={uid} value={uid}>{nombre}</option>)}
+              </select>
+              <select className={campo} value={campoFecha} onChange={(e) => setCampoFecha(e.target.value as any)}>
+                <option value="creacion">Fecha de creación</option>
+                <option value="programada">Fecha programada</option>
+              </select>
+              <input type="date" className={campo} value={desde} onChange={(e) => setDesde(e.target.value)} title="Desde" />
+              <input type="date" className={campo} value={hasta} onChange={(e) => setHasta(e.target.value)} title="Hasta" />
+            </div>
           </div>
 
           {cargando ? (
             <div className="py-10 text-center text-xs text-slate-500">Cargando órdenes...</div>
           ) : ordenesFiltradas.length === 0 ? (
-            <div className="py-10 text-center text-xs text-slate-500">No hay órdenes con este filtro.</div>
+            <div className="py-10 text-center text-xs text-slate-500">No hay pedidos con estos filtros.</div>
           ) : (
-            <div className="divide-y divide-slate-100">
-              {ordenesFiltradas.map((o) => {
-                const expandida = abierta === o.id;
-                const transiciones = (TRANSICIONES_MANUALES[o.estado] || []).filter((e) => e !== 'cancelado');
-                const puedeCancelar = (TRANSICIONES_MANUALES[o.estado] || []).includes('cancelado');
-                const puedeCambiarRepartidor = ['borrador', 'asignado', 'en_preparacion', 'requiere_revision'].includes(o.estado);
-                return (
-                  <div key={o.id} className="text-xs">
-                    <button
-                      onClick={() => {
-                        setAbierta(expandida ? null : o.id);
-                        setErrorAccion(null);
-                        setMotivo('');
-                        setNuevoRepartidor('');
-                        setRespuestaAjuste('');
-                      }}
-                      className="w-full px-5 py-3 grid grid-cols-2 sm:grid-cols-6 gap-2 items-center text-left hover:bg-slate-50"
-                    >
-                      <span className="font-mono font-bold text-slate-900">{o.id}</span>
-                      <span className="text-slate-700 truncate">{o.clienteNombre}</span>
-                      <span className="text-slate-600">
-                        {num(o.cantidadAutorizada)} / {num(o.cantidadSolicitada)} {o.unidad}
-                        <span className="block text-[10px] text-slate-400">autorizado / solicitado</span>
-                      </span>
-                      <span className="text-slate-600 truncate">{o.repartidorNombre || 'Sin repartidor'}</span>
-                      <span>
-                        <span className={`inline-block px-2 py-0.5 rounded-full border font-semibold text-[10px] ${ESTILO_ESTADO[o.estado]}`}>
-                          {ETIQUETA_ESTADO_ORDEN[o.estado]}
+            <div className="text-xs">
+              {/* Encabezado (pantallas medianas en adelante) */}
+              <div className="hidden xl:grid grid-cols-[1.3fr_1.3fr_0.9fr_0.8fr_1fr_repeat(4,0.7fr)_1fr_0.2fr] gap-2 px-4 py-2 bg-slate-50 text-[10px] uppercase text-slate-500 font-semibold">
+                <span>Pedido</span>
+                <span>Cliente</span>
+                <span>Creación</span>
+                <span>Programada</span>
+                <span>Repartidor</span>
+                <span className="text-right">Solicitada</span>
+                <span className="text-right">Autorizada</span>
+                <span className="text-right">Entregada</span>
+                <span className="text-right">Pendiente</span>
+                <span>Estado</span>
+                <span />
+              </div>
+              <div className="divide-y divide-slate-100">
+                {ordenesFiltradas.map((o) => {
+                  const expandida = abierta === o.id;
+                  return (
+                    <div key={o.id}>
+                      <button
+                        onClick={() => {
+                          setAbierta(expandida ? null : o.id);
+                          setErrorAccion(null);
+                        }}
+                        className="w-full px-4 py-3 grid grid-cols-2 xl:grid-cols-[1.3fr_1.3fr_0.9fr_0.8fr_1fr_repeat(4,0.7fr)_1fr_0.2fr] gap-x-2 gap-y-1 items-center text-left hover:bg-slate-50"
+                      >
+                        <span className="font-mono font-bold text-slate-900">
+                          {o.id}
+                          {ordenesConAlerta.has(o.id) && <Bell className="inline w-3 h-3 ml-1 text-orange-500" />}
                         </span>
-                        {solicitudesPendientes(o).length > 0 && (
-                          <span className="block mt-0.5 text-[10px] font-semibold text-indigo-700">Ajuste por aprobar</span>
-                        )}
-                        {o.estado === 'en_ruta' && o.llegadaEn && (
-                          <span className="block mt-0.5 text-[10px] text-violet-700">Llegó al cliente</span>
-                        )}
-                      </span>
-                      <span className="flex items-center justify-end text-slate-400">
-                        {expandida ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                      </span>
-                    </button>
-
-                    {expandida && (
-                      <div className="px-5 pb-5 space-y-4 bg-slate-50/60">
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2">
-                          {[
-                            ['Solicitada', o.cantidadSolicitada],
-                            ['Autorizada (reservada)', o.cantidadAutorizada],
-                            ['Entregada', o.cantidadEntregada],
-                            ['Pendiente', cantidadPendiente(o)]
-                          ].map(([etiqueta, valor]) => (
-                            <div key={etiqueta as string} className="bg-white border border-slate-200 rounded-lg p-2.5">
-                              <span className="text-[10px] text-slate-500 block">{etiqueta}</span>
-                              <strong className="text-sm text-slate-900">{num(valor as number)} {o.unidad}</strong>
-                            </div>
-                          ))}
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px] text-slate-600">
-                          <span>Creada por <strong>{o.creadoPor}</strong> el {formatearFechaColombia(o.creadoEn)}</span>
-                          <span>Entrega programada: <strong>{o.fechaProgramada || 'sin fecha'}</strong></span>
-                          <span>Observaciones: {o.observaciones || '—'}</span>
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 text-[11px] text-slate-700 bg-white border border-slate-200 rounded-lg p-2.5">
-                          <span>Dirección: <strong>{o.clienteDireccion || 'sin registrar'}</strong></span>
-                          <span>Ruta iniciada: <strong>{o.rutaIniciadaEn ? formatearFechaColombia(o.rutaIniciadaEn) : '—'}</strong></span>
-                          <span>Llegada: <strong>{o.llegadaEn ? formatearFechaColombia(o.llegadaEn) : '—'}</strong></span>
-                          <span>
-                            Liberado al cerrar: <strong>{o.cantidadLiberada ? num(o.cantidadLiberada) + ' ' + o.unidad : '—'}</strong>
-                          </span>
-                        </div>
-
-                        <div>
-                          <span className="font-bold text-slate-700 block mb-1">Procedencia</span>
-                          {Object.keys(o.procedencias || {}).length === 0 ? (
-                            <p className="text-slate-500">Sin distribución por lotes todavía.</p>
-                          ) : (
-                            <table className="w-full bg-white border border-slate-200 rounded-lg overflow-hidden">
-                              <thead className="bg-slate-50 text-[10px] uppercase text-slate-500 text-left">
-                                <tr>
-                                  <th className="px-3 py-1.5">Lote</th>
-                                  <th className="px-3 py-1.5">Piscina</th>
-                                  <th className="px-3 py-1.5 text-right">Autorizado</th>
-                                  <th className="px-3 py-1.5 text-right">Entregado</th>
-                                  <th className="px-3 py-1.5 text-right">Por entregar</th>
-                                </tr>
-                              </thead>
-                              <tbody className="divide-y divide-slate-100">
-                                {Object.entries(o.procedencias).map(([codigo, p]) => (
-                                  <tr key={codigo}>
-                                    <td className="px-3 py-1.5 font-mono font-bold">{codigo}</td>
-                                    <td className="px-3 py-1.5">{p.estanque}</td>
-                                    <td className="px-3 py-1.5 text-right">{num(p.cantidad)} {p.unidad}</td>
-                                    <td className="px-3 py-1.5 text-right">{num(o.entregadoPorLote?.[codigo] || 0)}</td>
-                                    <td className="px-3 py-1.5 text-right">
-                                      {o.estado === 'cancelado' || o.estado === 'entregado' ? '—' : num(saldoLote(o, codigo))}
-                                    </td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          )}
-                          {o.estado === 'borrador' && (
-                            <p className="text-[10px] text-slate-500 mt-1">Borrador: estas cantidades aún no están reservadas.</p>
-                          )}
-                        </div>
-
-                        {/* Novedades del repartidor */}
-                        {novedadesDe(o).length > 0 && (
-                          <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 space-y-1">
-                            <span className="font-bold text-orange-900 block">Novedades del repartidor</span>
-                            {novedadesDe(o).map((ev) => (
-                              <p key={ev.indice} className="text-orange-900">
-                                <strong>{formatearFechaColombia(ev.fecha)}</strong> · {ev.descripcion}
-                              </p>
-                            ))}
-                          </div>
-                        )}
-
-                        {/* Solicitudes de ajuste */}
-                        {Object.keys(o.ajustes || {}).length > 0 && (
-                          <div className="bg-white border border-indigo-200 rounded-lg p-3 space-y-3">
-                            <span className="font-bold text-indigo-900 block">Solicitudes de ajuste de distribución</span>
-                            {Object.values(o.ajustes || {})
-                              .sort((a, b) => b.solicitadoEn.localeCompare(a.solicitadoEn))
-                              .map((a) => (
-                                <SolicitudAjuste
-                                  key={a.id}
-                                  ajuste={a}
-                                  orden={o}
-                                  propia={a.solicitadoPorUid === perfilActual?.uid}
-                                  procesando={procesando}
-                                  respuesta={respuestaAjuste}
-                                  setRespuesta={setRespuestaAjuste}
-                                  onAprobar={() => ejecutar(() => aprobarAjuste(o.id, a.id, respuestaAjuste), 'Ajuste aprobado y aplicado: reservas actualizadas.')}
-                                  onRechazar={() => ejecutar(() => rechazarAjuste(o.id, a.id, respuestaAjuste), 'Solicitud rechazada; la distribución no cambió.')}
-                                />
-                              ))}
-                          </div>
-                        )}
-
-                        {/* Acciones */}
-                        <div className="bg-white border border-slate-200 rounded-lg p-3 space-y-3">
-                          <span className="font-bold text-slate-700 block">Acciones</span>
-                          <input
-                            type="text"
-                            placeholder="Motivo (obligatorio para cancelar, enviar a revisión o cambiar el repartidor)"
-                            value={motivo}
-                            onChange={(e) => setMotivo(e.target.value)}
-                            className="w-full px-3 py-1.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
-                          />
-                          <div className="flex flex-wrap gap-2">
-                            {o.estado === 'borrador' && (
-                              <>
-                                <button
-                                  disabled={procesando}
-                                  onClick={() => {
-                                    setOrdenEditar(o);
-                                    setModalAbierto(true);
-                                  }}
-                                  className="inline-flex items-center space-x-1 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-lg font-semibold disabled:opacity-50"
-                                >
-                                  <Edit3 className="w-3.5 h-3.5" />
-                                  <span>Modificar borrador</span>
-                                </button>
-                                <button
-                                  disabled={procesando}
-                                  onClick={() => ejecutar(() => confirmarBorrador(o.id), `Orden ${o.id} confirmada: cantidades reservadas.`)}
-                                  className="inline-flex items-center space-x-1 px-3 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded-lg font-bold disabled:opacity-50"
-                                >
-                                  <Send className="w-3.5 h-3.5" />
-                                  <span>Confirmar, reservar y asignar</span>
-                                </button>
-                              </>
-                            )}
-                            {transiciones.map((e) => (
-                              <button
-                                key={e}
-                                disabled={procesando}
-                                onClick={() =>
-                                  ejecutar(() => cambiarEstadoOrden(o.id, e, motivo), `Orden ${o.id}: ${ETIQUETA_ESTADO_ORDEN[e]}.`)
-                                }
-                                className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-semibold disabled:opacity-50"
-                              >
-                                Pasar a "{ETIQUETA_ESTADO_ORDEN[e]}"
-                              </button>
-                            ))}
-                            {puedeCancelar && (
-                              <button
-                                disabled={procesando}
-                                onClick={() =>
-                                  ejecutar(
-                                    () => cambiarEstadoOrden(o.id, 'cancelado', motivo),
-                                    o.estado === 'borrador'
-                                      ? `Borrador ${o.id} cancelado.`
-                                      : `Orden ${o.id} cancelada: ${num(cantidadPendiente(o))} ${o.unidad} liberados.`
-                                  )
-                                }
-                                className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-lg font-semibold disabled:opacity-50"
-                              >
-                                Cancelar orden{o.estado !== 'borrador' ? ' y liberar reserva' : ''}
-                              </button>
-                            )}
-                          </div>
-                          {puedeCambiarRepartidor && (
-                            <div className="flex flex-wrap items-center gap-2">
-                              <select
-                                value={nuevoRepartidor}
-                                onChange={(e) => setNuevoRepartidor(e.target.value)}
-                                className="px-2.5 py-1.5 border border-slate-300 rounded-lg bg-white"
-                              >
-                                <option value="">Cambiar repartidor...</option>
-                                {repartidores
-                                  .filter((r) => r.uid !== o.repartidorUid)
-                                  .map((r) => (
-                                    <option key={r.uid} value={r.uid}>{r.nombre} — {r.cargo}</option>
-                                  ))}
-                              </select>
-                              <button
-                                disabled={procesando || !nuevoRepartidor}
-                                onClick={() => {
-                                  const r = repartidores.find((x) => x.uid === nuevoRepartidor);
-                                  if (r) ejecutar(() => cambiarRepartidor(o.id, r, motivo), `Repartidor de ${o.id}: ${r.nombre}.`);
-                                }}
-                                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-lg font-semibold disabled:opacity-50"
-                              >
-                                Asignar
-                              </button>
-                            </div>
-                          )}
-                          {o.estado === 'entrega_parcial' && (
-                            <div className="space-y-2 border-t border-slate-100 pt-2">
-                              <p className="text-amber-800">
-                                Entrega parcial: faltan <strong>{num(cantidadPendiente(o))} {o.unidad}</strong>. Decide cómo continuar:
-                              </p>
-                              <div className="flex flex-wrap items-center gap-2">
-                                <select
-                                  value={nuevoRepartidor}
-                                  onChange={(e) => setNuevoRepartidor(e.target.value)}
-                                  className="px-2.5 py-1.5 border border-slate-300 rounded-lg bg-white"
-                                >
-                                  <option value="">Mismo repartidor ({o.repartidorNombre})</option>
-                                  {repartidores
-                                    .filter((r) => r.uid !== o.repartidorUid)
-                                    .map((r) => (
-                                      <option key={r.uid} value={r.uid}>{r.nombre} — {r.cargo}</option>
-                                    ))}
-                                </select>
-                                <button
-                                  disabled={procesando}
-                                  onClick={() =>
-                                    ejecutar(
-                                      () => reprogramarSaldo(o.id, motivo, repartidores.find((x) => x.uid === nuevoRepartidor) || null),
-                                      'Saldo de ' + o.id + ' reprogramado: vuelve a asignado para una nueva ruta.'
-                                    )
-                                  }
-                                  className="px-3 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded-lg font-bold disabled:opacity-50"
-                                >
-                                  Reprogramar entrega del saldo
-                                </button>
-                                <button
-                                  disabled={procesando}
-                                  onClick={() =>
-                                    ejecutar(
-                                      () => liberarSaldoYCerrar(o.id, motivo),
-                                      'Orden ' + o.id + ' cerrada: ' + num(cantidadPendiente(o)) + ' ' + o.unidad + ' liberados y disponibles otra vez.'
-                                    )
-                                  }
-                                  className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 rounded-lg font-semibold disabled:opacity-50"
-                                >
-                                  Liberar saldo y cerrar
-                                </button>
-                              </div>
-                              <p className="text-[10px] text-slate-500">Para liberar el saldo escribe el motivo en el campo de arriba.</p>
-                            </div>
-                          )}
-                          {['entregado', 'cancelado'].includes(o.estado) && (
-                            <p className="text-slate-500">Esta orden está cerrada y no admite más cambios.</p>
-                          )}
-                        </div>
-
-                        {/* Historial */}
-                        <div>
-                          <span className="font-bold text-slate-700 flex items-center space-x-1 mb-1">
-                            <History className="w-3.5 h-3.5" />
-                            <span>Historial (no se modifica)</span>
-                          </span>
-                          <ol className="space-y-1">
-                            {o.historial.map((ev) => (
-                              <li key={ev.indice} className="bg-white border border-slate-200 rounded-lg px-3 py-1.5">
-                                <span className="font-semibold text-slate-800">{ev.tipo}</span>
-                                <span className="text-slate-500">
-                                  {' • ' + formatearFechaColombia(ev.fecha) + ' • ' + ev.registradoPor}
-                                  {ev.funcion ? ' (' + (ETIQUETA_FUNCION[ev.funcion] || ev.funcion) + ')' : ''}
-                                </span>
-                                {ev.descripcion && <span className="block text-slate-600">{ev.descripcion}</span>}
-                              </li>
-                            ))}
-                          </ol>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+                        <span className="text-slate-700 truncate">{o.clienteNombre}</span>
+                        <span className="text-slate-500"><span className="xl:hidden">Creada </span>{formatearFechaColombia(o.creadoEn)}</span>
+                        <span className="text-slate-500"><span className="xl:hidden">Programada </span>{o.fechaProgramada || '—'}</span>
+                        <span className="text-slate-600 truncate">{o.repartidorNombre || 'Sin repartidor'}</span>
+                        <span className="xl:text-right"><span className="xl:hidden text-slate-400">Solic. </span>{num(o.cantidadSolicitada)}</span>
+                        <span className="xl:text-right"><span className="xl:hidden text-slate-400">Autor. </span>{num(o.cantidadAutorizada)}</span>
+                        <span className="xl:text-right"><span className="xl:hidden text-slate-400">Entreg. </span>{num(o.cantidadEntregada)}</span>
+                        <span className="xl:text-right font-semibold"><span className="xl:hidden text-slate-400 font-normal">Pend. </span>{num(cantidadPendiente(o))} {o.unidad}</span>
+                        <span><EstadoOrdenBadge estado={o.estado} /></span>
+                        <span className="hidden xl:flex justify-end text-slate-400">
+                          {expandida ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                        </span>
+                      </button>
+                      {expandida && (
+                        <DetalleOrdenOperador
+                          orden={o}
+                          lotes={lotes}
+                          inventario={inventario}
+                          repartidores={repartidores}
+                          perfilActual={perfilActual}
+                          procesando={procesando}
+                          ejecutar={ejecutarSeguro}
+                          onEditarBorrador={(orden) => {
+                            setOrdenEditar(orden);
+                            setModalAbierto(true);
+                          }}
+                        />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
         </div>
-      ) : (
+      )}
+
+      {vista === 'repartidores' && (
+        <SupervisionRepartidores ordenes={ordenes} repartidores={repartidores} onAbrirOrden={abrirOrden} />
+      )}
+
+      {vista === 'solicitudes' && (
+        <SolicitudesPendientes
+          ordenes={ordenes}
+          lotes={lotes}
+          inventario={inventario}
+          uidActual={perfilActual?.uid}
+          procesando={procesando}
+          ejecutar={ejecutarSeguro}
+          onAbrirOrden={abrirOrden}
+        />
+      )}
+
+      {vista === 'novedades' && (
+        <NovedadesIncidencias ordenes={ordenes} procesando={procesando} ejecutar={ejecutarSeguro} onAbrirOrden={abrirOrden} />
+      )}
+
+      {vista === 'historial' && <HistorialEntregas ordenes={ordenes} onAbrirOrden={abrirOrden} />}
+
+      {vista === 'lotes' && (
         <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-x-auto">
           <div className="px-5 py-3 border-b border-slate-100 flex items-center space-x-2 text-xs">
             <Layers className="w-4 h-4 text-sky-600" />
             <span className="font-bold text-slate-800">Producción registrada, reservas y disponibilidad por lote</span>
           </div>
-          <table className="w-full text-xs text-left">
+          <table className="w-full text-xs text-left min-w-[760px]">
             <thead className="bg-slate-50 text-[10px] uppercase text-slate-500">
               <tr>
                 <th className="px-4 py-2">Lote</th>
@@ -627,14 +528,7 @@ export const PedidosTab: React.FC<PedidosTabProps> = ({ lotes, perfilActual }) =
                         <ul className="space-y-0.5">
                           {vinculadas.map(({ orden, cantidad }) => (
                             <li key={orden.id}>
-                              <button
-                                onClick={() => {
-                                  setVista('ordenes');
-                                  setFiltroEstado('todas');
-                                  setAbierta(orden.id);
-                                }}
-                                className="font-mono text-sky-700 hover:underline"
-                              >
+                              <button onClick={() => abrirOrden(orden.id)} className="font-mono text-sky-700 hover:underline">
                                 {orden.id}
                               </button>
                               <span className="text-slate-500">
@@ -664,125 +558,6 @@ export const PedidosTab: React.FC<PedidosTabProps> = ({ lotes, perfilActual }) =
         ordenEditar={ordenEditar}
         onGuardada={setMensaje}
       />
-    </div>
-  );
-};
-
-type FiltroOrdenes = 'activas' | 'todas' | 'solicitudes' | 'novedades' | EstadoOrden;
-
-const ETIQUETA_AJUSTE: Record<string, string> = {
-  pendiente_aprobacion: 'Pendiente de aprobación',
-  aprobada: 'Aprobada',
-  rechazada: 'Rechazada',
-  cancelada: 'Cancelada por el repartidor',
-  aplicada: 'Aprobada y aplicada'
-};
-
-const ETIQUETA_FUNCION: Record<string, string> = {
-  admin: 'administrador',
-  operator: 'operador',
-  courier: 'repartidor'
-};
-
-const ESTADOS_ACTIVOS_AJUSTE: EstadoOrden[] = ['asignado', 'en_preparacion', 'en_ruta', 'requiere_revision'];
-
-function solicitudesPendientes(o: OrdenEntrega) {
-  return Object.values(o.ajustes || {}).filter((a) => a.estado === 'pendiente_aprobacion');
-}
-
-function novedadesDe(o: OrdenEntrega) {
-  return (o.historial || []).filter((ev) => ev.tipo === 'Novedad');
-}
-
-function conNovedadesActivas(o: OrdenEntrega) {
-  return novedadesDe(o).length > 0 && !['entregado', 'cancelado'].includes(o.estado);
-}
-
-// Tarjetas de seguimiento: cada una filtra la lista de órdenes
-const RESUMEN: { id: FiltroOrdenes; etiqueta: string; contar: (o: OrdenEntrega) => boolean; icono: React.ReactNode }[] = [
-  { id: 'en_ruta', etiqueta: 'Rutas en curso', contar: (o) => o.estado === 'en_ruta', icono: <Truck className="w-4 h-4 text-violet-600" /> },
-  { id: 'entrega_parcial', etiqueta: 'Entregas parciales', contar: (o) => o.estado === 'entrega_parcial', icono: <AlertTriangle className="w-4 h-4 text-amber-600" /> },
-  { id: 'solicitudes', etiqueta: 'Ajustes por aprobar', contar: (o) => solicitudesPendientes(o).length > 0, icono: <Repeat className="w-4 h-4 text-indigo-600" /> },
-  { id: 'novedades', etiqueta: 'Con novedades', contar: conNovedadesActivas, icono: <AlertCircle className="w-4 h-4 text-orange-600" /> }
-];
-
-const SolicitudAjuste: React.FC<{
-  ajuste: AjusteDistribucion;
-  orden: OrdenEntrega;
-  propia: boolean;
-  procesando: boolean;
-  respuesta: string;
-  setRespuesta: (v: string) => void;
-  onAprobar: () => void;
-  onRechazar: () => void;
-}> = ({ ajuste: a, orden: o, propia, procesando, respuesta, setRespuesta, onAprobar, onRechazar }) => {
-  const codigos = Array.from(new Set([...Object.keys(a.original), ...Object.keys(a.propuesta)]));
-  // Solo se aplica antes de cualquier entrega y con la orden activa; si no, solo se puede rechazar
-  const aplicable = o.cantidadEntregada === 0 && ESTADOS_ACTIVOS_AJUSTE.includes(o.estado);
-  return (
-    <div className="border border-slate-200 rounded-lg p-2.5 space-y-2">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="font-semibold text-slate-800">
-          {a.solicitadoPor} · {formatearFechaColombia(a.solicitadoEn)}
-        </span>
-        <span className="px-2 py-0.5 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-800 font-semibold text-[10px]">
-          {ETIQUETA_AJUSTE[a.estado]}
-        </span>
-      </div>
-      <table className="w-full text-[11px]">
-        <thead className="text-slate-500 text-left">
-          <tr>
-            <th className="py-1">Lote</th>
-            <th className="py-1 text-right">Autorizado original</th>
-            <th className="py-1 text-right">Propuesto</th>
-          </tr>
-        </thead>
-        <tbody>
-          {codigos.map((c) => (
-            <tr key={c}>
-              <td className="py-0.5 font-mono">{c}</td>
-              <td className="py-0.5 text-right">{num(a.original[c]?.cantidad || 0)}</td>
-              <td className="py-0.5 text-right font-semibold">{num(a.propuesta[c] || 0)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <p className="text-slate-600">Motivo: {a.motivo}</p>
-      {a.respuesta && <p className="text-slate-600">Respuesta ({a.resueltoPor}): {a.respuesta}</p>}
-      {a.estado === 'pendiente_aprobacion' &&
-        (propia ? (
-          <p className="text-amber-700">No puedes resolver una solicitud que hiciste tú.</p>
-        ) : (
-          <div className="space-y-1.5">
-            {!aplicable && <p className="text-slate-500">La orden ya no admite ajustes (tiene entregas o está cerrada); solo puedes rechazarla.</p>}
-            <input
-              type="text"
-              maxLength={1000}
-              placeholder="Respuesta al repartidor (obligatoria para rechazar)"
-              value={respuesta}
-              onChange={(e) => setRespuesta(e.target.value)}
-              className="w-full px-3 py-1.5 border border-slate-300 rounded-lg"
-            />
-            <div className="flex flex-wrap gap-2">
-              {aplicable && (
-                <button
-                  disabled={procesando}
-                  onClick={onAprobar}
-                  className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-bold disabled:opacity-50"
-                >
-                  Aprobar y aplicar
-                </button>
-              )}
-              <button
-                disabled={procesando}
-                onClick={onRechazar}
-                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-lg font-semibold disabled:opacity-50"
-              >
-                Rechazar
-              </button>
-            </div>
-          </div>
-        ))}
     </div>
   );
 };

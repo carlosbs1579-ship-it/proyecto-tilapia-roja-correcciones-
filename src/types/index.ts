@@ -147,7 +147,87 @@ export type TipoEventoOrden =
   | 'Ajuste aplicado'
   | 'Ajuste rechazado'
   | 'Reprogramación de saldo'
-  | 'Cierre con saldo liberado';
+  | 'Cierre con saldo liberado'
+  // Seguimiento del operador sobre una novedad (no cambia la orden ni la novedad original)
+  | 'Atención de novedad'
+  // Documentación (fase 5): emisión de un comprobante definitivo
+  | 'Comprobante emitido';
+
+// ---------- Comprobantes de entrega (fase 5) ----------
+// Un comprobante definitivo es un registro inmutable en comprobantes/{id} (id aleatorio, no
+// predecible). El PDF se genera a partir de él cada vez, así que no se guardan archivos.
+// consultasEntrega/{token} es el índice público de las versiones de una orden: el QR lleva solo el token.
+
+export interface ProcedenciaComprobante {
+  estanque: string;
+  autorizada: number;
+  entregada: number;
+}
+
+export interface EntregaComprobante {
+  eventoId: string;
+  fecha: string;
+  cantidades: Record<string, number>; // por lote
+  faltante: number;
+  observacion: string;
+}
+
+export interface ComprobanteEntrega {
+  id: string;
+  version: number;
+  ordenId: string;
+  granjaId: string;
+  tokenConsulta: string;
+  emitidoEn: string;
+  emitidoPorUid: string; // el correo del operador queda solo en el historial interno de la orden
+  empresa: string;
+  estadoEntrega: 'entregado' | 'entrega_parcial';
+  cliente: { nombre: string; direccion: string };
+  repartidor: string;
+  fechas: { creacion: string; programada: string | null; salida: string | null; llegada: string | null; confirmacion: string };
+  unidad: UnidadMedida;
+  cantidadSolicitada: number;
+  cantidadAutorizada: number;
+  cantidadEntregada: number;
+  cantidadLiberada: number;
+  cantidadPendiente: number;
+  procedencias: Record<string, ProcedenciaComprobante>; // clave: código de lote
+  entregas: EntregaComprobante[]; // todas las entregas confirmadas hasta esta versión
+  novedades: { fecha: string; descripcion: string }[];
+  ajustes: { fecha: string; anterior: Record<string, number>; nueva: Record<string, number>; motivo: string }[];
+  eventoEntregaId: string; // entrega confirmada que originó esta versión
+  eventoEntregaIndice: number;
+  eventosUsados: string[]; // eventoId de los eventos de la orden usados
+  hashEventos: string; // SHA-256 del JSON canónico de esos eventos
+  hashComprobante: string; // SHA-256 del JSON canónico de todo lo anterior
+}
+
+export interface VersionConsulta {
+  comprobanteId: string;
+  version: number;
+  emitidoEn: string;
+  estadoEntrega: 'entregado' | 'entrega_parcial';
+  hashComprobante: string;
+}
+
+export interface ConsultaEntrega {
+  token: string;
+  ordenId: string;
+  granjaId: string;
+  versiones: Record<string, VersionConsulta>; // clave: eventoId de la entrega
+  ultimaVersion: string; // comprobanteId vigente
+  actualizadoEn: string;
+}
+
+// Estado interno de atención de una novedad; es distinto del estado de la orden
+export type EstadoAtencion = 'pendiente' | 'en_revision' | 'atendida' | 'cerrada';
+
+export interface AtencionNovedad {
+  estado: EstadoAtencion;
+  actualizadoPor: string;
+  actualizadoPorUid: string;
+  actualizadoEn: string;
+}
 
 export type CategoriaNovedad =
   | 'Cliente no disponible'
@@ -231,6 +311,8 @@ export interface OrdenEntrega {
   rutaIniciadaEn?: string | null;
   llegadaEn?: string | null;
   ajustes?: Record<string, AjusteDistribucion>;
+  atencionNovedades?: Record<string, AtencionNovedad>; // clave: eventoId de la novedad
+  tokenConsulta?: string; // código aleatorio del QR de consulta del cliente (desde el primer comprobante)
 }
 
 export interface Cliente {

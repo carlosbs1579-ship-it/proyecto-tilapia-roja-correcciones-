@@ -341,7 +341,7 @@ service cloud.firestore {
               'repartidorNombre', 'creadoEn', 'actualizadoEn', 'fechaProgramada', 'unidad', 'cantidadSolicitada',
               'procedencias', 'cantidadAutorizada', 'cantidadEntregada', 'estado', 'observaciones', 'historial',
               'clienteDireccion', 'clienteContacto', 'entregadoPorLote', 'cantidadLiberada', 'rutaIniciadaEn',
-              'llegadaEn', 'ajustes'];
+              'llegadaEn', 'ajustes', 'atencionNovedades', 'tokenConsulta'];
     }
 
     function camposOrdenRequeridos() {
@@ -474,6 +474,8 @@ service cloud.firestore {
         && o.historial.size() == 1
         && !('entregadoPorLote' in o)
         && !('ajustes' in o)
+        && !('atencionNovedades' in o)
+        && !('tokenConsulta' in o)
         && gestionaPedidosEn(o.granjaId)
         && o.historial[0].tipo == 'Creación'
         && eventoOrdenValido(o.historial[0], 0)
@@ -611,7 +613,8 @@ service cloud.firestore {
       let tipo = evento.tipo;
       let cambios = despues.diff(antes).affectedKeys();
       return tipo in ['Modificación', 'Cambio de repartidor', 'Asignación y reserva', 'Cambio de estado', 'Cancelación',
-                      'Reprogramación de saldo', 'Cierre con saldo liberado', 'Ajuste rechazado', 'Ajuste aplicado']
+                      'Reprogramación de saldo', 'Cierre con saldo liberado', 'Ajuste rechazado', 'Ajuste aplicado',
+                      'Atención de novedad', 'Comprobante emitido']
         && despues.historial.size() == n + 1
         && eventoOrdenValido(evento, n)
         && despues.historial[0:n] == antes.historial
@@ -627,7 +630,138 @@ service cloud.firestore {
               && cambios.hasOnly(['ajustes', 'actualizadoEn', 'historial'])
               && resolucionValida(antes, despues, evento.datos.ajusteId, 'rechazada'))
             || (tipo == 'Ajuste aplicado'
-              && ajusteAplicadoValido(id, antes, despues, cambios, evento.datos.ajusteId)));
+              && ajusteAplicadoValido(id, antes, despues, cambios, evento.datos.ajusteId))
+            || (tipo == 'Atención de novedad' && atencionNovedadValida(antes, despues, cambios, evento))
+            || (tipo == 'Comprobante emitido' && emisionComprobanteValida(id, antes, despues, cambios, evento)));
+    }
+
+    // ===== Comprobantes de entrega (fase 5) =====
+    // comprobantes/{id}: registro inmutable de un comprobante definitivo (id aleatorio). El PDF se
+    // genera a partir de él. consultasEntrega/{token}: índice público de las versiones de una orden;
+    // el QR lleva solo el token. Ambos se leen únicamente conociendo el identificador.
+    function rutaComprobante(id) {
+      return /databases/$(database)/documents/comprobantes/$(id);
+    }
+
+    function rutaConsulta(token) {
+      return /databases/$(database)/documents/consultasEntrega/$(token);
+    }
+
+    // Emisión en la orden: solo fija el código de consulta (la primera vez) y agrega el evento; el
+    // comprobante y el índice público se escriben en esta misma operación
+    function emisionComprobanteValida(id, antes, despues, cambios, evento) {
+      let c = getAfter(rutaComprobante(evento.datos.comprobanteId)).data;
+      return cambios.hasOnly(['tokenConsulta', 'actualizadoEn', 'historial'])
+        && (!('tokenConsulta' in antes) || despues.tokenConsulta == antes.tokenConsulta)
+        && despues.tokenConsulta is string
+        && despues.tokenConsulta.size() >= 20
+        && c.ordenId == id
+        && c.tokenConsulta == despues.tokenConsulta
+        && c.eventoEntregaId == evento.datos.eventoEntregaId;
+    }
+
+    function procedenciaComprobante(c, o, claves, i) {
+      return claves.size() <= i
+        || (c.procedencias[claves[i]].autorizada == o.procedencias[claves[i]].cantidad
+            && c.procedencias[claves[i]].estanque == o.procedencias[claves[i]].estanque
+            && c.procedencias[claves[i]].entregada == o.get('entregadoPorLote', {}).get(claves[i], 0));
+    }
+
+    // Un comprobante definitivo refleja exactamente lo confirmado en la orden en el servidor: estado
+    // de entrega, cantidades y lo entregado por lote, y corresponde a un evento "Entrega" real
+    function comprobanteValido(id) {
+      let c = request.resource.data;
+      let o = getAfter(rutaOrden(c.ordenId)).data;
+      let entrega = o.historial[c.eventoEntregaIndice];
+      let claves = o.procedencias.keys();
+      let versiones = getAfter(rutaConsulta(c.tokenConsulta)).data.versiones;
+      return c.id == id
+        && id.size() >= 20
+        && c.keys().hasOnly(['id', 'version', 'ordenId', 'granjaId', 'tokenConsulta', 'emitidoEn', 'emitidoPorUid', 'empresa',
+                             'estadoEntrega', 'cliente', 'repartidor', 'fechas', 'unidad', 'cantidadSolicitada',
+                             'cantidadAutorizada', 'cantidadEntregada', 'cantidadLiberada', 'cantidadPendiente', 'procedencias',
+                             'entregas', 'novedades', 'ajustes', 'eventoEntregaId', 'eventoEntregaIndice', 'eventosUsados',
+                             'hashEventos', 'hashComprobante'])
+        && gestionaPedidosEn(o.granjaId)
+        && c.granjaId == o.granjaId
+        && c.emitidoPorUid == request.auth.uid
+        && c.tokenConsulta == o.tokenConsulta
+        && o.estado in ['entregado', 'entrega_parcial']
+        && c.estadoEntrega == o.estado
+        && entrega.tipo == 'Entrega'
+        && entrega.eventoId == c.eventoEntregaId
+        && c.unidad == o.unidad
+        && c.cantidadSolicitada == o.cantidadSolicitada
+        && c.cantidadAutorizada == o.cantidadAutorizada
+        && c.cantidadEntregada == o.cantidadEntregada
+        && c.cantidadLiberada == o.get('cantidadLiberada', 0)
+        && igualCantidad(c.cantidadPendiente, o.cantidadAutorizada - o.cantidadEntregada - o.get('cantidadLiberada', 0))
+        && c.procedencias.keys().hasOnly(claves)
+        && c.procedencias.keys().hasAll(claves)
+        && procedenciaComprobante(c, o, claves, 0)
+        && procedenciaComprobante(c, o, claves, 1)
+        && procedenciaComprobante(c, o, claves, 2)
+        && versiones[c.eventoEntregaId].comprobanteId == id
+        && c.version == versiones.size()
+        && c.hashComprobante is string && c.hashComprobante.size() == 64
+        && c.hashEventos is string && c.hashEventos.size() == 64;
+    }
+
+    // Índice público: cada emisión agrega una sola versión (una por entrega confirmada) y no cambia
+    // ni borra las anteriores
+    function consultaValida(token) {
+      let n = request.resource.data;
+      let d = n.versiones.diff(resource == null ? {} : resource.data.versiones);
+      let c = getAfter(rutaComprobante(n.ultimaVersion)).data;
+      return n.keys().hasOnly(['token', 'ordenId', 'granjaId', 'versiones', 'ultimaVersion', 'actualizadoEn'])
+        && n.token == token
+        && token.size() >= 20
+        && (resource == null || (resource.data.ordenId == n.ordenId && resource.data.granjaId == n.granjaId))
+        && gestionaPedidosEn(n.granjaId)
+        && d.addedKeys().hasOnly([c.eventoEntregaId])
+        && d.addedKeys().size() == 1
+        && d.changedKeys().size() == 0
+        && d.removedKeys().size() == 0
+        && c.tokenConsulta == token
+        && c.ordenId == n.ordenId
+        && c.granjaId == n.granjaId
+        && n.versiones[c.eventoEntregaId].comprobanteId == n.ultimaVersion
+        && getAfter(rutaOrden(n.ordenId)).data.tokenConsulta == token;
+    }
+
+    match /comprobantes/{comprobanteId} {
+      // Lectura pública de UN comprobante conociendo su identificador aleatorio; listar, solo el operador
+      allow get: if true;
+      allow list: if puedeGestionarPedidos() && granjaPermitida(resource.data.granjaId);
+      allow create: if comprobanteValido(comprobanteId);
+      allow update, delete: if false;
+    }
+
+    match /consultasEntrega/{token} {
+      allow get: if true;
+      allow list: if false;
+      allow create, update: if consultaValida(token);
+      allow delete: if false;
+    }
+
+    // Atención de una novedad del repartidor (estado interno, distinto del estado de la orden): solo
+    // cambia la entrada de esa novedad en atencionNovedades, que apunta a un evento "Novedad" real del
+    // historial. La novedad original no se toca; las observaciones quedan en el evento de atención.
+    function atencionNovedadValida(antes, despues, cambios, evento) {
+      let nid = evento.datos.novedadId;
+      let original = antes.historial[evento.datos.novedadIndice];
+      let d = despues.atencionNovedades.diff(antes.get('atencionNovedades', {}));
+      let a = despues.atencionNovedades[nid];
+      return cambios.hasOnly(['atencionNovedades', 'actualizadoEn', 'historial'])
+        && original.tipo == 'Novedad'
+        && original.eventoId == nid
+        && d.removedKeys().size() == 0
+        && d.affectedKeys().hasOnly([nid])
+        && d.affectedKeys().size() == 1
+        && a.estado in ['pendiente', 'en_revision', 'atendida', 'cerrada']
+        && a.actualizadoPorUid == request.auth.uid
+        && a.actualizadoPor.lower() == correoSesion()
+        && evento.descripcion.size() <= 1000;
     }
 
     // ----- acciones del repartidor -----

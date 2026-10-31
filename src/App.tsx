@@ -28,6 +28,7 @@ import { NuevoLoteModal } from './components/NuevoLoteModal';
 import { LoteDetailModal } from './components/LoteDetailModal';
 import { QrModal } from './components/QrModal';
 import { PublicTraceabilityView } from './components/PublicTraceabilityView';
+import { ConsultaEntregaPublica } from './components/ConsultaEntregaPublica';
 import { AlertCircle, Lock, Crown, ShieldAlert, Users } from 'lucide-react';
 
 const SESION_STORAGE_KEY_ANTIGUA = 'cultivos_lore_sesion_activa';
@@ -65,6 +66,14 @@ export default function App() {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       return params.get('lote');
+    }
+    return null;
+  });
+
+  // Consulta pública de una entrega (QR del comprobante, ?entrega=CODIGO)
+  const [entregaPublicaToken, setEntregaPublicaToken] = useState<string | null>(() => {
+    if (typeof window !== 'undefined') {
+      return new URLSearchParams(window.location.search).get('entrega');
     }
     return null;
   });
@@ -307,6 +316,23 @@ export default function App() {
   };
 
   // Si se detectó un código de lote por escaneo de QR en la URL, mostrar vista pública interactiva
+  if (entregaPublicaToken && !lotePublicoCodigo) {
+    return (
+      <ConsultaEntregaPublica
+        token={entregaPublicaToken}
+        onAbrirLote={(codigo) => {
+          if (typeof window !== 'undefined') window.history.pushState({}, '', `/?lote=${encodeURIComponent(codigo)}`);
+          setEntregaPublicaToken(null);
+          setLotePublicoCodigo(codigo);
+        }}
+        onVolver={() => {
+          if (typeof window !== 'undefined') window.history.pushState({}, '', window.location.pathname);
+          setEntregaPublicaToken(null);
+        }}
+      />
+    );
+  }
+
   if (lotePublicoCodigo) {
     const loteEncontrado = lotes.find(
       (l) => l.codigo === lotePublicoCodigo || l.codigo.toUpperCase() === lotePublicoCodigo.toUpperCase()

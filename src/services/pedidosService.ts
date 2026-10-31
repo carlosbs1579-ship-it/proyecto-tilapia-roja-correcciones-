@@ -199,6 +199,28 @@ export function escucharOrdenes(
   );
 }
 
+/**
+ * Órdenes asignadas a un repartidor (las reglas solo le permiten leer las suyas)
+ */
+export function escucharOrdenesRepartidor(
+  repartidorUid: string,
+  onUpdate: (ordenes: OrdenEntrega[]) => void,
+  onError?: (error: any) => void
+): () => void {
+  return onSnapshot(
+    query(collection(db, 'ordenes'), where('repartidorUid', '==', repartidorUid)),
+    (snap) => {
+      const lista = snap.docs.map((d) => d.data() as OrdenEntrega);
+      lista.sort((a, b) => (a.fechaProgramada || '9999').localeCompare(b.fechaProgramada || '9999') || b.creadoEn.localeCompare(a.creadoEn));
+      onUpdate(lista);
+    },
+    (err) => {
+      console.error('Error escuchando las órdenes del repartidor:', err);
+      if (onError) onError(err);
+    }
+  );
+}
+
 export function escucharClientes(
   granjaId: string,
   onUpdate: (clientes: Cliente[]) => void,

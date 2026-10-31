@@ -302,12 +302,12 @@ describe('Borradores, estados y cancelación', () => {
       await updateDoc(doc(db, 'ordenes', 'PED-EST'), { estado, historial: nuevo });
       historial = nuevo;
     };
-    await assertFails(paso('en_ruta')); // no se salta la preparación
-    await assertFails(paso('entregado')); // la entrega llega en otra fase
+    await assertFails(paso('en_ruta')); // iniciar la ruta es una acción del repartidor
+    await assertFails(paso('entregado')); // la entrega la confirma el repartidor
     await assertSucceeds(paso('en_preparacion'));
-    await assertSucceeds(paso('en_ruta'));
-    await assertFails(paso('asignado'));
+    await assertFails(paso('en_ruta'));
     await assertSucceeds(paso('requiere_revision'));
+    await assertSucceeds(paso('asignado'));
   });
 
   test('cancelar libera exactamente lo reservado', async () => {

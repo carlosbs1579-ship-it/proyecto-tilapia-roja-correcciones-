@@ -5,6 +5,7 @@ import { Lote, ConfiguracionGeneral, UsuarioPerfil, RolFuncional } from './types
 import { CONFIG_DEFAULT } from './utils/constants';
 import { escucharConfiguracion } from './services/configService';
 import { escucharLotes } from './services/lotesService';
+import { establecerFuncionActiva } from './services/pedidosService';
 import {
   sincronizarPerfilUsuario,
   escucharPerfilPropio,
@@ -119,6 +120,7 @@ export default function App() {
 
   // Mantener la pestaña dentro de las de la función activa
   useEffect(() => {
+    establecerFuncionActiva(funcionActiva);
     const permitidas = tabsDeFuncion(funcionActiva);
     if (!permitidas.includes(tabActiva)) setTabActiva(permitidas[0]);
     if (funcionActiva !== 'admin' && funcionActiva !== 'operator') {
@@ -159,15 +161,19 @@ export default function App() {
       // Validar si el token es accesible o si requiere reautenticación
       try {
         await fbUser.getIdToken();
-      } catch (tokenErr) {
-        console.warn('Sesión previa inválida, restableciendo autenticación limpia:', tokenErr);
-        try {
-          await signOut(auth);
-        } catch {}
-        setUsuario(null);
-        setPerfilUsuario(null);
-        setAuthCargando(false);
-        return;
+      } catch (tokenErr: any) {
+        // Sin conexión no se puede renovar el token: se conserva la sesión (el repartidor sigue
+        // consultando y guardando acciones en el teléfono). Solo se cierra si la sesión es inválida.
+        if (tokenErr?.code !== 'auth/network-request-failed' && navigator.onLine) {
+          console.warn('Sesión previa inválida, restableciendo autenticación limpia:', tokenErr);
+          try {
+            await signOut(auth);
+          } catch {}
+          setUsuario(null);
+          setPerfilUsuario(null);
+          setAuthCargando(false);
+          return;
+        }
       }
 
       setUsuario({

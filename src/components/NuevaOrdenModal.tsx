@@ -43,6 +43,7 @@ export const NuevaOrdenModal: React.FC<NuevaOrdenModalProps> = ({
   const [nuevoCliente, setNuevoCliente] = useState(false);
   const [nombreCliente, setNombreCliente] = useState('');
   const [contactoCliente, setContactoCliente] = useState('');
+  const [direccionCliente, setDireccionCliente] = useState('');
   const [unidad, setUnidad] = useState<UnidadMedida>('peces');
   const [cantidadSolicitada, setCantidadSolicitada] = useState<number | ''>('');
   const [fechaProgramada, setFechaProgramada] = useState('');
@@ -58,6 +59,7 @@ export const NuevaOrdenModal: React.FC<NuevaOrdenModalProps> = ({
     setNuevoCliente(false);
     setNombreCliente('');
     setContactoCliente('');
+    setDireccionCliente('');
     if (ordenEditar) {
       setClienteId(ordenEditar.clienteId);
       setUnidad(ordenEditar.unidad);
@@ -96,13 +98,15 @@ export const NuevaOrdenModal: React.FC<NuevaOrdenModalProps> = ({
   const datosOrden = async () => {
     let cliente = clientes.find((c) => c.id === clienteId) || null;
     if (nuevoCliente) {
-      cliente = await crearCliente(nombreCliente, contactoCliente, granjaId);
+      cliente = await crearCliente(nombreCliente, contactoCliente, direccionCliente, granjaId);
     }
     if (!cliente) throw new Error('Selecciona o registra el cliente.');
     const repartidor = repartidores.find((r) => r.uid === repartidorUid) || null;
     return {
       clienteId: cliente.id,
       clienteNombre: cliente.nombre,
+      clienteDireccion: cliente.direccion || '',
+      clienteContacto: cliente.contacto || '',
       unidad,
       cantidadSolicitada: solicitada,
       fechaProgramada: fechaProgramada || null,
@@ -205,10 +209,18 @@ export const NuevaOrdenModal: React.FC<NuevaOrdenModalProps> = ({
                 <input
                   type="text"
                   maxLength={200}
-                  placeholder="Contacto (teléfono, dirección) — opcional"
+                  placeholder="Contacto (teléfono, persona) — opcional"
                   value={contactoCliente}
                   onChange={(e) => setContactoCliente(e.target.value)}
                   className="px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
+                />
+                <input
+                  type="text"
+                  maxLength={300}
+                  placeholder="Dirección de entrega — opcional"
+                  value={direccionCliente}
+                  onChange={(e) => setDireccionCliente(e.target.value)}
+                  className="sm:col-span-2 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
                 />
               </div>
             ) : (
@@ -221,6 +233,7 @@ export const NuevaOrdenModal: React.FC<NuevaOrdenModalProps> = ({
                 {clientes.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.nombre}
+                    {c.direccion ? ` — ${c.direccion}` : ''}
                     {c.contacto ? ` — ${c.contacto}` : ''}
                   </option>
                 ))}

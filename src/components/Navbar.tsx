@@ -36,8 +36,8 @@ const TABS: Record<TabTipo, DefinicionTab> = {
   },
   reparto: {
     id: 'reparto',
-    etiqueta: 'Reparto',
-    etiquetaMovil: 'Reparto',
+    etiqueta: 'Mis entregas',
+    etiquetaMovil: 'Mis entregas',
     icono: <Truck className="w-4 h-4 text-sky-400" />
   }
 };

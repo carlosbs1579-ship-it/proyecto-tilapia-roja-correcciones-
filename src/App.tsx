@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { onAuthStateChanged, signOut, User } from 'firebase/auth';
 import { auth, db } from './firebase/firebaseConfig';
 import { Lote, ConfiguracionGeneral, UsuarioPerfil, RolFuncional } from './types';
@@ -16,19 +16,25 @@ import {
 
 import { Navbar, TabTipo, tabsDeFuncion } from './components/Navbar';
 import { SelectorFuncion } from './components/SelectorFuncion';
-import { RepartidorPanel } from './components/RepartidorPanel';
-import { PedidosTab } from './components/PedidosTab';
 import { DashboardTab } from './components/DashboardTab';
+
+// Pestañas que no se usan al abrir la app: se descargan la primera vez que se abren
+const RepartidorPanel = lazy(() => import('./components/RepartidorPanel').then((m) => ({ default: m.RepartidorPanel })));
+const PedidosTab = lazy(() => import('./components/PedidosTab').then((m) => ({ default: m.PedidosTab })));
+const AnaliticaTab = lazy(() => import('./components/AnaliticaTab').then((m) => ({ default: m.AnaliticaTab })));
+const ConfiguracionTab = lazy(() => import('./components/ConfiguracionTab').then((m) => ({ default: m.ConfiguracionTab })));
+const UsuariosTab = lazy(() => import('./components/UsuariosTab').then((m) => ({ default: m.UsuariosTab })));
+const ConsultaEntregaPublica = lazy(() =>
+  import('./components/ConsultaEntregaPublica').then((m) => ({ default: m.ConsultaEntregaPublica }))
+);
+
+const Cargando = () => <p className="py-10 text-center text-sm text-slate-500">Cargando…</p>;
 import { LotesTab } from './components/LotesTab';
-import { AnaliticaTab } from './components/AnaliticaTab';
-import { ConfiguracionTab } from './components/ConfiguracionTab';
-import { UsuariosTab } from './components/UsuariosTab';
 import { AuthModal } from './components/AuthModal';
 import { NuevoLoteModal } from './components/NuevoLoteModal';
 import { LoteDetailModal } from './components/LoteDetailModal';
 import { QrModal } from './components/QrModal';
 import { PublicTraceabilityView } from './components/PublicTraceabilityView';
-import { ConsultaEntregaPublica } from './components/ConsultaEntregaPublica';
 import { AlertCircle, Lock, Crown, ShieldAlert, Users } from 'lucide-react';
 
 const SESION_STORAGE_KEY_ANTIGUA = 'cultivos_lore_sesion_activa';
@@ -318,6 +324,7 @@ export default function App() {
   // Si se detectó un código de lote por escaneo de QR en la URL, mostrar vista pública interactiva
   if (entregaPublicaToken && !lotePublicoCodigo) {
     return (
+      <Suspense fallback={<Cargando />}>
       <ConsultaEntregaPublica
         token={entregaPublicaToken}
         onAbrirLote={(codigo) => {
@@ -330,6 +337,7 @@ export default function App() {
           setEntregaPublicaToken(null);
         }}
       />
+      </Suspense>
     );
   }
 
@@ -465,6 +473,7 @@ export default function App() {
 
       {/* CONTENIDO PRINCIPAL SEGÚN PESTAÑA SELECCIONADA */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <Suspense fallback={<Cargando />}>
         {/* SELECCIÓN DE FUNCIÓN (CUENTAS CON VARIOS ROLES) */}
         {mostrarSelectorFuncion && perfilUsuario && (
           <SelectorFuncion
@@ -545,6 +554,7 @@ export default function App() {
         )}
         </>
         )}
+        </Suspense>
       </main>
 
       {/* FOOTER */}

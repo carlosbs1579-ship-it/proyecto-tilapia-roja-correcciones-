@@ -687,7 +687,7 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
 
             <form onSubmit={handleGuardarEditarSiembra} className="p-6 space-y-4">
               <div className="bg-sky-50 border border-sky-200 rounded-lg p-3 text-xs text-sky-900">
-                Esta modificación actualizará los registros de alevinos y asignación de piscina en el bloque génesis de la cadena inalterable, recalculando los hashes criptográficos del lote.
+                Los cambios se registran como un evento «Corrección» con los valores anteriores y los nuevos. Los eventos ya registrados y sus hashes no se modifican.
               </div>
 
               {errorEdicion && (

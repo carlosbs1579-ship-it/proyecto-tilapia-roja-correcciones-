@@ -1,14 +1,6 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { connectAuthEmulator, getAuth } from 'firebase/auth';
-import {
-  type Firestore,
-  connectFirestoreEmulator,
-  getFirestore,
-  initializeFirestore,
-  persistentLocalCache,
-  persistentMultipleTabManager
-} from 'firebase/firestore';
-import { getStorage } from 'firebase/storage';
+import { type Firestore, connectFirestoreEmulator, getFirestore } from 'firebase/firestore';
 import firebaseConfigFile from '../../firebase-applet-config.json';
 
 // Si no existieran credenciales, se pueden configurar aquí
@@ -47,7 +39,6 @@ function iniciarFirestore(): Firestore {
 export const db = iniciarFirestore();
 
 export const auth = getAuth(app);
-export const storage = getStorage(app);
 
 // Solo en desarrollo local (npm run dev con VITE_EMULADORES=true): usa los emuladores de Auth y
 // Firestore para probar sin tocar los datos reales. En la versión publicada nunca se activa.

@@ -160,13 +160,22 @@ export interface PermisosUsuario {
 }
 
 // admin: gestiona usuarios y configuración; operario: trabaja según sus permisos; consulta: solo lectura
+// Se conserva por compatibilidad: desde la lista de roles funcionales se escribe 'admin' u 'operario'.
 export type RolUsuario = 'admin' | 'operario' | 'consulta';
+
+// Roles funcionales: determinan los permisos reales. Una cuenta puede tener varios.
+// admin: administración (incluye producción); operator: producción según sus permisos; courier: reparto
+export type RolFuncional = 'admin' | 'operator' | 'courier';
+
+export const ROLES_FUNCIONALES: RolFuncional[] = ['admin', 'operator', 'courier'];
 
 export interface UsuarioPerfil {
   uid: string; // UID real de Firebase Authentication (coincide con el ID del documento)
   email: string;
   displayName?: string;
   rol: RolUsuario;
+  roles: RolFuncional[]; // Roles funcionales asignados por el administrador
+  cargos: Partial<Record<RolFuncional, string>>; // Nombre visible de cada función; no otorga permisos
   granjaId: string; // Granja a la que pertenece el usuario
   cargo: string; // Nombre personalizado de la posición (ej: "Biólogo de Campo", "Jefe de Planta", etc.)
   estado: 'activo' | 'pendiente' | 'inactivo';

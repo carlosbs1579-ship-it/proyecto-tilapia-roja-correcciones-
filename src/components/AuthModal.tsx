@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
+  sendPasswordResetEmail,
   signInWithPopup,
   GoogleAuthProvider
 } from 'firebase/auth';
@@ -61,6 +62,37 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
         mensaje = err.message;
       }
       setErrorMsg(mensaje);
+    } finally {
+      setCargando(false);
+    }
+  };
+
+  // Envía el enlace de Firebase para restablecer la contraseña. Solo aplica a cuentas de correo y
+  // contraseña; las cuentas de Google se recuperan desde Google.
+  const handleRecuperarContrasena = async () => {
+    setErrorMsg(null);
+    setExitoMsg(null);
+    const emailLimpio = email.trim();
+    if (!emailLimpio) {
+      setErrorMsg('Escribe tu correo arriba y vuelve a pulsar "¿Olvidaste tu contraseña?".');
+      return;
+    }
+    setCargando(true);
+    try {
+      await sendPasswordResetEmail(auth, emailLimpio);
+      // Mismo mensaje exista o no la cuenta, para no revelar qué correos están registrados
+      setExitoMsg(`Si ${emailLimpio} tiene una cuenta con contraseña, recibirás un correo con el enlace para restablecerla. Revisa también la carpeta de spam.`);
+    } catch (err: any) {
+      console.warn('Firebase Auth recuperación:', err?.code || err?.message);
+      if (err.code === 'auth/invalid-email') {
+        setErrorMsg('El formato del correo electrónico no es válido.');
+      } else if (err.code === 'auth/user-not-found') {
+        setExitoMsg(`Si ${emailLimpio} tiene una cuenta con contraseña, recibirás un correo con el enlace para restablecerla. Revisa también la carpeta de spam.`);
+      } else if (err.code === 'auth/too-many-requests') {
+        setErrorMsg('Demasiados intentos. Espera unos minutos antes de volver a intentarlo.');
+      } else {
+        setErrorMsg(err.message || 'No fue posible enviar el correo de recuperación.');
+      }
     } finally {
       setCargando(false);
     }
@@ -190,9 +222,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1">
-                Contraseña
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-medium text-slate-700">
+                  Contraseña
+                </label>
+                {!esRegistro && (
+                  <button
+                    type="button"
+                    onClick={handleRecuperarContrasena}
+                    disabled={cargando}
+                    className="text-[11px] text-sky-600 hover:text-sky-800 font-medium disabled:opacity-50"
+                  >
+                    ¿Olvidaste tu contraseña?
+                  </button>
+                )}
+              </div>
               <div className="relative">
                 <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
                 <input

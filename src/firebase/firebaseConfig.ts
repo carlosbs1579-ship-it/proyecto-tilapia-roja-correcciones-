@@ -1,7 +1,8 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import { connectAuthEmulator, getAuth } from 'firebase/auth';
 import {
   type Firestore,
+  connectFirestoreEmulator,
   getFirestore,
   initializeFirestore,
   persistentLocalCache,
@@ -47,6 +48,13 @@ export const db = iniciarFirestore();
 
 export const auth = getAuth(app);
 export const storage = getStorage(app);
+
+// Solo en desarrollo local (npm run dev con VITE_EMULADORES=true): usa los emuladores de Auth y
+// Firestore para probar sin tocar los datos reales. En la versión publicada nunca se activa.
+if (import.meta.env.DEV && import.meta.env.VITE_EMULADORES === 'true') {
+  connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
+  connectFirestoreEmulator(db, '127.0.0.1', 8085);
+}
 
 export enum OperationType {
   CREATE = 'create',

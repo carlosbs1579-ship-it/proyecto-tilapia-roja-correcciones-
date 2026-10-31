@@ -128,20 +128,33 @@ service cloud.firestore {
     // lote se acumula en inventarioLotes/{codigo}, y cada movimiento del inventario debe coincidir
     // exactamente con la orden que se escribe en la misma operación. Así el servidor impide reservar
     // más de lo cosechado o reservar dos veces lo mismo, aunque dos personas lo intenten a la vez.
-    // Las reglas de Firestore evalúan como máximo 1000 expresiones por operación, por eso estas
-    // funciones leen el perfil una sola vez y cada cantidad se valida en un solo lugar.
-    function puedeGestionarPedidos() {
-      let p = get(perfilPath()).data;
+    // Las reglas de Firestore evalúan como máximo 1000 expresiones por operación (sumando todos los
+    // documentos escritos). Por eso cada regla de esta sección delega en una función que lee los datos
+    // una sola vez y, según el tipo de evento o de movimiento, valida a fondo solo ese caso.
+
+    // Perfil de quien hace la solicitud: gestiona pedidos si es administrador, o si es operador
+    // activo con el permiso "Gestionar pedidos"
+    function gestionaPedidos(p) {
       return isMasterAdmin()
         || (p.get('estado', '') == 'activo'
             && (p.get('rol', '') == 'admin'
-                || (rolesDe(p).hasAny(['operator'])
-                    && p.get('rol', '') != 'consulta'
+                || (p.get('rol', '') != 'consulta'
+                    && rolesDe(p).hasAny(['operator'])
                     && p.get('permisos', {}).get('gestionarPedidos', false) == true)));
+    }
+
+    function puedeGestionarPedidos() {
+      return gestionaPedidos(get(perfilPath()).data);
     }
 
     function granjaPermitida(granja) {
       return isMasterAdmin() || granja == granjaUsuario();
+    }
+
+    // Gestiona pedidos de esa granja (una sola lectura del perfil)
+    function gestionaPedidosEn(granja) {
+      let p = get(perfilPath()).data;
+      return gestionaPedidos(p) && (isMasterAdmin() || p.get('granjaId', 'cultivos-lore') == granja);
     }
 
     function rutaOrden(id) {
@@ -173,7 +186,12 @@ service cloud.firestore {
       return ['asignado', 'en_preparacion', 'en_ruta', 'requiere_revision'];
     }
 
-    // ----- inventarioLotes: aquí se validan las cantidades -----
+    // Lo que falta por entregar de un lote de la orden (lo reservado que sigue a su nombre)
+    function saldoLote(orden, codigo) {
+      return orden.procedencias[codigo].cantidad - orden.get('entregadoPorLote', {}).get(codigo, 0);
+    }
+
+    // ===== inventarioLotes: aquí se validan las cantidades =====
     // Reserva: la orden pasa (en esta misma operación) de inexistente o borrador a asignada, incluye
     // este lote con su piscina, y el inventario sube exactamente su cantidad sin superar lo cosechado
     function reservaValida(codigo, reservadoAntes, nuevo) {
@@ -191,40 +209,101 @@ service cloud.firestore {
         && nuevo.reservado + nuevo.entregado <= cosechado(lote, nuevo.unidad) + 0.000001;
     }
 
-    // Liberación: la orden pasa (en esta misma operación) de un estado con reserva a cancelada, y el
-    // inventario baja exactamente lo que la orden tenía reservado en este lote
+    // Liberación del saldo: la orden se cancela (desde un estado con reserva) o el operador cierra
+    // una entrega parcial liberando lo que faltaba; el inventario baja exactamente ese saldo
     function liberacionValida(codigo, antes, nuevo) {
       let ordenAntes = get(rutaOrden(nuevo.ultimaOrden)).data;
-      return ordenAntes.estado in estadosConReserva()
-        && getAfter(rutaOrden(nuevo.ultimaOrden)).data.estado == 'cancelado'
-        && igualCantidad(antes.reservado - nuevo.reservado, ordenAntes.procedencias[codigo].cantidad)
+      let estadoDespues = getAfter(rutaOrden(nuevo.ultimaOrden)).data.estado;
+      return ((ordenAntes.estado in estadosConReserva() && estadoDespues == 'cancelado')
+              || (ordenAntes.estado == 'entrega_parcial' && estadoDespues == 'entregado'))
+        && igualCantidad(antes.reservado - nuevo.reservado, saldoLote(ordenAntes, codigo))
         && nuevo.reservado > -0.000001;
+    }
+
+    // Ajuste aprobado: la distribución de la orden cambia (antes de cualquier entrega) y el inventario
+    // de este lote se mueve exactamente la diferencia, sin superar lo cosechado si aumenta
+    function ajusteValido(codigo, antes, nuevo) {
+      let id = nuevo.ultimaOrden;
+      let oa = get(rutaOrden(id)).data;
+      let od = getAfter(rutaOrden(id)).data;
+      let cantAntes = oa.procedencias.get(codigo, {'cantidad': 0}).cantidad;
+      let cantDespues = od.procedencias.get(codigo, {'cantidad': 0}).cantidad;
+      let lote = get(rutaLote(codigo)).data;
+      return oa.estado in estadosConReserva()
+        && od.estado == oa.estado
+        && oa.cantidadEntregada == 0
+        && od.unidad == nuevo.unidad
+        && od.granjaId == nuevo.granjaId
+        && !igualCantidad(cantAntes, cantDespues)
+        && igualCantidad(nuevo.reservado - antes.reservado, cantDespues - cantAntes)
+        && (!(codigo in od.procedencias)
+            || (od.procedencias[codigo].estanque == lote.estanque && od.procedencias[codigo].unidad == nuevo.unidad))
+        && nuevo.reservado > -0.000001
+        && (cantDespues < cantAntes || nuevo.reservado + nuevo.entregado <= cosechado(lote, nuevo.unidad) + 0.000001);
+    }
+
+    // Entrega confirmada por el repartidor asignado: lo entregado de este lote pasa de reservado a
+    // entregado, en la misma operación en que la orden registra la entrega
+    function entregaValida(codigo, antes, nuevo) {
+      let id = nuevo.ultimaOrden;
+      let oa = get(rutaOrden(id)).data;
+      let od = getAfter(rutaOrden(id)).data;
+      let d = od.entregadoPorLote[codigo] - oa.get('entregadoPorLote', {}).get(codigo, 0);
+      return od.repartidorUid == request.auth.uid
+        && oa.estado == 'en_ruta'
+        && od.estado in ['entregado', 'entrega_parcial']
+        && d > 0
+        && igualCantidad(nuevo.entregado - antes.entregado, d)
+        && igualCantidad(antes.reservado - nuevo.reservado, d)
+        && nuevo.reservado > -0.000001;
+    }
+
+    // movidoEn es la hora del servidor de esta operación: así la orden comprueba que se movió aquí.
+    // Cada movimiento declara su tipo; sin tipo (versión anterior de la app) se trata como reserva.
+    // Todo movimiento exige que su orden cambie en esta misma operación de una forma que solo permite
+    // la regla de ordenes (quien gestiona pedidos reserva, libera o ajusta; el repartidor asignado
+    // entrega), así que el permiso queda validado allí sin repetirlo aquí.
+    function inventarioCreacionValido(codigo) {
+      let nuevo = request.resource.data;
+      let tipo = nuevo.get('tipoMovimiento', 'reserva');
+      return nuevo.keys().hasOnly(['codigoLote', 'granjaId', 'unidad', 'reservado', 'entregado', 'ultimaOrden', 'movidoEn', 'tipoMovimiento'])
+        && nuevo.codigoLote == codigo
+        && nuevo.movidoEn == request.time
+        && nuevo.unidad in ['peces', 'kg']
+        && nuevo.entregado == 0
+        && nuevo.granjaId == get(rutaLote(codigo)).data.get('granjaId', 'cultivos-lore')
+        && isSignedIn()
+        && ((tipo == 'reserva' && reservaValida(codigo, 0, nuevo))
+            || (tipo == 'ajuste' && ajusteValido(codigo, {'reservado': 0, 'entregado': 0}, nuevo)));
+    }
+
+    // Quien gestiona pedidos reserva, libera o ajusta; el repartidor asignado solo registra entregas.
+    // La unidad nunca cambia.
+    function inventarioActualizacionValida(codigo) {
+      let antes = resource.data;
+      let nuevo = request.resource.data;
+      let tipo = nuevo.get('tipoMovimiento', '');
+      let cambios = nuevo.diff(antes).affectedKeys();
+      return nuevo.movidoEn == request.time
+        && ((tipo == 'entrega'
+              && cambios.hasOnly(['reservado', 'entregado', 'ultimaOrden', 'movidoEn', 'tipoMovimiento'])
+              && entregaValida(codigo, antes, nuevo))
+            || (tipo != 'entrega'
+              && cambios.hasOnly(['reservado', 'ultimaOrden', 'movidoEn', 'tipoMovimiento'])
+              && isSignedIn()
+              && ((tipo == 'reserva' && reservaValida(codigo, antes.reservado, nuevo))
+                  || (tipo == 'liberacion' && liberacionValida(codigo, antes, nuevo))
+                  || (tipo == 'ajuste' && ajusteValido(codigo, antes, nuevo))
+                  // Sin tipo (versión anterior de la app): reserva o liberación, como en la fase 2
+                  || (tipo == '' && (reservaValida(codigo, antes.reservado, nuevo) || liberacionValida(codigo, antes, nuevo))))));
     }
 
     match /inventarioLotes/{codigo} {
       // get sobre un inventario que aún no existe: lo hace la transacción antes de la primera reserva
       allow get: if puedeGestionarPedidos() && (resource == null || granjaPermitida(resource.data.granjaId));
       allow list: if puedeGestionarPedidos() && granjaPermitida(resource.data.granjaId);
-
-      // movidoEn es la hora del servidor de esta operación: así la orden comprueba que se movió aquí
-      allow create: if puedeGestionarPedidos()
-        && request.resource.data.keys().hasOnly(['codigoLote', 'granjaId', 'unidad', 'reservado', 'entregado', 'ultimaOrden', 'movidoEn'])
-        && request.resource.data.codigoLote == codigo
-        && request.resource.data.movidoEn == request.time
-        && request.resource.data.granjaId == get(rutaLote(codigo)).data.get('granjaId', 'cultivos-lore')
-        && granjaPermitida(request.resource.data.granjaId)
-        && request.resource.data.unidad in ['peces', 'kg']
-        && request.resource.data.entregado == 0
-        && reservaValida(codigo, 0, request.resource.data);
-
-      // La unidad y lo entregado no cambian aquí (la entrega se registrará en una fase posterior)
-      allow update: if puedeGestionarPedidos()
-        && granjaPermitida(resource.data.granjaId)
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reservado', 'ultimaOrden', 'movidoEn'])
-        && request.resource.data.movidoEn == request.time
-        && (reservaValida(codigo, resource.data.reservado, request.resource.data)
-            || liberacionValida(codigo, resource.data, request.resource.data));
-
+      allow create: if inventarioCreacionValido(codigo);
+      allow update: if inventarioActualizacionValida(codigo);
       allow delete: if false;
     }
 
@@ -232,29 +311,40 @@ service cloud.firestore {
       allow get: if puedeGestionarPedidos() && (resource == null || granjaPermitida(resource.data.granjaId));
       allow list: if puedeGestionarPedidos() && granjaPermitida(resource.data.granjaId);
 
-      allow create: if puedeGestionarPedidos()
-        && request.resource.data.keys().hasOnly(['granjaId', 'nombre', 'contacto', 'creadoPor', 'creadoPorUid', 'creadoEn', 'actualizadoEn'])
-        && granjaPermitida(request.resource.data.granjaId)
+      allow create: if request.resource.data.keys().hasOnly(['granjaId', 'nombre', 'contacto', 'direccion', 'creadoPor', 'creadoPorUid', 'creadoEn', 'actualizadoEn'])
+        && gestionaPedidosEn(request.resource.data.granjaId)
         && request.resource.data.nombre is string
         && request.resource.data.nombre.size() > 0
         && request.resource.data.nombre.size() <= 120
         && request.resource.data.contacto is string
         && request.resource.data.contacto.size() <= 200
+        && request.resource.data.get('direccion', '') is string
+        && request.resource.data.get('direccion', '').size() <= 300
         && request.resource.data.creadoPorUid == request.auth.uid
         && request.resource.data.creadoPor.lower() == correoSesion();
 
-      allow update: if puedeGestionarPedidos()
-        && granjaPermitida(resource.data.granjaId)
-        && soloCambia(['nombre', 'contacto', 'actualizadoEn'])
+      allow update: if soloCambia(['nombre', 'contacto', 'direccion', 'actualizadoEn'])
+        && gestionaPedidosEn(resource.data.granjaId)
         && request.resource.data.nombre is string
         && request.resource.data.nombre.size() > 0
-        && request.resource.data.nombre.size() <= 120;
+        && request.resource.data.nombre.size() <= 120
+        && request.resource.data.get('direccion', '').size() <= 300;
 
       allow delete: if false;
     }
 
-    // ----- ordenes -----
+    // ===== ordenes =====
+    // Campos permitidos; los de la lista requerida existen en todas las órdenes (las anteriores a la
+    // fase 3 no tienen los de entrega y seguimiento)
     function camposOrden() {
+      return ['id', 'granjaId', 'clienteId', 'clienteNombre', 'creadoPor', 'creadoPorUid', 'repartidorUid',
+              'repartidorNombre', 'creadoEn', 'actualizadoEn', 'fechaProgramada', 'unidad', 'cantidadSolicitada',
+              'procedencias', 'cantidadAutorizada', 'cantidadEntregada', 'estado', 'observaciones', 'historial',
+              'clienteDireccion', 'clienteContacto', 'entregadoPorLote', 'cantidadLiberada', 'rutaIniciadaEn',
+              'llegadaEn', 'ajustes'];
+    }
+
+    function camposOrdenRequeridos() {
       return ['id', 'granjaId', 'clienteId', 'clienteNombre', 'creadoPor', 'creadoPorUid', 'repartidorUid',
               'repartidorNombre', 'creadoEn', 'actualizadoEn', 'fechaProgramada', 'unidad', 'cantidadSolicitada',
               'procedencias', 'cantidadAutorizada', 'cantidadEntregada', 'estado', 'observaciones', 'historial'];
@@ -282,6 +372,11 @@ service cloud.firestore {
         || (p[claves[i]].cantidad > 0 && p[claves[i]].unidad == unidad && p[claves[i]].estanque is string);
     }
 
+    function totalDistribucion(p) {
+      let claves = p.keys();
+      return cantidadProcedencia(p, claves, 0) + cantidadProcedencia(p, claves, 1) + cantidadProcedencia(p, claves, 2);
+    }
+
     // Distribución: hasta 3 lotes, cantidades positivas en la unidad de la orden, sin superar lo solicitado
     function distribucionValida(orden) {
       let p = orden.procedencias;
@@ -290,18 +385,21 @@ service cloud.firestore {
         && procedenciaValida(p, claves, 0, orden.unidad)
         && procedenciaValida(p, claves, 1, orden.unidad)
         && procedenciaValida(p, claves, 2, orden.unidad)
-        && cantidadProcedencia(p, claves, 0) + cantidadProcedencia(p, claves, 1) + cantidadProcedencia(p, claves, 2)
-             <= orden.cantidadSolicitada + 0.000001;
+        && totalDistribucion(p) <= orden.cantidadSolicitada + 0.000001;
     }
 
-    // El inventario del lote i se movió en esta misma operación a nombre de esta orden: queda con la
+    // El inventario del lote se movió en esta misma operación a nombre de esta orden: queda con la
     // hora de esta operación y antes tenía otra (o no existía). La cantidad del movimiento la valida
     // la regla de inventarioLotes.
+    function movidoAqui(id, codigo) {
+      let despues = getAfter(rutaInventario(codigo)).data;
+      return despues.movidoEn == request.time
+        && despues.ultimaOrden == id
+        && (!exists(rutaInventario(codigo)) || get(rutaInventario(codigo)).data.movidoEn != request.time);
+    }
+
     function loteMovido(id, claves, i) {
-      return claves.size() <= i
-        || (getAfter(rutaInventario(claves[i])).data.movidoEn == request.time
-            && getAfter(rutaInventario(claves[i])).data.ultimaOrden == id
-            && (!exists(rutaInventario(claves[i])) || get(rutaInventario(claves[i])).data.movidoEn != request.time));
+      return claves.size() <= i || movidoAqui(id, claves[i]);
     }
 
     function lotesMovidos(id, procedencias) {
@@ -309,26 +407,38 @@ service cloud.firestore {
       return loteMovido(id, claves, 0) && loteMovido(id, claves, 1) && loteMovido(id, claves, 2);
     }
 
+    // Lotes de la orden con saldo por entregar: todos deben liberarse en esta operación
+    function saldoMovido(id, orden, claves, i) {
+      return claves.size() <= i
+        || saldoLote(orden, claves[i]) <= 0.000001
+        || movidoAqui(id, claves[i]);
+    }
+
+    function saldosLiberados(id, orden) {
+      let claves = orden.procedencias.keys();
+      return saldoMovido(id, orden, claves, 0) && saldoMovido(id, orden, claves, 1) && saldoMovido(id, orden, claves, 2);
+    }
+
     // Orden asignada: repartidor válido, al menos un lote, todos sus lotes reservados en esta
     // operación y lo autorizado igual a lo distribuido
     function asignacionValida(id, orden) {
       let p = orden.procedencias;
-      let claves = p.keys();
-      return claves.size() > 0
+      return p.keys().size() > 0
         && repartidorValido(orden.repartidorUid, orden.granjaId)
-        && igualCantidad(orden.cantidadAutorizada,
-             cantidadProcedencia(p, claves, 0) + cantidadProcedencia(p, claves, 1) + cantidadProcedencia(p, claves, 2))
+        && igualCantidad(orden.cantidadAutorizada, totalDistribucion(p))
         && lotesMovidos(id, p);
     }
 
     // Datos editables de una orden sin reservas (nueva o borrador)
     function datosOrdenValidos(orden) {
       return orden.keys().hasOnly(camposOrden())
-        && orden.keys().hasAll(camposOrden())
+        && orden.keys().hasAll(camposOrdenRequeridos())
         && orden.unidad in ['peces', 'kg']
         && orden.cantidadSolicitada > 0
         && orden.observaciones is string
         && orden.observaciones.size() <= 1000
+        && orden.get('clienteDireccion', '').size() <= 300
+        && orden.get('clienteContacto', '').size() <= 200
         && distribucionValida(orden)
         && clienteValido(orden);
     }
@@ -337,89 +447,323 @@ service cloud.firestore {
     function eventoOrdenValido(evento, indice) {
       return evento.indice == indice
         && evento.registradoPor.lower() == correoSesion()
-        && evento.registradoPorUid == request.auth.uid
-        && evento.tipo in ['Creación', 'Modificación', 'Asignación y reserva', 'Cambio de repartidor', 'Cambio de estado', 'Cancelación'];
+        && evento.registradoPorUid == request.auth.uid;
     }
 
-    function historialAgregado(antes, despues) {
-      let n = antes.historial.size();
-      return despues.historial.size() == n + 1
-        && despues.historial[0:n] == antes.historial
-        && eventoOrdenValido(despues.historial[n], n);
-    }
-
-    // Cambios de estado manuales permitidos (entrega parcial y entregado llegarán con la confirmación de entrega)
+    // Cambios de estado manuales del operador. Iniciar la ruta, llegar y entregar son acciones del
+    // repartidor; la entrega parcial se resuelve reprogramando el saldo o liberándolo.
     function transicionPermitida(de, a) {
       return (de == 'asignado' && a in ['asignado', 'en_preparacion', 'requiere_revision'])
-        || (de == 'en_preparacion' && a in ['en_preparacion', 'en_ruta', 'requiere_revision'])
+        || (de == 'en_preparacion' && a in ['en_preparacion', 'requiere_revision'])
         || (de == 'en_ruta' && a in ['en_ruta', 'requiere_revision'])
         || (de == 'requiere_revision' && a in ['requiere_revision', 'asignado', 'en_preparacion']);
     }
 
     function puedeVerOrden(orden) {
       return (puedeGestionarPedidos() && granjaPermitida(orden.granjaId))
-        || (tieneRol('courier') && orden.repartidorUid == request.auth.uid);
+        || (orden.repartidorUid == request.auth.uid && tieneRol('courier'));
+    }
+
+    // Crear: como borrador (sin reservas) o directamente asignada con sus reservas aplicadas
+    function creacionOrdenValida(id) {
+      let o = request.resource.data;
+      return o.id == id
+        && o.creadoPorUid == request.auth.uid
+        && o.creadoPor.lower() == correoSesion()
+        && o.cantidadEntregada == 0
+        && o.historial.size() == 1
+        && !('entregadoPorLote' in o)
+        && !('ajustes' in o)
+        && gestionaPedidosEn(o.granjaId)
+        && o.historial[0].tipo == 'Creación'
+        && eventoOrdenValido(o.historial[0], 0)
+        && datosOrdenValidos(o)
+        && ((o.estado == 'borrador'
+              && o.cantidadAutorizada == 0
+              && (o.repartidorUid == null || repartidorValido(o.repartidorUid, o.granjaId)))
+            || (o.estado == 'asignado' && asignacionValida(id, o)));
+    }
+
+    // ----- caminos del operador -----
+    // Editar un borrador, o confirmarlo (reserva y asignación)
+    function borradorValido(id, antes, despues, cambios) {
+      return cambios.hasOnly(['clienteId', 'clienteNombre', 'clienteDireccion', 'clienteContacto', 'repartidorUid',
+                              'repartidorNombre', 'actualizadoEn', 'fechaProgramada', 'unidad', 'cantidadSolicitada',
+                              'procedencias', 'cantidadAutorizada', 'estado', 'observaciones', 'historial'])
+        && datosOrdenValidos(despues)
+        && ((despues.estado == 'borrador'
+              && despues.cantidadAutorizada == 0
+              && (despues.repartidorUid == null || repartidorValido(despues.repartidorUid, antes.granjaId)))
+            || (despues.estado == 'asignado' && asignacionValida(id, despues)));
+    }
+
+    // Cambio de estado o de repartidor sin tocar lo reservado (en ruta no se cambia el repartidor)
+    function transicionValida(antes, despues, cambios) {
+      return transicionPermitida(antes.estado, despues.estado)
+        && cambios.hasOnly(['estado', 'repartidorUid', 'repartidorNombre', 'fechaProgramada', 'observaciones', 'actualizadoEn', 'historial'])
+        && (despues.repartidorUid == antes.repartidorUid
+            || (antes.estado != 'en_ruta' && repartidorValido(despues.repartidorUid, antes.granjaId)));
+    }
+
+    // Cancelar: un borrador, o una orden con reservas liberando el saldo en la misma operación
+    function cancelacionValida(id, antes, despues, cambios) {
+      return despues.estado == 'cancelado'
+        && cambios.hasOnly(['estado', 'actualizadoEn', 'historial'])
+        && (antes.estado == 'borrador' || (antes.estado in estadosConReserva() && saldosLiberados(id, antes)));
+    }
+
+    // Entrega parcial: reprogramar el saldo (vuelve a asignado para una nueva ruta)
+    function reprogramacionValida(antes, despues, cambios) {
+      return antes.estado == 'entrega_parcial'
+        && despues.estado == 'asignado'
+        && cambios.hasOnly(['estado', 'rutaIniciadaEn', 'llegadaEn', 'repartidorUid', 'repartidorNombre', 'fechaProgramada',
+                            'observaciones', 'actualizadoEn', 'historial'])
+        && despues.get('rutaIniciadaEn', null) == null
+        && despues.get('llegadaEn', null) == null
+        && (despues.repartidorUid == antes.repartidorUid || repartidorValido(despues.repartidorUid, antes.granjaId));
+    }
+
+    // Entrega parcial: liberar el saldo y cerrar (sin pendientes)
+    function cierreSaldoValido(id, antes, despues, cambios) {
+      return antes.estado == 'entrega_parcial'
+        && despues.estado == 'entregado'
+        && cambios.hasOnly(['estado', 'cantidadLiberada', 'actualizadoEn', 'historial'])
+        && igualCantidad(despues.cantidadLiberada, antes.cantidadAutorizada - antes.cantidadEntregada)
+        && saldosLiberados(id, antes);
+    }
+
+    // Solo cambia la solicitud indicada en el evento (no se pueden tocar las demás)
+    function soloCambiaAjuste(antes, despues, id) {
+      let d = despues.ajustes.diff(antes.get('ajustes', {}));
+      return d.addedKeys().size() == 0 && d.removedKeys().size() == 0 && d.changedKeys().hasOnly([id]);
+    }
+
+    // El operador resuelve una solicitud pendiente que no hizo él mismo; la solicitud original queda intacta
+    function resolucionValida(antes, despues, id, estadoFinal) {
+      let a = antes.ajustes[id];
+      let b = despues.ajustes[id];
+      return a.estado == 'pendiente_aprobacion'
+        && b.estado == estadoFinal
+        && a.solicitadoPorUid != request.auth.uid
+        && b.resueltoPorUid == request.auth.uid
+        && b.resueltoPor.lower() == correoSesion()
+        && b.propuesta == a.propuesta
+        && b.original == a.original
+        && b.motivo == a.motivo
+        && b.solicitadoPorUid == a.solicitadoPorUid
+        && b.solicitadoEn == a.solicitadoEn
+        && soloCambiaAjuste(antes, despues, id);
+    }
+
+    // La nueva distribución es exactamente la propuesta (mismos lotes y cantidades)
+    function cantidadPropuesta(p, propuesta, claves, i) {
+      return claves.size() <= i || igualCantidad(p[claves[i]].cantidad, propuesta[claves[i]]);
+    }
+
+    function distribucionEsPropuesta(p, propuesta) {
+      let claves = propuesta.keys();
+      return p.keys().hasOnly(claves) && p.keys().hasAll(claves)
+        && cantidadPropuesta(p, propuesta, claves, 0)
+        && cantidadPropuesta(p, propuesta, claves, 1)
+        && cantidadPropuesta(p, propuesta, claves, 2);
+    }
+
+    // Cada lote de la distribución anterior o de la nueva: queda igual, o su inventario se movió en
+    // esta operación (y la regla del inventario valida la diferencia, la piscina y la unidad)
+    function loteAjustado(id, pa, pd, claves, i) {
+      return claves.size() <= i
+        || pa.get(claves[i], null) == pd.get(claves[i], null)
+        || movidoAqui(id, claves[i]);
+    }
+
+    function lotesAjustados(id, pa, pd) {
+      let ka = pa.keys();
+      let kd = pd.keys();
+      return loteAjustado(id, pa, pd, ka, 0) && loteAjustado(id, pa, pd, ka, 1) && loteAjustado(id, pa, pd, ka, 2)
+        && loteNuevoMovido(id, pa, kd, 0) && loteNuevoMovido(id, pa, kd, 1) && loteNuevoMovido(id, pa, kd, 2);
+    }
+
+    // Lote que entra en la distribución nueva: su inventario se movió en esta operación
+    function loteNuevoMovido(id, pa, claves, i) {
+      return claves.size() <= i || claves[i] in pa || movidoAqui(id, claves[i]);
+    }
+
+    // Aprobar y aplicar una solicitud antes de cualquier entrega: la distribución pasa a ser la
+    // propuesta (validada al crear la solicitud: hasta 3 lotes y sin superar lo solicitado) y el
+    // inventario de cada lote afectado se mueve en esta misma operación
+    function ajusteAplicadoValido(id, antes, despues, cambios, aid) {
+      return antes.estado in estadosConReserva()
+        && antes.cantidadEntregada == 0
+        && cambios.hasOnly(['ajustes', 'procedencias', 'cantidadAutorizada', 'actualizadoEn', 'historial'])
+        && resolucionValida(antes, despues, aid, 'aplicada')
+        && distribucionEsPropuesta(despues.procedencias, despues.ajustes[aid].propuesta)
+        && igualCantidad(despues.cantidadAutorizada, totalDistribucion(despues.procedencias))
+        && lotesAjustados(id, antes.procedencias, despues.procedencias);
+    }
+
+    // Operador: cada actualización agrega exactamente un evento al historial; el tipo del evento
+    // decide qué cambios se validan. El creador, la granja y lo entregado no cambian.
+    function actualizacionOperadorValida(id) {
+      let antes = resource.data;
+      let despues = request.resource.data;
+      let n = antes.historial.size();
+      let evento = despues.historial[n];
+      let tipo = evento.tipo;
+      let cambios = despues.diff(antes).affectedKeys();
+      return tipo in ['Modificación', 'Cambio de repartidor', 'Asignación y reserva', 'Cambio de estado', 'Cancelación',
+                      'Reprogramación de saldo', 'Cierre con saldo liberado', 'Ajuste rechazado', 'Ajuste aplicado']
+        && despues.historial.size() == n + 1
+        && eventoOrdenValido(evento, n)
+        && despues.historial[0:n] == antes.historial
+        && gestionaPedidosEn(antes.granjaId)
+        && ((tipo in ['Modificación', 'Cambio de repartidor', 'Asignación y reserva'] && antes.estado == 'borrador'
+              && borradorValido(id, antes, despues, cambios))
+            || (tipo in ['Cambio de estado', 'Cambio de repartidor'] && antes.estado != 'borrador'
+              && transicionValida(antes, despues, cambios))
+            || (tipo == 'Cancelación' && cancelacionValida(id, antes, despues, cambios))
+            || (tipo == 'Reprogramación de saldo' && reprogramacionValida(antes, despues, cambios))
+            || (tipo == 'Cierre con saldo liberado' && cierreSaldoValido(id, antes, despues, cambios))
+            || (tipo == 'Ajuste rechazado'
+              && cambios.hasOnly(['ajustes', 'actualizadoEn', 'historial'])
+              && resolucionValida(antes, despues, evento.datos.ajusteId, 'rechazada'))
+            || (tipo == 'Ajuste aplicado'
+              && ajusteAplicadoValido(id, antes, despues, cambios, evento.datos.ajusteId)));
+    }
+
+    // ----- acciones del repartidor -----
+    // Entrega por lote: no baja lo ya entregado, no supera lo autorizado del lote, y si cambia, el
+    // inventario del lote se movió en esta operación
+    function entregaLote(id, antes, e0, e1, claves, i) {
+      return claves.size() <= i
+        || (e1.get(claves[i], 0) >= e0.get(claves[i], 0)
+            && e1.get(claves[i], 0) <= antes.procedencias[claves[i]].cantidad + 0.000001
+            && (e1.get(claves[i], 0) == e0.get(claves[i], 0) || movidoAqui(id, claves[i])));
+    }
+
+    function entregadoLote(e1, claves, i) {
+      return claves.size() <= i ? 0 : e1.get(claves[i], 0);
+    }
+
+    // Entrega total o parcial: lo entregado suma lo de cada lote, no supera lo autorizado, y la orden
+    // queda entregada solo si no queda saldo
+    function entregaOrdenValida(id, antes, despues) {
+      let claves = antes.procedencias.keys();
+      let e0 = antes.get('entregadoPorLote', {});
+      let e1 = despues.entregadoPorLote;
+      return e1.keys().hasOnly(claves)
+        && despues.cantidadEntregada > antes.cantidadEntregada
+        && despues.cantidadEntregada <= antes.cantidadAutorizada + 0.000001
+        && igualCantidad(despues.cantidadEntregada,
+             entregadoLote(e1, claves, 0) + entregadoLote(e1, claves, 1) + entregadoLote(e1, claves, 2))
+        && despues.estado == (igualCantidad(despues.cantidadEntregada, antes.cantidadAutorizada) ? 'entregado' : 'entrega_parcial')
+        && entregaLote(id, antes, e0, e1, claves, 0)
+        && entregaLote(id, antes, e0, e1, claves, 1)
+        && entregaLote(id, antes, e0, e1, claves, 2);
+    }
+
+    // Solicitud nueva del repartidor: agrega solo esa solicitud, pendiente, a su nombre, con la
+    // distribución vigente como original y una propuesta de hasta 3 lotes que no supere lo solicitado
+    function solicitudNueva(antes, despues, id) {
+      let d = despues.ajustes.diff(antes.get('ajustes', {}));
+      let a = despues.ajustes[id];
+      let claves = a.propuesta.keys();
+      return d.addedKeys().hasOnly([id]) && d.addedKeys().size() == 1
+        && d.changedKeys().size() == 0 && d.removedKeys().size() == 0
+        && a.id == id
+        && a.estado == 'pendiente_aprobacion'
+        && a.solicitadoPorUid == request.auth.uid
+        && a.solicitadoPor.lower() == correoSesion()
+        && a.original == antes.procedencias
+        && a.motivo is string && a.motivo.size() > 0 && a.motivo.size() <= 1000
+        && claves.size() > 0 && claves.size() <= 3
+        && (claves.size() <= 0 || a.propuesta[claves[0]] > 0)
+        && (claves.size() <= 1 || a.propuesta[claves[1]] > 0)
+        && (claves.size() <= 2 || a.propuesta[claves[2]] > 0)
+        && (claves.size() > 0 ? a.propuesta[claves[0]] : 0)
+             + (claves.size() > 1 ? a.propuesta[claves[1]] : 0)
+             + (claves.size() > 2 ? a.propuesta[claves[2]] : 0) <= antes.cantidadSolicitada + 0.000001;
+    }
+
+    function cancelacionSolicitudValida(antes, despues, id) {
+      let a = antes.ajustes[id];
+      let b = despues.ajustes[id];
+      return a.estado == 'pendiente_aprobacion'
+        && b.estado == 'cancelada'
+        && a.solicitadoPorUid == request.auth.uid
+        && b.solicitadoPorUid == a.solicitadoPorUid
+        && b.propuesta == a.propuesta
+        && b.original == a.original
+        && b.motivo == a.motivo
+        && b.solicitadoEn == a.solicitadoEn
+        && soloCambiaAjuste(antes, despues, id);
+    }
+
+    // Repartidor asignado: solo sus acciones sobre la entrega, cada una con un evento propio (con
+    // identificador único y la función de repartidor). No cambia cantidades autorizadas,
+    // distribución, repartidor ni datos del cliente.
+    function actualizacionRepartidorValida(id) {
+      let antes = resource.data;
+      let despues = request.resource.data;
+      let n = antes.historial.size();
+      let evento = despues.historial[n];
+      let tipo = evento.tipo;
+      let cambios = despues.diff(antes).affectedKeys();
+      return antes.repartidorUid == request.auth.uid
+        && despues.historial.size() == n + 1
+        && tipo in ['Inicio de ruta', 'Llegada', 'Novedad', 'Entrega', 'Solicitud de ajuste', 'Cancelación de solicitud']
+        && evento.funcion == 'courier'
+        && evento.eventoId is string
+        && eventoOrdenValido(evento, n)
+        && despues.historial[0:n] == antes.historial
+        && tieneRol('courier')
+        && (
+          // Iniciar ruta: desde asignado o en preparación
+          (tipo == 'Inicio de ruta'
+            && antes.estado in ['asignado', 'en_preparacion']
+            && despues.estado == 'en_ruta'
+            && cambios.hasOnly(['estado', 'rutaIniciadaEn', 'llegadaEn', 'actualizadoEn', 'historial'])
+            && despues.rutaIniciadaEn is string
+            && despues.get('llegadaEn', null) == null)
+          // Registrar llegada: solo con la ruta iniciada y una sola vez
+          || (tipo == 'Llegada'
+            && antes.estado == 'en_ruta'
+            && antes.get('rutaIniciadaEn', null) != null
+            && antes.get('llegadaEn', null) == null
+            && cambios.hasOnly(['llegadaEn', 'actualizadoEn', 'historial'])
+            && despues.llegadaEn is string)
+          // Novedad: en cualquier estado activo; solo agrega el evento
+          || (tipo == 'Novedad'
+            && antes.estado in ['asignado', 'en_preparacion', 'en_ruta', 'entrega_parcial', 'requiere_revision']
+            && cambios.hasOnly(['actualizadoEn', 'historial'])
+            && evento.descripcion.size() > 0
+            && evento.descripcion.size() <= 1000)
+          // Confirmar entrega (total o parcial): después de registrar la llegada
+          || (tipo == 'Entrega'
+            && antes.estado == 'en_ruta'
+            && antes.get('llegadaEn', null) != null
+            && cambios.hasOnly(['estado', 'entregadoPorLote', 'cantidadEntregada', 'actualizadoEn', 'historial'])
+            && entregaOrdenValida(id, antes, despues))
+          // Solicitar ajuste: queda pendiente de aprobación; la distribución vigente no cambia
+          || (tipo == 'Solicitud de ajuste'
+            && antes.estado in estadosConReserva()
+            && antes.cantidadEntregada == 0
+            && cambios.hasOnly(['ajustes', 'actualizadoEn', 'historial'])
+            && solicitudNueva(antes, despues, evento.datos.ajusteId))
+          // Cancelar una solicitud propia que sigue pendiente
+          || (tipo == 'Cancelación de solicitud'
+            && cambios.hasOnly(['ajustes', 'actualizadoEn', 'historial'])
+            && cancelacionSolicitudValida(antes, despues, evento.datos.ajusteId))
+        );
     }
 
     match /ordenes/{ordenId} {
       allow get: if (resource == null && puedeGestionarPedidos()) || (resource != null && puedeVerOrden(resource.data));
       allow list: if puedeVerOrden(resource.data);
-
-      // Crear: como borrador (sin reservas) o directamente asignada con sus reservas aplicadas
-      allow create: if puedeGestionarPedidos()
-        && request.resource.data.id == ordenId
-        && granjaPermitida(request.resource.data.granjaId)
-        && request.resource.data.creadoPorUid == request.auth.uid
-        && request.resource.data.creadoPor.lower() == correoSesion()
-        && request.resource.data.cantidadEntregada == 0
-        && request.resource.data.historial.size() == 1
-        && eventoOrdenValido(request.resource.data.historial[0], 0)
-        && datosOrdenValidos(request.resource.data)
-        && ((request.resource.data.estado == 'borrador'
-              && request.resource.data.cantidadAutorizada == 0
-              && (request.resource.data.repartidorUid == null
-                  || repartidorValido(request.resource.data.repartidorUid, request.resource.data.granjaId)))
-            || (request.resource.data.estado == 'asignado'
-                && asignacionValida(ordenId, request.resource.data)));
-
-      // Cada actualización agrega exactamente un evento al historial. El creador, la granja y lo
-      // entregado no cambian. Un repartidor no modifica órdenes en esta fase.
-      allow update: if puedeGestionarPedidos()
-        && granjaPermitida(resource.data.granjaId)
-        && historialAgregado(resource.data, request.resource.data)
-        && (
-          // 1. Editar un borrador, o confirmarlo (reserva y asignación)
-          (resource.data.estado == 'borrador'
-            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(
-                 ['clienteId', 'clienteNombre', 'repartidorUid', 'repartidorNombre', 'actualizadoEn', 'fechaProgramada',
-                  'unidad', 'cantidadSolicitada', 'procedencias', 'cantidadAutorizada', 'estado', 'observaciones', 'historial'])
-            && datosOrdenValidos(request.resource.data)
-            && ((request.resource.data.estado == 'borrador'
-                  && request.resource.data.cantidadAutorizada == 0
-                  && (request.resource.data.repartidorUid == null
-                      || repartidorValido(request.resource.data.repartidorUid, resource.data.granjaId)))
-                || (request.resource.data.estado == 'asignado'
-                    && asignacionValida(ordenId, request.resource.data))))
-          // 2. Cambio de estado o de repartidor sin tocar lo reservado (en ruta no se cambia el repartidor)
-          || (transicionPermitida(resource.data.estado, request.resource.data.estado)
-            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(
-                 ['estado', 'repartidorUid', 'repartidorNombre', 'fechaProgramada', 'observaciones', 'actualizadoEn', 'historial'])
-            && (request.resource.data.repartidorUid == resource.data.repartidorUid
-                || (resource.data.estado != 'en_ruta'
-                    && repartidorValido(request.resource.data.repartidorUid, resource.data.granjaId))))
-          // 3. Cancelar con reservas: se liberan en la misma operación
-          || (resource.data.estado in estadosConReserva()
-            && request.resource.data.estado == 'cancelado'
-            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['estado', 'actualizadoEn', 'historial'])
-            && lotesMovidos(ordenId, resource.data.procedencias))
-          // 4. Cancelar un borrador
-          || (resource.data.estado == 'borrador'
-            && request.resource.data.estado == 'cancelado'
-            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['estado', 'actualizadoEn', 'historial']))
-        );
-
+      allow create: if creacionOrdenValida(ordenId);
+      allow update: if actualizacionOperadorValida(ordenId) || actualizacionRepartidorValida(ordenId);
       allow delete: if false;
     }
+
 
     // ---------- Contadores ----------
     // Solo quien puede crear lotes usa los contadores, y solo pueden avanzar de uno en uno

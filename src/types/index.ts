@@ -135,7 +135,50 @@ export type TipoEventoOrden =
   | 'Asignación y reserva'
   | 'Cambio de repartidor'
   | 'Cambio de estado'
-  | 'Cancelación';
+  | 'Cancelación'
+  // Acciones del repartidor
+  | 'Inicio de ruta'
+  | 'Llegada'
+  | 'Entrega'
+  | 'Novedad'
+  | 'Solicitud de ajuste'
+  | 'Cancelación de solicitud'
+  // Decisiones del operador sobre entregas y ajustes
+  | 'Ajuste aplicado'
+  | 'Ajuste rechazado'
+  | 'Reprogramación de saldo'
+  | 'Cierre con saldo liberado';
+
+export type CategoriaNovedad =
+  | 'Cliente no disponible'
+  | 'Problemas de acceso'
+  | 'Retraso en el recorrido'
+  | 'Diferencia en cantidades'
+  | 'Problemas con el transporte'
+  | 'Otra situación';
+
+// "Pendiente de sincronización" solo existe en el teléfono del repartidor (bandeja local).
+// Aprobar una solicitud la aplica en la misma operación, por eso pasa directo a "aplicada".
+export type EstadoAjuste = 'pendiente_aprobacion' | 'aprobada' | 'rechazada' | 'cancelada' | 'aplicada';
+
+/**
+ * Solicitud del repartidor para cambiar la distribución autorizada. Mientras está pendiente, la
+ * distribución y las reservas originales siguen vigentes.
+ */
+export interface AjusteDistribucion {
+  id: string;
+  estado: EstadoAjuste;
+  original: Record<string, ProcedenciaOrden>; // distribución vigente al solicitar
+  propuesta: Record<string, number>; // código de lote -> cantidad propuesta
+  motivo: string;
+  solicitadoPor: string;
+  solicitadoPorUid: string;
+  solicitadoEn: string;
+  resueltoPor?: string;
+  resueltoPorUid?: string;
+  resueltoEn?: string;
+  respuesta?: string;
+}
 
 /**
  * Cantidad que la orden toma de un lote. Un lote pertenece a una sola piscina, así que la
@@ -150,11 +193,13 @@ export interface ProcedenciaOrden {
 export interface EventoOrden {
   indice: number;
   tipo: TipoEventoOrden;
-  fecha: string; // ISO
+  fecha: string; // ISO (en acciones sin conexión, la hora en que se registró en el teléfono)
   registradoPor: string; // correo
   registradoPorUid: string;
   descripcion: string;
   datos: Record<string, any>;
+  eventoId?: string; // identificador único (evita duplicados al sincronizar)
+  funcion?: RolFuncional; // función activa con la que se registró
 }
 
 export interface OrdenEntrega {
@@ -173,10 +218,19 @@ export interface OrdenEntrega {
   cantidadSolicitada: number;
   procedencias: Record<string, ProcedenciaOrden>; // clave: código del lote de origen
   cantidadAutorizada: number; // suma reservada en los lotes
-  cantidadEntregada: number; // se registrará con la confirmación de entrega (fase posterior)
+  cantidadEntregada: number; // suma de lo entregado por lote
   estado: EstadoOrden;
   observaciones: string;
   historial: EventoOrden[]; // solo se agregan eventos
+  // Datos de entrega copiados del cliente al crear la orden (las órdenes anteriores no los tienen)
+  clienteDireccion?: string;
+  clienteContacto?: string;
+  // Seguimiento de la entrega
+  entregadoPorLote?: Record<string, number>; // código de lote -> cantidad entregada
+  cantidadLiberada?: number; // saldo de una entrega parcial que el operador liberó al cerrar
+  rutaIniciadaEn?: string | null;
+  llegadaEn?: string | null;
+  ajustes?: Record<string, AjusteDistribucion>;
 }
 
 export interface Cliente {
@@ -184,6 +238,7 @@ export interface Cliente {
   granjaId: string;
   nombre: string;
   contacto: string;
+  direccion?: string;
   creadoPor: string;
   creadoPorUid: string;
   creadoEn: string;
@@ -201,6 +256,7 @@ export interface InventarioLote {
   entregado: number;
   ultimaOrden: string; // orden que hizo el último movimiento (lo verifican las reglas)
   movidoEn: unknown; // hora del servidor del último movimiento (Timestamp de Firestore)
+  tipoMovimiento?: 'reserva' | 'liberacion' | 'ajuste' | 'entrega'; // las reglas validan según el tipo
 }
 
 export interface EstanqueConfig {

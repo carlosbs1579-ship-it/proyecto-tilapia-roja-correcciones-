@@ -19,6 +19,7 @@ import {
   Lote,
   OrdenEntrega,
   ProcedenciaOrden,
+  RolFuncional,
   TipoEventoOrden,
   UnidadMedida,
   UsuarioPerfil
@@ -53,15 +54,29 @@ export const ETIQUETA_ESTADO_ORDEN: Record<EstadoOrden, string> = {
 // Estados en los que la orden tiene cantidades reservadas en los lotes
 export const ESTADOS_CON_RESERVA: EstadoOrden[] = ['asignado', 'en_preparacion', 'en_ruta', 'requiere_revision'];
 
-// Cambios de estado que se hacen a mano (las mismas parejas que permiten las reglas). Borrador pasa a
-// asignado al confirmar la orden; entrega parcial y entregado llegarán con la confirmación de entrega.
+// Cambios de estado que el operador hace a mano (las mismas parejas que permiten las reglas). Borrador
+// pasa a asignado al confirmar la orden. Iniciar la ruta, llegar y entregar son acciones del
+// repartidor; una entrega parcial se resuelve reprogramando o liberando el saldo.
 export const TRANSICIONES_MANUALES: Partial<Record<EstadoOrden, EstadoOrden[]>> = {
   borrador: ['cancelado'],
   asignado: ['en_preparacion', 'requiere_revision', 'cancelado'],
-  en_preparacion: ['en_ruta', 'requiere_revision', 'cancelado'],
+  en_preparacion: ['requiere_revision', 'cancelado'],
   en_ruta: ['requiere_revision', 'cancelado'],
   requiere_revision: ['asignado', 'en_preparacion', 'cancelado']
 };
+
+// Función con la que se trabaja en esta sesión (la fija App): queda en cada evento del historial
+let funcionActiva: RolFuncional | null = null;
+
+export function establecerFuncionActiva(funcion: RolFuncional | null): void {
+  funcionActiva = funcion;
+}
+
+export function generarId(prefijo: string): string {
+  return typeof crypto.randomUUID === 'function'
+    ? crypto.randomUUID()
+    : `${prefijo}_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
+}
 
 export interface Repartidor {
   uid: string;
@@ -123,7 +138,10 @@ export function sumaProcedencias(procedencias: Record<string, ProcedenciaOrden>,
 }
 
 export function cantidadPendiente(orden: OrdenEntrega): number {
-  return Math.max(0, redondear(orden.cantidadAutorizada - orden.cantidadEntregada, orden.unidad));
+  return Math.max(
+    0,
+    redondear(orden.cantidadAutorizada - orden.cantidadEntregada - (orden.cantidadLiberada || 0), orden.unidad)
+  );
 }
 
 function mensajeError(accion: string, err: any): Error {
@@ -170,8 +188,19 @@ function nuevoEvento(
     registradoPor: email,
     registradoPorUid: uid,
     descripcion,
-    datos
+    datos,
+    eventoId: generarId('ev'),
+    ...(funcionActiva ? { funcion: funcionActiva } : {})
   };
+}
+
+/**
+ * Lo que falta por entregar de un lote de la orden (lo que sigue reservado a su nombre)
+ */
+export function saldoLote(orden: OrdenEntrega, codigo: string): number {
+  const p = orden.procedencias?.[codigo];
+  if (!p) return 0;
+  return Math.max(0, redondear(p.cantidad - (orden.entregadoPorLote?.[codigo] || 0), orden.unidad));
 }
 
 const ordenRef = (id: string) => doc(db, 'ordenes', id);
@@ -194,28 +223,6 @@ export function escucharOrdenes(
     },
     (err) => {
       console.error('Error escuchando órdenes:', err);
-      if (onError) onError(err);
-    }
-  );
-}
-
-/**
- * Órdenes asignadas a un repartidor (las reglas solo le permiten leer las suyas)
- */
-export function escucharOrdenesRepartidor(
-  repartidorUid: string,
-  onUpdate: (ordenes: OrdenEntrega[]) => void,
-  onError?: (error: any) => void
-): () => void {
-  return onSnapshot(
-    query(collection(db, 'ordenes'), where('repartidorUid', '==', repartidorUid)),
-    (snap) => {
-      const lista = snap.docs.map((d) => d.data() as OrdenEntrega);
-      lista.sort((a, b) => (a.fechaProgramada || '9999').localeCompare(b.fechaProgramada || '9999') || b.creadoEn.localeCompare(a.creadoEn));
-      onUpdate(lista);
-    },
-    (err) => {
-      console.error('Error escuchando las órdenes del repartidor:', err);
       if (onError) onError(err);
     }
   );
@@ -297,7 +304,12 @@ export function escucharRepartidores(
 
 // ---------- Clientes ----------
 
-export async function crearCliente(nombre: string, contacto: string, granjaId: string = GRANJA_ID_PREDETERMINADA): Promise<Cliente> {
+export async function crearCliente(
+  nombre: string,
+  contacto: string,
+  direccion: string,
+  granjaId: string = GRANJA_ID_PREDETERMINADA
+): Promise<Cliente> {
   const nombreLimpio = nombre.trim();
   if (!nombreLimpio) throw new Error('Indica el nombre del cliente.');
   const { email, uid } = sesion();
@@ -308,6 +320,7 @@ export async function crearCliente(nombre: string, contacto: string, granjaId: s
     granjaId,
     nombre: nombreLimpio.slice(0, 120),
     contacto: contacto.trim().slice(0, 200),
+    direccion: direccion.trim().slice(0, 300),
     creadoPor: email,
     creadoPorUid: uid,
     creadoEn: ahora,
@@ -327,6 +340,8 @@ export async function crearCliente(nombre: string, contacto: string, granjaId: s
 export interface DatosOrden {
   clienteId: string;
   clienteNombre: string;
+  clienteDireccion: string; // se copia en la orden para el repartidor
+  clienteContacto: string;
   unidad: UnidadMedida;
   cantidadSolicitada: number;
   fechaProgramada: string | null;
@@ -405,7 +420,8 @@ async function prepararProcedencias(
         entregado: disp.entregado,
         ultimaOrden: ordenId,
         // Hora del servidor: las reglas comprueban con ella que el lote se movió en esta operación
-        movidoEn: serverTimestamp()
+        movidoEn: serverTimestamp(),
+        tipoMovimiento: 'reserva'
       }
     });
   }
@@ -444,6 +460,8 @@ export async function crearOrden(
         granjaId,
         clienteId: datos.clienteId,
         clienteNombre: datos.clienteNombre,
+        clienteDireccion: datos.clienteDireccion.slice(0, 300),
+        clienteContacto: datos.clienteContacto.slice(0, 200),
         creadoPor: email,
         creadoPorUid: uid,
         repartidorUid: datos.repartidor?.uid || null,
@@ -500,6 +518,8 @@ export async function actualizarBorrador(ordenId: string, datos: DatosOrden): Pr
       const cambios = {
         clienteId: datos.clienteId,
         clienteNombre: datos.clienteNombre,
+        clienteDireccion: datos.clienteDireccion.slice(0, 300),
+        clienteContacto: datos.clienteContacto.slice(0, 200),
         unidad: datos.unidad,
         cantidadSolicitada: redondear(datos.cantidadSolicitada, datos.unidad),
         fechaProgramada: datos.fechaProgramada || null,
@@ -628,19 +648,7 @@ export async function cambiarEstadoOrden(ordenId: string, nuevoEstado: EstadoOrd
       const liberar = nuevoEstado === 'cancelado' && ESTADOS_CON_RESERVA.includes(orden.estado);
       const movimientos: { ref: DocumentReference; datos: Partial<InventarioLote> }[] = [];
       if (liberar) {
-        for (const [codigo, p] of Object.entries(orden.procedencias || {})) {
-          const invSnap = await tx.get(inventarioRef(codigo));
-          if (!invSnap.exists()) throw new Error(`No se encontró el inventario del lote ${codigo}.`);
-          const inv = invSnap.data() as InventarioLote;
-          movimientos.push({
-            ref: inventarioRef(codigo),
-            datos: {
-              reservado: Math.max(0, redondear(inv.reservado - p.cantidad, inv.unidad)),
-              ultimaOrden: ordenId,
-              movidoEn: serverTimestamp()
-            }
-          });
-        }
+        movimientos.push(...(await liberarSaldos(tx, orden, ordenId)));
       }
 
       for (const m of movimientos) tx.update(m.ref, m.datos);
@@ -656,7 +664,7 @@ export async function cambiarEstadoOrden(ordenId: string, nuevoEstado: EstadoOrd
             {
               de: orden.estado,
               a: nuevoEstado,
-              ...(liberar ? { liberado: orden.procedencias, unidad: orden.unidad } : {})
+              ...(liberar ? { liberado: saldosPorLote(orden), unidad: orden.unidad } : {})
             }
           )
         ]
@@ -665,5 +673,274 @@ export async function cambiarEstadoOrden(ordenId: string, nuevoEstado: EstadoOrd
   } catch (err) {
     console.error('Error cambiando el estado de la orden:', err);
     throw mensajeError('cambiar el estado de la orden', err);
+  }
+}
+
+// ---------- Saldos de entregas parciales y ajustes de distribución (operador) ----------
+
+/**
+ * Saldo por entregar de cada lote de la orden (solo los lotes que aún tienen saldo)
+ */
+export function saldosPorLote(orden: OrdenEntrega): Record<string, number> {
+  const saldos: Record<string, number> = {};
+  for (const codigo of Object.keys(orden.procedencias || {})) {
+    const saldo = saldoLote(orden, codigo);
+    if (saldo > 0) saldos[codigo] = saldo;
+  }
+  return saldos;
+}
+
+/**
+ * Movimientos que devuelven al lote lo que la orden tenía reservado y no se entregó
+ */
+async function liberarSaldos(
+  tx: Transaction,
+  orden: OrdenEntrega,
+  ordenId: string
+): Promise<{ ref: DocumentReference; datos: Partial<InventarioLote> }[]> {
+  const movimientos: { ref: DocumentReference; datos: Partial<InventarioLote> }[] = [];
+  for (const [codigo, saldo] of Object.entries(saldosPorLote(orden))) {
+    const invSnap = await tx.get(inventarioRef(codigo));
+    if (!invSnap.exists()) throw new Error(`No se encontró el inventario del lote ${codigo}.`);
+    const inv = invSnap.data() as InventarioLote;
+    movimientos.push({
+      ref: inventarioRef(codigo),
+      datos: {
+        reservado: Math.max(0, redondear(inv.reservado - saldo, inv.unidad)),
+        ultimaOrden: ordenId,
+        movidoEn: serverTimestamp(),
+        tipoMovimiento: 'liberacion'
+      }
+    });
+  }
+  return movimientos;
+}
+
+/**
+ * Entrega parcial: el saldo vuelve a asignado para que el repartidor (el mismo u otro) lo entregue
+ * en una nueva ruta. Las reservas del saldo se mantienen.
+ */
+export async function reprogramarSaldo(ordenId: string, motivo: string, repartidor?: Repartidor | null): Promise<void> {
+  try {
+    await runTransaction(db, async (tx) => {
+      const snap = await tx.get(ordenRef(ordenId));
+      if (!snap.exists()) throw new Error('La orden no existe.');
+      const orden = snap.data() as OrdenEntrega;
+      if (orden.estado !== 'entrega_parcial') throw new Error('Solo se reprograma el saldo de una entrega parcial.');
+      const nuevoRepartidor = repartidor && repartidor.uid !== orden.repartidorUid ? repartidor : null;
+      tx.update(ordenRef(ordenId), {
+        estado: 'asignado',
+        rutaIniciadaEn: null,
+        llegadaEn: null,
+        ...(nuevoRepartidor ? { repartidorUid: nuevoRepartidor.uid, repartidorNombre: nuevoRepartidor.nombre } : {}),
+        actualizadoEn: new Date().toISOString(),
+        historial: [
+          ...orden.historial,
+          nuevoEvento(orden.historial.length, 'Reprogramación de saldo', motivo.trim(), {
+            saldo: saldosPorLote(orden),
+            unidad: orden.unidad,
+            repartidorAnterior: orden.repartidorNombre,
+            repartidor: nuevoRepartidor?.nombre || orden.repartidorNombre
+          })
+        ]
+      });
+    });
+  } catch (err) {
+    console.error('Error reprogramando el saldo:', err);
+    throw mensajeError('reprogramar el saldo', err);
+  }
+}
+
+/**
+ * Entrega parcial: libera el saldo no entregado (vuelve a estar disponible en los lotes) y cierra la
+ * orden como entregada, registrando la cantidad liberada
+ */
+export async function liberarSaldoYCerrar(ordenId: string, motivo: string): Promise<void> {
+  if (!motivo.trim()) throw new Error('Indica el motivo para liberar el saldo.');
+  try {
+    await runTransaction(db, async (tx) => {
+      const snap = await tx.get(ordenRef(ordenId));
+      if (!snap.exists()) throw new Error('La orden no existe.');
+      const orden = snap.data() as OrdenEntrega;
+      if (orden.estado !== 'entrega_parcial') throw new Error('Solo se libera el saldo de una entrega parcial.');
+      const movimientos = await liberarSaldos(tx, orden, ordenId);
+      const cantidadLiberada = redondear(orden.cantidadAutorizada - orden.cantidadEntregada, orden.unidad);
+      for (const m of movimientos) tx.update(m.ref, m.datos);
+      tx.update(ordenRef(ordenId), {
+        estado: 'entregado',
+        cantidadLiberada,
+        actualizadoEn: new Date().toISOString(),
+        historial: [
+          ...orden.historial,
+          nuevoEvento(orden.historial.length, 'Cierre con saldo liberado', motivo.trim(), {
+            liberado: saldosPorLote(orden),
+            cantidadLiberada,
+            unidad: orden.unidad
+          })
+        ]
+      });
+    });
+  } catch (err) {
+    console.error('Error liberando el saldo:', err);
+    throw mensajeError('liberar el saldo', err);
+  }
+}
+
+/**
+ * Rechaza una solicitud de ajuste: la distribución y las reservas no cambian
+ */
+export async function rechazarAjuste(ordenId: string, ajusteId: string, respuesta: string): Promise<void> {
+  if (!respuesta.trim()) throw new Error('Indica el motivo del rechazo.');
+  const { email, uid } = sesion();
+  try {
+    await runTransaction(db, async (tx) => {
+      const snap = await tx.get(ordenRef(ordenId));
+      if (!snap.exists()) throw new Error('La orden no existe.');
+      const orden = snap.data() as OrdenEntrega;
+      const ajuste = orden.ajustes?.[ajusteId];
+      if (!ajuste || ajuste.estado !== 'pendiente_aprobacion') throw new Error('La solicitud ya no está pendiente.');
+      if (ajuste.solicitadoPorUid === uid) throw new Error('No puedes resolver una solicitud que hiciste tú.');
+      tx.update(ordenRef(ordenId), {
+        [`ajustes.${ajusteId}`]: {
+          ...ajuste,
+          estado: 'rechazada',
+          resueltoPor: email,
+          resueltoPorUid: uid,
+          resueltoEn: new Date().toISOString(),
+          respuesta: respuesta.trim().slice(0, 1000)
+        },
+        actualizadoEn: new Date().toISOString(),
+        historial: [
+          ...orden.historial,
+          nuevoEvento(orden.historial.length, 'Ajuste rechazado', respuesta.trim(), {
+            ajusteId,
+            propuesta: ajuste.propuesta,
+            solicitadoPor: ajuste.solicitadoPor
+          })
+        ]
+      });
+    });
+  } catch (err) {
+    console.error('Error rechazando el ajuste:', err);
+    throw mensajeError('rechazar la solicitud', err);
+  }
+}
+
+/**
+ * Aprueba una solicitud de ajuste y la aplica en la misma transacción: vuelve a validar la
+ * disponibilidad de cada lote, mueve las reservas por la diferencia y deja la nueva distribución.
+ * Si algún lote no tiene disponibilidad, no se aplica nada y la solicitud sigue pendiente.
+ */
+export async function aprobarAjuste(ordenId: string, ajusteId: string, respuesta: string): Promise<void> {
+  const { email, uid } = sesion();
+  try {
+    await runTransaction(db, async (tx) => {
+      const snap = await tx.get(ordenRef(ordenId));
+      if (!snap.exists()) throw new Error('La orden no existe.');
+      const orden = snap.data() as OrdenEntrega;
+      const ajuste = orden.ajustes?.[ajusteId];
+      if (!ajuste || ajuste.estado !== 'pendiente_aprobacion') throw new Error('La solicitud ya no está pendiente.');
+      if (ajuste.solicitadoPorUid === uid) throw new Error('No puedes aprobar una solicitud que hiciste tú.');
+      if (!ESTADOS_CON_RESERVA.includes(orden.estado)) {
+        throw new Error(`No se aplican ajustes a una orden ${ETIQUETA_ESTADO_ORDEN[orden.estado].toLowerCase()}.`);
+      }
+      if (orden.cantidadEntregada > 0) {
+        throw new Error('La orden ya tiene entregas registradas; resuelve el saldo en su lugar.');
+      }
+
+      const nuevas: Record<string, ProcedenciaOrden> = {};
+      const movimientos: { ref: DocumentReference; datos: Partial<InventarioLote>; crear: boolean }[] = [];
+      const codigos = Array.from(new Set([...Object.keys(orden.procedencias), ...Object.keys(ajuste.propuesta)]));
+
+      // Primero todas las lecturas: lotes que entran o aumentan, e inventarios de los lotes que cambian
+      for (const codigo of codigos) {
+        const antes = orden.procedencias[codigo]?.cantidad || 0;
+        const despues = redondear(Number(ajuste.propuesta[codigo]) || 0, orden.unidad);
+        let estanque = orden.procedencias[codigo]?.estanque;
+        let lote: Lote | null = null;
+        if (despues > antes) {
+          const loteSnap = await tx.get(loteRef(codigo));
+          if (!loteSnap.exists()) throw new Error(`El lote ${codigo} no existe.`);
+          lote = loteSnap.data() as Lote;
+          if ((lote.granjaId || GRANJA_ID_PREDETERMINADA) !== orden.granjaId) {
+            throw new Error(`El lote ${codigo} pertenece a otra granja.`);
+          }
+          estanque = lote.estanque;
+        }
+        if (despues > 0) nuevas[codigo] = { estanque: estanque as string, cantidad: despues, unidad: orden.unidad };
+        const diferencia = redondear(despues - antes, orden.unidad);
+        if (diferencia === 0) continue;
+
+        const invSnap = await tx.get(inventarioRef(codigo));
+        const inv = invSnap.exists() ? (invSnap.data() as InventarioLote) : undefined;
+        if (diferencia > 0) {
+          const disp = calcularDisponibilidad(lote as Lote, inv, orden.unidad);
+          if (!disp.compatible) throw new Error(`El lote ${codigo} tiene reservas en ${disp.unidadInventario}.`);
+          if (disp.cosechado <= 0) throw new Error(`El lote ${codigo} no tiene cosecha registrada en ${orden.unidad}.`);
+          if (diferencia > disp.disponible) {
+            throw new Error(
+              `El lote ${codigo} solo tiene ${disp.disponible} ${orden.unidad} disponibles (se necesitan ${diferencia} más).`
+            );
+          }
+        } else if (!inv) {
+          throw new Error(`No se encontró el inventario del lote ${codigo}.`);
+        }
+        movimientos.push({
+          ref: inventarioRef(codigo),
+          crear: !inv,
+          datos: inv
+            ? {
+                reservado: Math.max(0, redondear(inv.reservado + diferencia, orden.unidad)),
+                ultimaOrden: ordenId,
+                movidoEn: serverTimestamp(),
+                tipoMovimiento: 'ajuste'
+              }
+            : {
+                codigoLote: codigo,
+                granjaId: orden.granjaId,
+                unidad: orden.unidad,
+                reservado: diferencia,
+                entregado: 0,
+                ultimaOrden: ordenId,
+                movidoEn: serverTimestamp(),
+                tipoMovimiento: 'ajuste'
+              }
+        });
+      }
+      if (Object.keys(nuevas).length === 0) throw new Error('La propuesta no deja ningún lote con cantidad.');
+
+      const cantidadAutorizada = sumaProcedencias(nuevas, orden.unidad);
+      for (const m of movimientos) {
+        if (m.crear) tx.set(m.ref, m.datos);
+        else tx.update(m.ref, m.datos);
+      }
+      tx.update(ordenRef(ordenId), {
+        procedencias: nuevas,
+        cantidadAutorizada,
+        [`ajustes.${ajusteId}`]: {
+          ...ajuste,
+          estado: 'aplicada',
+          resueltoPor: email,
+          resueltoPorUid: uid,
+          resueltoEn: new Date().toISOString(),
+          respuesta: respuesta.trim().slice(0, 1000)
+        },
+        actualizadoEn: new Date().toISOString(),
+        historial: [
+          ...orden.historial,
+          nuevoEvento(orden.historial.length, 'Ajuste aplicado', respuesta.trim() || 'Solicitud de ajuste aprobada y aplicada', {
+            ajusteId,
+            anterior: orden.procedencias,
+            nueva: nuevas,
+            cantidadAutorizadaAnterior: orden.cantidadAutorizada,
+            cantidadAutorizada,
+            solicitadoPor: ajuste.solicitadoPor
+          })
+        ]
+      });
+    });
+  } catch (err) {
+    console.error('Error aplicando el ajuste:', err);
+    throw mensajeError('aprobar y aplicar la solicitud', err);
   }
 }

@@ -10,13 +10,17 @@ import {
   Layers,
   Send,
   Edit3,
-  History
+  History,
+  Truck,
+  Repeat,
+  AlertTriangle
 } from 'lucide-react';
-import { Cliente, EstadoOrden, InventarioLote, Lote, OrdenEntrega, UsuarioPerfil } from '../types';
+import { AjusteDistribucion, Cliente, EstadoOrden, InventarioLote, Lote, OrdenEntrega, UsuarioPerfil } from '../types';
 import {
   ETIQUETA_ESTADO_ORDEN,
   Repartidor,
   TRANSICIONES_MANUALES,
+  aprobarAjuste,
   calcularDisponibilidad,
   cambiarEstadoOrden,
   cambiarRepartidor,
@@ -25,7 +29,11 @@ import {
   escucharClientes,
   escucharInventario,
   escucharOrdenes,
-  escucharRepartidores
+  escucharRepartidores,
+  liberarSaldoYCerrar,
+  rechazarAjuste,
+  reprogramarSaldo,
+  saldoLote
 } from '../services/pedidosService';
 import { verificarPermiso } from '../services/usuariosService';
 import { formatearFechaColombia } from '../utils/constants';
@@ -60,7 +68,7 @@ export const PedidosTab: React.FC<PedidosTabProps> = ({ lotes, perfilActual }) =
   const [repartidores, setRepartidores] = useState<Repartidor[]>([]);
   const [cargando, setCargando] = useState(true);
   const [errorCarga, setErrorCarga] = useState<string | null>(null);
-  const [filtroEstado, setFiltroEstado] = useState<'activas' | 'todas' | EstadoOrden>('activas');
+  const [filtroEstado, setFiltroEstado] = useState<FiltroOrdenes>('activas');
   const [abierta, setAbierta] = useState<string | null>(null);
   const [modalAbierto, setModalAbierto] = useState(false);
   const [ordenEditar, setOrdenEditar] = useState<OrdenEntrega | null>(null);
@@ -69,6 +77,7 @@ export const PedidosTab: React.FC<PedidosTabProps> = ({ lotes, perfilActual }) =
   const [procesando, setProcesando] = useState(false);
   const [motivo, setMotivo] = useState('');
   const [nuevoRepartidor, setNuevoRepartidor] = useState('');
+  const [respuestaAjuste, setRespuestaAjuste] = useState('');
 
   useEffect(() => {
     if (!puedeGestionar) return;
@@ -106,6 +115,10 @@ export const PedidosTab: React.FC<PedidosTabProps> = ({ lotes, perfilActual }) =
       ordenes.filter((o) =>
         filtroEstado === 'todas'
           ? true
+          : filtroEstado === 'solicitudes'
+          ? solicitudesPendientes(o).length > 0
+          : filtroEstado === 'novedades'
+          ? conNovedadesActivas(o)
           : filtroEstado === 'activas'
           ? !['entregado', 'cancelado'].includes(o.estado)
           : o.estado === filtroEstado
@@ -206,6 +219,25 @@ export const PedidosTab: React.FC<PedidosTabProps> = ({ lotes, perfilActual }) =
         </button>
       </div>
 
+      {vista === 'ordenes' && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+          {RESUMEN.map(({ id, etiqueta, contar, icono }) => (
+            <button
+              key={id}
+              onClick={() => setFiltroEstado(id)}
+              className={'bg-white border rounded-xl p-3 text-left flex items-center justify-between ' +
+                (filtroEstado === id ? 'border-sky-500 ring-2 ring-sky-200' : 'border-slate-200')}
+            >
+              <span>
+                <span className="block text-slate-500">{etiqueta}</span>
+                <strong className="text-lg text-slate-900">{ordenes.filter(contar).length}</strong>
+              </span>
+              {icono}
+            </button>
+          ))}
+        </div>
+      )}
+
       {vista === 'ordenes' ? (
         <div className="bg-white rounded-xl border border-slate-200 shadow-xs">
           <div className="px-5 py-3 border-b border-slate-100 flex flex-wrap items-center gap-2 text-xs">
@@ -217,6 +249,8 @@ export const PedidosTab: React.FC<PedidosTabProps> = ({ lotes, perfilActual }) =
             >
               <option value="activas">En curso</option>
               <option value="todas">Todas</option>
+              <option value="solicitudes">Con ajustes por aprobar</option>
+              <option value="novedades">Con novedades</option>
               {(Object.keys(ETIQUETA_ESTADO_ORDEN) as EstadoOrden[]).map((e) => (
                 <option key={e} value={e}>{ETIQUETA_ESTADO_ORDEN[e]}</option>
               ))}
@@ -242,6 +276,7 @@ export const PedidosTab: React.FC<PedidosTabProps> = ({ lotes, perfilActual }) =
                         setErrorAccion(null);
                         setMotivo('');
                         setNuevoRepartidor('');
+                        setRespuestaAjuste('');
                       }}
                       className="w-full px-5 py-3 grid grid-cols-2 sm:grid-cols-6 gap-2 items-center text-left hover:bg-slate-50"
                     >
@@ -256,6 +291,12 @@ export const PedidosTab: React.FC<PedidosTabProps> = ({ lotes, perfilActual }) =
                         <span className={`inline-block px-2 py-0.5 rounded-full border font-semibold text-[10px] ${ESTILO_ESTADO[o.estado]}`}>
                           {ETIQUETA_ESTADO_ORDEN[o.estado]}
                         </span>
+                        {solicitudesPendientes(o).length > 0 && (
+                          <span className="block mt-0.5 text-[10px] font-semibold text-indigo-700">Ajuste por aprobar</span>
+                        )}
+                        {o.estado === 'en_ruta' && o.llegadaEn && (
+                          <span className="block mt-0.5 text-[10px] text-violet-700">Llegó al cliente</span>
+                        )}
                       </span>
                       <span className="flex items-center justify-end text-slate-400">
                         {expandida ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
@@ -284,6 +325,15 @@ export const PedidosTab: React.FC<PedidosTabProps> = ({ lotes, perfilActual }) =
                           <span>Observaciones: {o.observaciones || '—'}</span>
                         </div>
 
+                        <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 text-[11px] text-slate-700 bg-white border border-slate-200 rounded-lg p-2.5">
+                          <span>Dirección: <strong>{o.clienteDireccion || 'sin registrar'}</strong></span>
+                          <span>Ruta iniciada: <strong>{o.rutaIniciadaEn ? formatearFechaColombia(o.rutaIniciadaEn) : '—'}</strong></span>
+                          <span>Llegada: <strong>{o.llegadaEn ? formatearFechaColombia(o.llegadaEn) : '—'}</strong></span>
+                          <span>
+                            Liberado al cerrar: <strong>{o.cantidadLiberada ? num(o.cantidadLiberada) + ' ' + o.unidad : '—'}</strong>
+                          </span>
+                        </div>
+
                         <div>
                           <span className="font-bold text-slate-700 block mb-1">Procedencia</span>
                           {Object.keys(o.procedencias || {}).length === 0 ? (
@@ -294,7 +344,9 @@ export const PedidosTab: React.FC<PedidosTabProps> = ({ lotes, perfilActual }) =
                                 <tr>
                                   <th className="px-3 py-1.5">Lote</th>
                                   <th className="px-3 py-1.5">Piscina</th>
-                                  <th className="px-3 py-1.5 text-right">Cantidad</th>
+                                  <th className="px-3 py-1.5 text-right">Autorizado</th>
+                                  <th className="px-3 py-1.5 text-right">Entregado</th>
+                                  <th className="px-3 py-1.5 text-right">Por entregar</th>
                                 </tr>
                               </thead>
                               <tbody className="divide-y divide-slate-100">
@@ -303,6 +355,10 @@ export const PedidosTab: React.FC<PedidosTabProps> = ({ lotes, perfilActual }) =
                                     <td className="px-3 py-1.5 font-mono font-bold">{codigo}</td>
                                     <td className="px-3 py-1.5">{p.estanque}</td>
                                     <td className="px-3 py-1.5 text-right">{num(p.cantidad)} {p.unidad}</td>
+                                    <td className="px-3 py-1.5 text-right">{num(o.entregadoPorLote?.[codigo] || 0)}</td>
+                                    <td className="px-3 py-1.5 text-right">
+                                      {o.estado === 'cancelado' || o.estado === 'entregado' ? '—' : num(saldoLote(o, codigo))}
+                                    </td>
                                   </tr>
                                 ))}
                               </tbody>
@@ -312,6 +368,40 @@ export const PedidosTab: React.FC<PedidosTabProps> = ({ lotes, perfilActual }) =
                             <p className="text-[10px] text-slate-500 mt-1">Borrador: estas cantidades aún no están reservadas.</p>
                           )}
                         </div>
+
+                        {/* Novedades del repartidor */}
+                        {novedadesDe(o).length > 0 && (
+                          <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 space-y-1">
+                            <span className="font-bold text-orange-900 block">Novedades del repartidor</span>
+                            {novedadesDe(o).map((ev) => (
+                              <p key={ev.indice} className="text-orange-900">
+                                <strong>{formatearFechaColombia(ev.fecha)}</strong> · {ev.descripcion}
+                              </p>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Solicitudes de ajuste */}
+                        {Object.keys(o.ajustes || {}).length > 0 && (
+                          <div className="bg-white border border-indigo-200 rounded-lg p-3 space-y-3">
+                            <span className="font-bold text-indigo-900 block">Solicitudes de ajuste de distribución</span>
+                            {Object.values(o.ajustes || {})
+                              .sort((a, b) => b.solicitadoEn.localeCompare(a.solicitadoEn))
+                              .map((a) => (
+                                <SolicitudAjuste
+                                  key={a.id}
+                                  ajuste={a}
+                                  orden={o}
+                                  propia={a.solicitadoPorUid === perfilActual?.uid}
+                                  procesando={procesando}
+                                  respuesta={respuestaAjuste}
+                                  setRespuesta={setRespuestaAjuste}
+                                  onAprobar={() => ejecutar(() => aprobarAjuste(o.id, a.id, respuestaAjuste), 'Ajuste aprobado y aplicado: reservas actualizadas.')}
+                                  onRechazar={() => ejecutar(() => rechazarAjuste(o.id, a.id, respuestaAjuste), 'Solicitud rechazada; la distribución no cambió.')}
+                                />
+                              ))}
+                          </div>
+                        )}
 
                         {/* Acciones */}
                         <div className="bg-white border border-slate-200 rounded-lg p-3 space-y-3">
@@ -367,7 +457,7 @@ export const PedidosTab: React.FC<PedidosTabProps> = ({ lotes, perfilActual }) =
                                     () => cambiarEstadoOrden(o.id, 'cancelado', motivo),
                                     o.estado === 'borrador'
                                       ? `Borrador ${o.id} cancelado.`
-                                      : `Orden ${o.id} cancelada: ${num(o.cantidadAutorizada)} ${o.unidad} liberados.`
+                                      : `Orden ${o.id} cancelada: ${num(cantidadPendiente(o))} ${o.unidad} liberados.`
                                   )
                                 }
                                 className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-lg font-semibold disabled:opacity-50"
@@ -402,8 +492,54 @@ export const PedidosTab: React.FC<PedidosTabProps> = ({ lotes, perfilActual }) =
                               </button>
                             </div>
                           )}
-                          {['entregado', 'cancelado', 'entrega_parcial'].includes(o.estado) && (
-                            <p className="text-slate-500">Esta orden no admite más cambios en esta fase.</p>
+                          {o.estado === 'entrega_parcial' && (
+                            <div className="space-y-2 border-t border-slate-100 pt-2">
+                              <p className="text-amber-800">
+                                Entrega parcial: faltan <strong>{num(cantidadPendiente(o))} {o.unidad}</strong>. Decide cómo continuar:
+                              </p>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <select
+                                  value={nuevoRepartidor}
+                                  onChange={(e) => setNuevoRepartidor(e.target.value)}
+                                  className="px-2.5 py-1.5 border border-slate-300 rounded-lg bg-white"
+                                >
+                                  <option value="">Mismo repartidor ({o.repartidorNombre})</option>
+                                  {repartidores
+                                    .filter((r) => r.uid !== o.repartidorUid)
+                                    .map((r) => (
+                                      <option key={r.uid} value={r.uid}>{r.nombre} — {r.cargo}</option>
+                                    ))}
+                                </select>
+                                <button
+                                  disabled={procesando}
+                                  onClick={() =>
+                                    ejecutar(
+                                      () => reprogramarSaldo(o.id, motivo, repartidores.find((x) => x.uid === nuevoRepartidor) || null),
+                                      'Saldo de ' + o.id + ' reprogramado: vuelve a asignado para una nueva ruta.'
+                                    )
+                                  }
+                                  className="px-3 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded-lg font-bold disabled:opacity-50"
+                                >
+                                  Reprogramar entrega del saldo
+                                </button>
+                                <button
+                                  disabled={procesando}
+                                  onClick={() =>
+                                    ejecutar(
+                                      () => liberarSaldoYCerrar(o.id, motivo),
+                                      'Orden ' + o.id + ' cerrada: ' + num(cantidadPendiente(o)) + ' ' + o.unidad + ' liberados y disponibles otra vez.'
+                                    )
+                                  }
+                                  className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 rounded-lg font-semibold disabled:opacity-50"
+                                >
+                                  Liberar saldo y cerrar
+                                </button>
+                              </div>
+                              <p className="text-[10px] text-slate-500">Para liberar el saldo escribe el motivo en el campo de arriba.</p>
+                            </div>
+                          )}
+                          {['entregado', 'cancelado'].includes(o.estado) && (
+                            <p className="text-slate-500">Esta orden está cerrada y no admite más cambios.</p>
                           )}
                         </div>
 
@@ -417,7 +553,10 @@ export const PedidosTab: React.FC<PedidosTabProps> = ({ lotes, perfilActual }) =
                             {o.historial.map((ev) => (
                               <li key={ev.indice} className="bg-white border border-slate-200 rounded-lg px-3 py-1.5">
                                 <span className="font-semibold text-slate-800">{ev.tipo}</span>
-                                <span className="text-slate-500"> • {formatearFechaColombia(ev.fecha)} • {ev.registradoPor}</span>
+                                <span className="text-slate-500">
+                                  {' • ' + formatearFechaColombia(ev.fecha) + ' • ' + ev.registradoPor}
+                                  {ev.funcion ? ' (' + (ETIQUETA_FUNCION[ev.funcion] || ev.funcion) + ')' : ''}
+                                </span>
                                 {ev.descripcion && <span className="block text-slate-600">{ev.descripcion}</span>}
                               </li>
                             ))}
@@ -525,6 +664,125 @@ export const PedidosTab: React.FC<PedidosTabProps> = ({ lotes, perfilActual }) =
         ordenEditar={ordenEditar}
         onGuardada={setMensaje}
       />
+    </div>
+  );
+};
+
+type FiltroOrdenes = 'activas' | 'todas' | 'solicitudes' | 'novedades' | EstadoOrden;
+
+const ETIQUETA_AJUSTE: Record<string, string> = {
+  pendiente_aprobacion: 'Pendiente de aprobación',
+  aprobada: 'Aprobada',
+  rechazada: 'Rechazada',
+  cancelada: 'Cancelada por el repartidor',
+  aplicada: 'Aprobada y aplicada'
+};
+
+const ETIQUETA_FUNCION: Record<string, string> = {
+  admin: 'administrador',
+  operator: 'operador',
+  courier: 'repartidor'
+};
+
+const ESTADOS_ACTIVOS_AJUSTE: EstadoOrden[] = ['asignado', 'en_preparacion', 'en_ruta', 'requiere_revision'];
+
+function solicitudesPendientes(o: OrdenEntrega) {
+  return Object.values(o.ajustes || {}).filter((a) => a.estado === 'pendiente_aprobacion');
+}
+
+function novedadesDe(o: OrdenEntrega) {
+  return (o.historial || []).filter((ev) => ev.tipo === 'Novedad');
+}
+
+function conNovedadesActivas(o: OrdenEntrega) {
+  return novedadesDe(o).length > 0 && !['entregado', 'cancelado'].includes(o.estado);
+}
+
+// Tarjetas de seguimiento: cada una filtra la lista de órdenes
+const RESUMEN: { id: FiltroOrdenes; etiqueta: string; contar: (o: OrdenEntrega) => boolean; icono: React.ReactNode }[] = [
+  { id: 'en_ruta', etiqueta: 'Rutas en curso', contar: (o) => o.estado === 'en_ruta', icono: <Truck className="w-4 h-4 text-violet-600" /> },
+  { id: 'entrega_parcial', etiqueta: 'Entregas parciales', contar: (o) => o.estado === 'entrega_parcial', icono: <AlertTriangle className="w-4 h-4 text-amber-600" /> },
+  { id: 'solicitudes', etiqueta: 'Ajustes por aprobar', contar: (o) => solicitudesPendientes(o).length > 0, icono: <Repeat className="w-4 h-4 text-indigo-600" /> },
+  { id: 'novedades', etiqueta: 'Con novedades', contar: conNovedadesActivas, icono: <AlertCircle className="w-4 h-4 text-orange-600" /> }
+];
+
+const SolicitudAjuste: React.FC<{
+  ajuste: AjusteDistribucion;
+  orden: OrdenEntrega;
+  propia: boolean;
+  procesando: boolean;
+  respuesta: string;
+  setRespuesta: (v: string) => void;
+  onAprobar: () => void;
+  onRechazar: () => void;
+}> = ({ ajuste: a, orden: o, propia, procesando, respuesta, setRespuesta, onAprobar, onRechazar }) => {
+  const codigos = Array.from(new Set([...Object.keys(a.original), ...Object.keys(a.propuesta)]));
+  // Solo se aplica antes de cualquier entrega y con la orden activa; si no, solo se puede rechazar
+  const aplicable = o.cantidadEntregada === 0 && ESTADOS_ACTIVOS_AJUSTE.includes(o.estado);
+  return (
+    <div className="border border-slate-200 rounded-lg p-2.5 space-y-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="font-semibold text-slate-800">
+          {a.solicitadoPor} · {formatearFechaColombia(a.solicitadoEn)}
+        </span>
+        <span className="px-2 py-0.5 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-800 font-semibold text-[10px]">
+          {ETIQUETA_AJUSTE[a.estado]}
+        </span>
+      </div>
+      <table className="w-full text-[11px]">
+        <thead className="text-slate-500 text-left">
+          <tr>
+            <th className="py-1">Lote</th>
+            <th className="py-1 text-right">Autorizado original</th>
+            <th className="py-1 text-right">Propuesto</th>
+          </tr>
+        </thead>
+        <tbody>
+          {codigos.map((c) => (
+            <tr key={c}>
+              <td className="py-0.5 font-mono">{c}</td>
+              <td className="py-0.5 text-right">{num(a.original[c]?.cantidad || 0)}</td>
+              <td className="py-0.5 text-right font-semibold">{num(a.propuesta[c] || 0)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="text-slate-600">Motivo: {a.motivo}</p>
+      {a.respuesta && <p className="text-slate-600">Respuesta ({a.resueltoPor}): {a.respuesta}</p>}
+      {a.estado === 'pendiente_aprobacion' &&
+        (propia ? (
+          <p className="text-amber-700">No puedes resolver una solicitud que hiciste tú.</p>
+        ) : (
+          <div className="space-y-1.5">
+            {!aplicable && <p className="text-slate-500">La orden ya no admite ajustes (tiene entregas o está cerrada); solo puedes rechazarla.</p>}
+            <input
+              type="text"
+              maxLength={1000}
+              placeholder="Respuesta al repartidor (obligatoria para rechazar)"
+              value={respuesta}
+              onChange={(e) => setRespuesta(e.target.value)}
+              className="w-full px-3 py-1.5 border border-slate-300 rounded-lg"
+            />
+            <div className="flex flex-wrap gap-2">
+              {aplicable && (
+                <button
+                  disabled={procesando}
+                  onClick={onAprobar}
+                  className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-bold disabled:opacity-50"
+                >
+                  Aprobar y aplicar
+                </button>
+              )}
+              <button
+                disabled={procesando}
+                onClick={onRechazar}
+                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-lg font-semibold disabled:opacity-50"
+              >
+                Rechazar
+              </button>
+            </div>
+          </div>
+        ))}
     </div>
   );
 };

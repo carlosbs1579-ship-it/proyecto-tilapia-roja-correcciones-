@@ -5,9 +5,11 @@ import { Lote, ConfiguracionGeneral, UsuarioPerfil, RolFuncional } from './types
 import { CONFIG_DEFAULT } from './utils/constants';
 import { escucharConfiguracion } from './services/configService';
 import { escucharLotes } from './services/lotesService';
+import { establecerFuncionActiva } from './services/pedidosService';
 import {
   sincronizarPerfilUsuario,
   escucharPerfilPropio,
+  borrarCopiaPerfil,
   esAdminMaestro,
   funcionesDisponibles
 } from './services/usuariosService';
@@ -119,6 +121,7 @@ export default function App() {
 
   // Mantener la pestaña dentro de las de la función activa
   useEffect(() => {
+    establecerFuncionActiva(funcionActiva);
     const permitidas = tabsDeFuncion(funcionActiva);
     if (!permitidas.includes(tabActiva)) setTabActiva(permitidas[0]);
     if (funcionActiva !== 'admin' && funcionActiva !== 'operator') {
@@ -159,15 +162,19 @@ export default function App() {
       // Validar si el token es accesible o si requiere reautenticación
       try {
         await fbUser.getIdToken();
-      } catch (tokenErr) {
-        console.warn('Sesión previa inválida, restableciendo autenticación limpia:', tokenErr);
-        try {
-          await signOut(auth);
-        } catch {}
-        setUsuario(null);
-        setPerfilUsuario(null);
-        setAuthCargando(false);
-        return;
+      } catch (tokenErr: any) {
+        // Sin conexión no se puede renovar el token: se conserva la sesión (el repartidor sigue
+        // consultando y guardando acciones en el teléfono). Solo se cierra si la sesión es inválida.
+        if (tokenErr?.code !== 'auth/network-request-failed' && navigator.onLine) {
+          console.warn('Sesión previa inválida, restableciendo autenticación limpia:', tokenErr);
+          try {
+            await signOut(auth);
+          } catch {}
+          setUsuario(null);
+          setPerfilUsuario(null);
+          setAuthCargando(false);
+          return;
+        }
       }
 
       setUsuario({
@@ -254,9 +261,14 @@ export default function App() {
   const handleCerrarSesion = async () => {
     // Al volver a ingresar, una cuenta con varias funciones elige de nuevo
     if (usuario) guardarFuncion(usuario.uid, null);
-    // La copia local de los lotes no queda en el navegador para la siguiente persona
+    // Las copias locales (lotes, perfil, entregas) no quedan en el navegador para la siguiente
+    // persona. La bandeja de acciones del repartidor sin enviar se conserva para no perderlas.
     try {
       localStorage.removeItem('cultivos_lore_lotes_backup');
+      if (usuario) {
+        borrarCopiaPerfil(usuario.uid);
+        localStorage.removeItem(`cultivos_lore_mis_entregas_${usuario.uid}`);
+      }
     } catch {}
     try {
       await signOut(auth);

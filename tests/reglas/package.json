@@ -4,7 +4,7 @@
   "type": "module",
   "description": "Pruebas de firestore.rules en el emulador local. No forman parte de la aplicación publicada.",
   "scripts": {
-    "test": "firebase emulators:exec --only firestore --project demo-tilapia \"node --test reglas.test.mjs\""
+    "test": "firebase emulators:exec --only firestore --project demo-tilapia \"node --test --test-concurrency=1 reglas.test.mjs pedidos.test.mjs entregas.test.mjs\""
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^6.0.0",

@@ -25,7 +25,7 @@ interface DefinicionTab {
 const TABS: Record<TabTipo, DefinicionTab> = {
   inicio: { id: 'inicio', etiqueta: 'Inicio', etiquetaMovil: 'Inicio' },
   lotes: { id: 'lotes', etiqueta: 'Lotes', etiquetaMovil: 'Lotes' },
-  pedidos: { id: 'pedidos', etiqueta: 'Pedidos', etiquetaMovil: 'Pedidos' },
+  pedidos: { id: 'pedidos', etiqueta: 'Entregas', etiquetaMovil: 'Entregas' },
   analitica: { id: 'analitica', etiqueta: 'Analítica', etiquetaMovil: 'Analítica' },
   configuracion: { id: 'configuracion', etiqueta: 'Configuración & Estanques', etiquetaMovil: 'Configuración' },
   usuarios: {

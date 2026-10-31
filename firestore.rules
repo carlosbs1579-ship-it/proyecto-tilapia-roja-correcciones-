@@ -341,7 +341,7 @@ service cloud.firestore {
               'repartidorNombre', 'creadoEn', 'actualizadoEn', 'fechaProgramada', 'unidad', 'cantidadSolicitada',
               'procedencias', 'cantidadAutorizada', 'cantidadEntregada', 'estado', 'observaciones', 'historial',
               'clienteDireccion', 'clienteContacto', 'entregadoPorLote', 'cantidadLiberada', 'rutaIniciadaEn',
-              'llegadaEn', 'ajustes'];
+              'llegadaEn', 'ajustes', 'atencionNovedades'];
     }
 
     function camposOrdenRequeridos() {
@@ -474,6 +474,7 @@ service cloud.firestore {
         && o.historial.size() == 1
         && !('entregadoPorLote' in o)
         && !('ajustes' in o)
+        && !('atencionNovedades' in o)
         && gestionaPedidosEn(o.granjaId)
         && o.historial[0].tipo == 'Creación'
         && eventoOrdenValido(o.historial[0], 0)
@@ -611,7 +612,8 @@ service cloud.firestore {
       let tipo = evento.tipo;
       let cambios = despues.diff(antes).affectedKeys();
       return tipo in ['Modificación', 'Cambio de repartidor', 'Asignación y reserva', 'Cambio de estado', 'Cancelación',
-                      'Reprogramación de saldo', 'Cierre con saldo liberado', 'Ajuste rechazado', 'Ajuste aplicado']
+                      'Reprogramación de saldo', 'Cierre con saldo liberado', 'Ajuste rechazado', 'Ajuste aplicado',
+                      'Atención de novedad']
         && despues.historial.size() == n + 1
         && eventoOrdenValido(evento, n)
         && despues.historial[0:n] == antes.historial
@@ -627,7 +629,28 @@ service cloud.firestore {
               && cambios.hasOnly(['ajustes', 'actualizadoEn', 'historial'])
               && resolucionValida(antes, despues, evento.datos.ajusteId, 'rechazada'))
             || (tipo == 'Ajuste aplicado'
-              && ajusteAplicadoValido(id, antes, despues, cambios, evento.datos.ajusteId)));
+              && ajusteAplicadoValido(id, antes, despues, cambios, evento.datos.ajusteId))
+            || (tipo == 'Atención de novedad' && atencionNovedadValida(antes, despues, cambios, evento)));
+    }
+
+    // Atención de una novedad del repartidor (estado interno, distinto del estado de la orden): solo
+    // cambia la entrada de esa novedad en atencionNovedades, que apunta a un evento "Novedad" real del
+    // historial. La novedad original no se toca; las observaciones quedan en el evento de atención.
+    function atencionNovedadValida(antes, despues, cambios, evento) {
+      let nid = evento.datos.novedadId;
+      let original = antes.historial[evento.datos.novedadIndice];
+      let d = despues.atencionNovedades.diff(antes.get('atencionNovedades', {}));
+      let a = despues.atencionNovedades[nid];
+      return cambios.hasOnly(['atencionNovedades', 'actualizadoEn', 'historial'])
+        && original.tipo == 'Novedad'
+        && original.eventoId == nid
+        && d.removedKeys().size() == 0
+        && d.affectedKeys().hasOnly([nid])
+        && d.affectedKeys().size() == 1
+        && a.estado in ['pendiente', 'en_revision', 'atendida', 'cerrada']
+        && a.actualizadoPorUid == request.auth.uid
+        && a.actualizadoPor.lower() == correoSesion()
+        && evento.descripcion.size() <= 1000;
     }
 
     // ----- acciones del repartidor -----

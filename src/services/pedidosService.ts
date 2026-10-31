@@ -13,6 +13,7 @@ import {
 import { auth, db } from '../firebase/firebaseConfig';
 import {
   Cliente,
+  EstadoAtencion,
   EstadoOrden,
   EventoOrden,
   InventarioLote,
@@ -942,5 +943,48 @@ export async function aprobarAjuste(ordenId: string, ajusteId: string, respuesta
   } catch (err) {
     console.error('Error aplicando el ajuste:', err);
     throw mensajeError('aprobar y aplicar la solicitud', err);
+  }
+}
+
+// ---------- Atención de novedades (fase 4) ----------
+
+/**
+ * Cambia el estado de atención de una novedad del repartidor y registra la observación del
+ * operador en el historial. La novedad original y el estado de la orden no cambian.
+ */
+export async function atenderNovedad(
+  ordenId: string,
+  novedadId: string,
+  estado: EstadoAtencion,
+  observacion: string
+): Promise<void> {
+  const { email, uid } = sesion();
+  try {
+    await runTransaction(db, async (tx) => {
+      const snap = await tx.get(ordenRef(ordenId));
+      if (!snap.exists()) throw new Error('La orden no existe.');
+      const orden = snap.data() as OrdenEntrega;
+      const novedadIndice = orden.historial.findIndex((e) => e.tipo === 'Novedad' && e.eventoId === novedadId);
+      if (novedadIndice < 0) throw new Error('La novedad no existe en esta orden.');
+      const anterior = orden.atencionNovedades?.[novedadId]?.estado || 'pendiente';
+      if (anterior === estado && !observacion.trim()) throw new Error('Cambia el estado o escribe una observación.');
+      const ahora = new Date().toISOString();
+      tx.update(ordenRef(ordenId), {
+        [`atencionNovedades.${novedadId}`]: { estado, actualizadoPor: email, actualizadoPorUid: uid, actualizadoEn: ahora },
+        actualizadoEn: ahora,
+        historial: [
+          ...orden.historial,
+          nuevoEvento(orden.historial.length, 'Atención de novedad', observacion.trim().slice(0, 1000), {
+            novedadId,
+            novedadIndice,
+            estadoAnterior: anterior,
+            estado
+          })
+        ]
+      });
+    });
+  } catch (err) {
+    console.error('Error atendiendo la novedad:', err);
+    throw mensajeError('registrar la atención de la novedad', err);
   }
 }

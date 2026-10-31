@@ -480,3 +480,54 @@ describe('Casos más pesados (límite de expresiones de las reglas)', () => {
     await assertSucceeds(liberarSaldo('vendedor', 'PED-W3', { estado: 'cancelado', tipo: 'Cancelación' }));
   });
 });
+
+describe('Atención de novedades (fase 4)', () => {
+  async function conNovedad(id) {
+    await crearAsignada(id, { 'LT-001': 100 });
+    await accion('repartidor', id, {}, 'Novedad', { descripcion: 'Cliente no disponible', datos: { categoria: 'Cliente no disponible' } });
+    const o = await leer(`ordenes/${id}`);
+    const indice = o.historial.length - 1;
+    return { o, indice, nid: o.historial[indice].eventoId };
+  }
+  const atender = (uid, id, { nid, indice }, estado, extra = {}) =>
+    accion(uid, id, {
+      [`atencionNovedades.${nid}`]: { estado, actualizadoPor: PERFILES[uid].email, actualizadoPorUid: uid, actualizadoEn: 'z', ...extra }
+    }, 'Atención de novedad', { descripcion: 'Se llamó al cliente', datos: { novedadId: nid, novedadIndice: indice, estado } }, false);
+
+  test('11. el operador cambia el estado de atención sin tocar la novedad original', async () => {
+    const n = await conNovedad('PED-AN');
+    await assertSucceeds(atender('vendedor', 'PED-AN', n, 'en_revision'));
+    await assertSucceeds(atender('vendedor', 'PED-AN', n, 'atendida'));
+    const o = await leer('ordenes/PED-AN');
+    assert.equal(o.atencionNovedades[n.nid].estado, 'atendida');
+    assert.deepEqual(o.historial[n.indice], n.o.historial[n.indice]); // la novedad sigue igual
+    assert.equal(o.estado, 'asignado'); // el estado de la orden no cambia
+  });
+
+  test('la atención se rechaza si no apunta a una novedad real, con estado inválido o hecha por el repartidor', async () => {
+    const n = await conNovedad('PED-AX2');
+    await assertFails(atender('vendedor', 'PED-AX2', { nid: n.nid, indice: 0 }, 'en_revision')); // índice de otro evento
+    await assertFails(atender('vendedor', 'PED-AX2', { nid: 'inventado', indice: n.indice }, 'en_revision'));
+    await assertFails(atender('vendedor', 'PED-AX2', n, 'resuelta_sola'));
+    await assertFails(atender('vendedor', 'PED-AX2', n, 'atendida', { actualizadoPorUid: 'otro' }));
+    await assertFails(atender('repartidor', 'PED-AX2', n, 'cerrada'));
+    // Ni se puede aprovechar para cambiar otra cosa de la orden
+    const o = await leer('ordenes/PED-AX2');
+    await assertFails(updateDoc(doc(como('vendedor'), 'ordenes', 'PED-AX2'), {
+      [`atencionNovedades.${n.nid}`]: { estado: 'cerrada', actualizadoPor: PERFILES.vendedor.email, actualizadoPorUid: 'vendedor', actualizadoEn: 'z' },
+      cantidadAutorizada: 1, actualizadoEn: 'y',
+      historial: [...o.historial, evento('vendedor', o.historial.length, 'Atención de novedad', { datos: { novedadId: n.nid, novedadIndice: n.indice, estado: 'cerrada' } })]
+    }));
+  });
+
+  test('las novedades de una orden ya entregada se pueden seguir atendiendo', async () => {
+    await crearAsignada('PED-AE', { 'LT-001': 100 });
+    await iniciarRuta('repartidor', 'PED-AE');
+    await llegar('repartidor', 'PED-AE');
+    await accion('repartidor', 'PED-AE', {}, 'Novedad', { descripcion: 'Diferencia en cantidades', datos: {} });
+    await entregar('repartidor', 'PED-AE', { 'LT-001': 100 });
+    const o = await leer('ordenes/PED-AE');
+    const indice = o.historial.findIndex((e) => e.tipo === 'Novedad');
+    await assertSucceeds(atender('vendedor', 'PED-AE', { nid: o.historial[indice].eventoId, indice }, 'cerrada'));
+  });
+});

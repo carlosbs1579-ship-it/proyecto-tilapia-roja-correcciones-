@@ -147,7 +147,19 @@ export type TipoEventoOrden =
   | 'Ajuste aplicado'
   | 'Ajuste rechazado'
   | 'Reprogramación de saldo'
-  | 'Cierre con saldo liberado';
+  | 'Cierre con saldo liberado'
+  // Seguimiento del operador sobre una novedad (no cambia la orden ni la novedad original)
+  | 'Atención de novedad';
+
+// Estado interno de atención de una novedad; es distinto del estado de la orden
+export type EstadoAtencion = 'pendiente' | 'en_revision' | 'atendida' | 'cerrada';
+
+export interface AtencionNovedad {
+  estado: EstadoAtencion;
+  actualizadoPor: string;
+  actualizadoPorUid: string;
+  actualizadoEn: string;
+}
 
 export type CategoriaNovedad =
   | 'Cliente no disponible'
@@ -231,6 +243,7 @@ export interface OrdenEntrega {
   rutaIniciadaEn?: string | null;
   llegadaEn?: string | null;
   ajustes?: Record<string, AjusteDistribucion>;
+  atencionNovedades?: Record<string, AtencionNovedad>; // clave: eventoId de la novedad
 }
 
 export interface Cliente {

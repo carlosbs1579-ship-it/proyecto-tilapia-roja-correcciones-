@@ -163,6 +163,33 @@ export function verificarPermiso(
   return Boolean(perfil.permisos && perfil.permisos[permiso]);
 }
 
+const clavePerfil = (uid: string) => `cultivos_lore_perfil_${uid}`;
+
+function guardarCopiaPerfil(perfil: UsuarioPerfil): void {
+  try {
+    localStorage.setItem(clavePerfil(perfil.uid), JSON.stringify(perfil));
+  } catch {}
+}
+
+/**
+ * Última copia del perfil guardada en este navegador. Solo sirve para mostrar la interfaz sin
+ * conexión; los permisos reales los sigue aplicando Firestore al sincronizar.
+ */
+function leerCopiaPerfil(uid: string): UsuarioPerfil | null {
+  try {
+    const raw = localStorage.getItem(clavePerfil(uid));
+    return raw ? normalizarPerfil(JSON.parse(raw), uid) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function borrarCopiaPerfil(uid: string): void {
+  try {
+    localStorage.removeItem(clavePerfil(uid));
+  } catch {}
+}
+
 /**
  * Obtiene o crea el perfil operativo del usuario autenticado. Un usuario nuevo queda
  * "pendiente" y sin permisos hasta que un administrador lo autorice.
@@ -177,6 +204,7 @@ export async function sincronizarPerfilUsuario(user: User): Promise<UsuarioPerfi
 
     if (snap.exists()) {
       const perfil = normalizarPerfil(snap.data() as Partial<UsuarioPerfil>, user.uid);
+      guardarCopiaPerfil(perfil);
       if (!esAdmin) return perfil;
 
       // El Administrador Maestro siempre conserva el rol de administrador y todos los permisos;
@@ -219,6 +247,9 @@ export async function sincronizarPerfilUsuario(user: User): Promise<UsuarioPerfi
     return nuevoPerfil;
   } catch (err: any) {
     console.warn('Sincronización perfil de usuario (contingencia activa):', err?.message || err);
+    // Sin conexión: se usa la última copia del perfil guardada en este navegador
+    const copia = leerCopiaPerfil(user.uid);
+    if (copia) return copia;
     // Si Carlos ingresó, generar perfil maestro en memoria como contingencia para no bloquear su sesión
     if (esAdmin) {
       return {
@@ -267,7 +298,10 @@ export function escucharPerfilPropio(
   return onSnapshot(
     doc(db, 'usuarios', uid),
     (snap) => {
-      if (snap.exists()) onUpdate(normalizarPerfil(snap.data() as Partial<UsuarioPerfil>, uid));
+      if (!snap.exists()) return;
+      const perfil = normalizarPerfil(snap.data() as Partial<UsuarioPerfil>, uid);
+      guardarCopiaPerfil(perfil);
+      onUpdate(perfil);
     },
     (err) => {
       console.warn('Error escuchando el perfil propio:', err);

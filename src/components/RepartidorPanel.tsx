@@ -249,7 +249,7 @@ const EstadoConexion: React.FC<{
   porEnviar: number;
   onEnviar: () => void;
 }> = ({ enLinea, desdeServidor, guardadaEn, porEnviar, onEnviar }) => {
-  if (enLinea && desdeServidor && porEnviar === 0) {
+  if (enLinea && porEnviar === 0) {
     return (
       <p className="flex items-center space-x-1.5 text-xs text-emerald-700">
         <Wifi className="w-4 h-4" />
@@ -265,7 +265,7 @@ const EstadoConexion: React.FC<{
         {enLinea ? <Wifi className="w-5 h-5" /> : <WifiOff className="w-5 h-5" />}
         <span>
           {enLinea ? 'Conectado' : 'Sin conexión'}
-          {!desdeServidor && guardadaEn && ` · mostrando lo guardado el ${formatearFechaColombia(guardadaEn)}`}
+          {!enLinea && !desdeServidor && guardadaEn && ` · mostrando lo guardado el ${formatearFechaColombia(guardadaEn)}`}
           {porEnviar > 0 && ` · ${porEnviar} acción(es) guardada(s) en el teléfono por enviar`}
         </span>
       </span>

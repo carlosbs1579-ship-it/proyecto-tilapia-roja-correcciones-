@@ -9,6 +9,7 @@ import { establecerFuncionActiva } from './services/pedidosService';
 import {
   sincronizarPerfilUsuario,
   escucharPerfilPropio,
+  borrarCopiaPerfil,
   esAdminMaestro,
   funcionesDisponibles
 } from './services/usuariosService';
@@ -260,9 +261,14 @@ export default function App() {
   const handleCerrarSesion = async () => {
     // Al volver a ingresar, una cuenta con varias funciones elige de nuevo
     if (usuario) guardarFuncion(usuario.uid, null);
-    // La copia local de los lotes no queda en el navegador para la siguiente persona
+    // Las copias locales (lotes, perfil, entregas) no quedan en el navegador para la siguiente
+    // persona. La bandeja de acciones del repartidor sin enviar se conserva para no perderlas.
     try {
       localStorage.removeItem('cultivos_lore_lotes_backup');
+      if (usuario) {
+        borrarCopiaPerfil(usuario.uid);
+        localStorage.removeItem(`cultivos_lore_mis_entregas_${usuario.uid}`);
+      }
     } catch {}
     try {
       await signOut(auth);

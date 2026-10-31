@@ -120,7 +120,8 @@ export const DetalleEntregaRepartidor: React.FC<DetalleEntregaRepartidorProps> =
 
   const avisar = (texto: string) => {
     setErrorMsg(null);
-    setMensaje(texto);
+    // Sin conexión la acción solo queda guardada en el teléfono: el aviso lo dice
+    setMensaje(navigator.onLine ? texto : `${texto} Quedó guardado en el teléfono y se enviará al recuperar la señal.`);
     setPanel(null);
   };
 

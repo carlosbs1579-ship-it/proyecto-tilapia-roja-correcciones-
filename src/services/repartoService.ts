@@ -10,7 +10,7 @@ import {
 } from 'firebase/firestore';
 import { auth, db } from '../firebase/firebaseConfig';
 import { AjusteDistribucion, EventoOrden, OrdenEntrega, TipoEventoOrden } from '../types';
-import { ESTADOS_CON_RESERVA, generarId, redondear, saldoLote } from './pedidosService';
+import { ESTADOS_CON_RESERVA, ETIQUETA_ESTADO_ORDEN, generarId, redondear, saldoLote } from './pedidosService';
 
 // Acciones del repartidor sobre sus órdenes. Cada acción se guarda primero en una bandeja local del
 // teléfono (localStorage) con un identificador único, y se envía a Firebase en una transacción que:
@@ -289,7 +289,7 @@ async function aplicarAccion(uid: string, accion: AccionReparto): Promise<'aplic
     switch (accion.tipo) {
       case 'Inicio de ruta': {
         if (!['asignado', 'en_preparacion'].includes(orden.estado)) {
-          throw new ConflictoReparto(`La orden está "${orden.estado}"; ya no se puede iniciar la ruta.`);
+          throw new ConflictoReparto(`La orden está "${ETIQUETA_ESTADO_ORDEN[orden.estado]}"; ya no se puede iniciar la ruta.`);
         }
         cambios = { estado: 'en_ruta', rutaIniciadaEn: accion.registradaEn, llegadaEn: null };
         break;

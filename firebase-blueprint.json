@@ -45,6 +45,62 @@
       },
       "required": ["codigoLote", "granjaId", "hashAnclaje", "registros"]
     },
+    "Orden": {
+      "title": "Orden de entrega",
+      "description": "Pedido de un cliente con su distribución por lotes de origen (cada lote pertenece a una piscina). No modifica los lotes; solo agrega eventos a su historial",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Código de la orden, igual al ID del documento (PED-AAAAMMDD-XXXXX)" },
+        "granjaId": { "type": "string" },
+        "clienteId": { "type": "string" },
+        "clienteNombre": { "type": "string" },
+        "creadoPor": { "type": "string", "description": "Correo de quien creó la orden" },
+        "creadoPorUid": { "type": "string" },
+        "repartidorUid": { "type": ["string", "null"] },
+        "repartidorNombre": { "type": ["string", "null"] },
+        "fechaProgramada": { "type": ["string", "null"], "description": "YYYY-MM-DD" },
+        "unidad": { "type": "string", "enum": ["peces", "kg"], "description": "Unidad explícita; no se convierte" },
+        "cantidadSolicitada": { "type": "number" },
+        "procedencias": { "type": "object", "description": "Mapa código de lote -> { estanque, cantidad, unidad } (hasta 3 lotes)" },
+        "cantidadAutorizada": { "type": "number", "description": "Suma reservada en los lotes" },
+        "cantidadEntregada": { "type": "number" },
+        "estado": { "type": "string", "enum": ["borrador", "asignado", "en_preparacion", "en_ruta", "entrega_parcial", "entregado", "requiere_revision", "cancelado"] },
+        "observaciones": { "type": "string" },
+        "historial": { "type": "array", "description": "Eventos de auditoría; solo se agregan" },
+        "creadoEn": { "type": "string" },
+        "actualizadoEn": { "type": "string" }
+      },
+      "required": ["id", "granjaId", "clienteId", "unidad", "cantidadSolicitada", "procedencias", "estado", "historial"]
+    },
+    "Cliente": {
+      "title": "Cliente",
+      "type": "object",
+      "properties": {
+        "granjaId": { "type": "string" },
+        "nombre": { "type": "string" },
+        "contacto": { "type": "string" },
+        "creadoPor": { "type": "string" },
+        "creadoPorUid": { "type": "string" },
+        "creadoEn": { "type": "string" },
+        "actualizadoEn": { "type": "string" }
+      },
+      "required": ["granjaId", "nombre"]
+    },
+    "InventarioLote": {
+      "title": "Inventario del lote",
+      "description": "Reservado y entregado acumulados de un lote; disponible = cosechado - reservado - entregado",
+      "type": "object",
+      "properties": {
+        "codigoLote": { "type": "string" },
+        "granjaId": { "type": "string" },
+        "unidad": { "type": "string", "enum": ["peces", "kg"], "description": "Fijada por la primera reserva" },
+        "reservado": { "type": "number" },
+        "entregado": { "type": "number" },
+        "ultimaOrden": { "type": "string", "description": "Orden del último movimiento" },
+        "movidoEn": { "type": "string", "description": "Hora del servidor del último movimiento (Timestamp)" }
+      },
+      "required": ["codigoLote", "granjaId", "unidad", "reservado", "entregado"]
+    },
     "Contador": {
       "title": "Contador",
       "description": "Contador atómico para códigos de lote y consecutivos globales",
@@ -97,7 +153,19 @@
     },
     "/entregas/{codigoLote}": {
       "schema": "Entregas",
-      "description": "Entregas a clientes de cada lote sellado; separadas del documento del lote"
+      "description": "Entregas a clientes de cada lote sellado (sistema anterior, solo lectura)"
+    },
+    "/ordenes/{ordenId}": {
+      "schema": "Orden",
+      "description": "Órdenes de entrega vinculadas a uno o varios lotes"
+    },
+    "/clientes/{clienteId}": {
+      "schema": "Cliente",
+      "description": "Clientes de la granja"
+    },
+    "/inventarioLotes/{codigoLote}": {
+      "schema": "InventarioLote",
+      "description": "Reservas y entregas acumuladas por lote"
     },
     "/contadores/{contadorId}": {
       "schema": "Contador",

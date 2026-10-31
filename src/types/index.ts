@@ -112,6 +112,97 @@ export interface EntregasLote {
   actualizadoEn: string;
 }
 
+// ---------- Pedidos (órdenes de entrega) ----------
+// Las órdenes viven en ordenes/{id}, separadas de los lotes: nunca modifican un lote ni su hash.
+// La disponibilidad de cada lote se controla en inventarioLotes/{codigoLote}.
+
+// Unidad explícita de cada orden. No se convierte entre peces y kg.
+export type UnidadMedida = 'peces' | 'kg';
+
+export type EstadoOrden =
+  | 'borrador'
+  | 'asignado'
+  | 'en_preparacion'
+  | 'en_ruta'
+  | 'entrega_parcial'
+  | 'entregado'
+  | 'requiere_revision'
+  | 'cancelado';
+
+export type TipoEventoOrden =
+  | 'Creación'
+  | 'Modificación'
+  | 'Asignación y reserva'
+  | 'Cambio de repartidor'
+  | 'Cambio de estado'
+  | 'Cancelación';
+
+/**
+ * Cantidad que la orden toma de un lote. Un lote pertenece a una sola piscina, así que la
+ * piscina de origen es la del lote (se copia para conservar la procedencia).
+ */
+export interface ProcedenciaOrden {
+  estanque: string;
+  cantidad: number;
+  unidad: UnidadMedida;
+}
+
+export interface EventoOrden {
+  indice: number;
+  tipo: TipoEventoOrden;
+  fecha: string; // ISO
+  registradoPor: string; // correo
+  registradoPorUid: string;
+  descripcion: string;
+  datos: Record<string, any>;
+}
+
+export interface OrdenEntrega {
+  id: string; // también es el ID del documento, ej: PED-20261030-K7Q2M
+  granjaId: string;
+  clienteId: string;
+  clienteNombre: string;
+  creadoPor: string;
+  creadoPorUid: string;
+  repartidorUid: string | null;
+  repartidorNombre: string | null;
+  creadoEn: string;
+  actualizadoEn: string;
+  fechaProgramada: string | null; // YYYY-MM-DD
+  unidad: UnidadMedida;
+  cantidadSolicitada: number;
+  procedencias: Record<string, ProcedenciaOrden>; // clave: código del lote de origen
+  cantidadAutorizada: number; // suma reservada en los lotes
+  cantidadEntregada: number; // se registrará con la confirmación de entrega (fase posterior)
+  estado: EstadoOrden;
+  observaciones: string;
+  historial: EventoOrden[]; // solo se agregan eventos
+}
+
+export interface Cliente {
+  id: string;
+  granjaId: string;
+  nombre: string;
+  contacto: string;
+  creadoPor: string;
+  creadoPorUid: string;
+  creadoEn: string;
+  actualizadoEn: string;
+}
+
+/**
+ * Reservas y entregas acumuladas de un lote. La unidad queda fijada con la primera reserva.
+ */
+export interface InventarioLote {
+  codigoLote: string;
+  granjaId: string;
+  unidad: UnidadMedida;
+  reservado: number;
+  entregado: number;
+  ultimaOrden: string; // orden que hizo el último movimiento (lo verifican las reglas)
+  movidoEn: unknown; // hora del servidor del último movimiento (Timestamp de Firestore)
+}
+
 export interface EstanqueConfig {
   codigo: string;
   nombre: string;
@@ -157,6 +248,7 @@ export interface PermisosUsuario {
   gestionarEstanques: boolean; // Crear otras piscinas / estanques
   gestionarConfiguracion: boolean; // Modificar rangos de agua y ficha nutricional
   administrarUsuarios: boolean; // Otorgar permisos y modificar cargos
+  gestionarPedidos: boolean; // Crear órdenes de entrega, reservar cantidades y asignar repartidor
 }
 
 // admin: gestiona usuarios y configuración; operario: trabaja según sus permisos; consulta: solo lectura

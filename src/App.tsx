@@ -15,6 +15,7 @@ import {
 import { Navbar, TabTipo, tabsDeFuncion } from './components/Navbar';
 import { SelectorFuncion } from './components/SelectorFuncion';
 import { RepartidorPanel } from './components/RepartidorPanel';
+import { PedidosTab } from './components/PedidosTab';
 import { DashboardTab } from './components/DashboardTab';
 import { LotesTab } from './components/LotesTab';
 import { AnaliticaTab } from './components/AnaliticaTab';
@@ -444,7 +445,7 @@ export default function App() {
         )}
 
         {/* SIN FUNCIÓN DE PRODUCCIÓN: SIN ACCESO A LOTES */}
-        {!puedeVerProduccion && (tabActiva === 'inicio' || tabActiva === 'lotes' || tabActiva === 'analitica') && accesoRestringido}
+        {!puedeVerProduccion && (tabActiva === 'inicio' || tabActiva === 'lotes' || tabActiva === 'pedidos' || tabActiva === 'analitica') && accesoRestringido}
 
         {puedeVerProduccion && (
         <>
@@ -468,6 +469,11 @@ export default function App() {
             onSeleccionarLote={(lote) => setLoteDetalle(lote)}
             onAbrirQr={(lote) => setLoteQr(lote)}
           />
+        )}
+
+        {/* PEDIDOS: ÓRDENES DE ENTREGA VINCULADAS A LOS LOTES */}
+        {tabActiva === 'pedidos' && (
+          <PedidosTab lotes={lotes} perfilActual={perfilUsuario} />
         )}
 
         {/* 3. ANALÍTICA */}

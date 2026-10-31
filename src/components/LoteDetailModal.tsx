@@ -29,7 +29,7 @@ import { cerrarLote, escucharLoteIndividual, modificarDatosSiembraOPiscina } fro
 import { previsualizarPdfLote, generarYSubirPdfLote, descargarPdfLoteLocal } from '../services/pdfService';
 import { formatearFechaColombia } from '../utils/constants';
 import { evaluarParametroAgua } from '../services/calculosService';
-import { esAdminMaestro, esAdministrador, verificarPermiso } from '../services/usuariosService';
+import { esAdminMaestro, verificarPermiso } from '../services/usuariosService';
 import { EntregasPanel } from './EntregasPanel';
 
 interface LoteDetailModalProps {
@@ -475,12 +475,12 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
               </div>
             </div>
 
-            {/* ENTREGAS A CLIENTES (solo lotes sellados; cadena aparte de la producción) */}
+            {/* ENTREGAS A CLIENTES DEL SISTEMA ANTERIOR (solo historial; las nuevas van por Pedidos) */}
             {lote.estado === 'cerrado' && (
               <EntregasPanel
                 lote={lote}
                 userEmail={userEmail}
-                puedeGestionar={esAdmin || esAdministrador(perfilActual)}
+                puedeGestionar={false}
               />
             )}
 

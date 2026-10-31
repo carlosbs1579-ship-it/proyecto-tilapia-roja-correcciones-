@@ -21,6 +21,7 @@ export const PERMISOS_DEFAULT_ADMIN: PermisosUsuario = {
   gestionarEstanques: true,
   gestionarConfiguracion: true,
   administrarUsuarios: true,
+  gestionarPedidos: true,
 };
 
 export const PERMISOS_DEFAULT_OPERARIO: PermisosUsuario = {
@@ -30,6 +31,7 @@ export const PERMISOS_DEFAULT_OPERARIO: PermisosUsuario = {
   gestionarEstanques: false,
   gestionarConfiguracion: false,
   administrarUsuarios: false,
+  gestionarPedidos: false,
 };
 
 /**

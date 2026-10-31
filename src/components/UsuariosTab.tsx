@@ -225,6 +225,8 @@ export const UsuariosTab: React.FC<UsuariosTabProps> = ({
   const aplicarPreset = (uid: string, preset: 'siembra' | 'cosecha' | 'total' | 'lectura') => {
     let nuevosPermisos: PermisosUsuario;
     const rolesActuales = edicionUsuarios[uid]?.roles || [];
+    // Las plantillas de producción no tocan el permiso de pedidos que ya tenga
+    const gestionarPedidos = Boolean(edicionUsuarios[uid]?.permisos?.gestionarPedidos);
     let roles: RolFuncional[] = ordenarRoles([...rolesActuales.filter((r) => r !== 'admin'), 'operator']);
 
     switch (preset) {
@@ -239,7 +241,8 @@ export const UsuariosTab: React.FC<UsuariosTabProps> = ({
           cerrarLotes: false,
           gestionarEstanques: false,
           gestionarConfiguracion: false,
-          administrarUsuarios: false
+          administrarUsuarios: false,
+          gestionarPedidos
         };
         break;
       case 'cosecha':
@@ -249,7 +252,8 @@ export const UsuariosTab: React.FC<UsuariosTabProps> = ({
           cerrarLotes: true,
           gestionarEstanques: false,
           gestionarConfiguracion: false,
-          administrarUsuarios: false
+          administrarUsuarios: false,
+          gestionarPedidos
         };
         break;
       case 'lectura':
@@ -875,6 +879,27 @@ export const UsuariosTab: React.FC<UsuariosTabProps> = ({
                             <p className="text-[10px] text-slate-400 font-normal">Autorizar a otros operarios y otorgar permisos</p>
                           </div>
                         </label>
+
+                        {/* 7. Gestionar pedidos */}
+                        <label
+                          className={`flex items-start space-x-2 p-2 rounded-lg border text-xs cursor-pointer transition-colors ${
+                            ed.permisos.gestionarPedidos
+                              ? 'bg-sky-50 border-sky-300 text-sky-950 font-semibold'
+                              : 'bg-slate-50 border-slate-200 text-slate-600'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            disabled={bloqueoPermisos}
+                            checked={Boolean(ed.permisos.gestionarPedidos)}
+                            onChange={() => handleTogglePermiso(u.uid, 'gestionarPedidos')}
+                            className="mt-0.5 rounded text-sky-600 focus:ring-sky-500"
+                          />
+                          <div>
+                            <span>Gestionar pedidos</span>
+                            <p className="text-[10px] text-slate-400 font-normal">Crear órdenes de entrega, reservar cantidades y asignar repartidor</p>
+                          </div>
+                        </label>
                       </div>
                     </div>
 
@@ -1024,6 +1049,15 @@ export const UsuariosTab: React.FC<UsuariosTabProps> = ({
                 }`}
               >
                 {perfilActual?.permisos?.gestionarConfiguracion ? '✓ Autorizado' : '✗ Sin permiso'}: Modificar configuración
+              </div>
+              <div
+                className={`p-2.5 rounded-lg border ${
+                  perfilActual?.permisos?.gestionarPedidos
+                    ? 'bg-emerald-50 text-emerald-900 border-emerald-300 font-semibold'
+                    : 'bg-slate-50 text-slate-400 border-slate-200'
+                }`}
+              >
+                {perfilActual?.permisos?.gestionarPedidos ? '✓ Autorizado' : '✗ Sin permiso'}: Gestionar pedidos
               </div>
             </div>
           </div>

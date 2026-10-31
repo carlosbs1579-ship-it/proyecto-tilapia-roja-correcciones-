@@ -79,6 +79,9 @@ export const EntregasPanel: React.FC<EntregasPanelProps> = ({ lote, userEmail, p
     );
   }, [lote.codigo]);
 
+  // En modo historial (las entregas nuevas van por Pedidos), un lote sin registros no muestra el panel
+  if (!puedeGestionar && !cargando && !errorCarga && !entregasDoc) return null;
+
   const entregas = calcularEstadoEntregas(entregasDoc?.registros || []);
   const cosechadaKg = Number(lote.resumen?.biomasaCosechadaKg) || 0;
   const comprometidoKg = entregas.filter((e) => e.estado !== 'anulada').reduce((s, e) => s + e.cantidadKg, 0);
@@ -151,6 +154,11 @@ export const EntregasPanel: React.FC<EntregasPanelProps> = ({ lote, userEmail, p
           <p className="text-[11px] text-slate-500 mt-1 max-w-2xl">
             Estos registros forman una cadena propia anclada al hash de cierre del lote. No modifican los registros de producción sellados ni su hash.
           </p>
+          {!puedeGestionar && (
+            <p className="text-[11px] text-indigo-800 mt-1 max-w-2xl font-medium">
+              Historial del sistema anterior (solo lectura). Las nuevas entregas se gestionan como órdenes en la pestaña "Pedidos".
+            </p>
+          )}
         </div>
 
         <div className="flex items-center space-x-2">

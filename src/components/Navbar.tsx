@@ -13,7 +13,7 @@ import { User } from 'firebase/auth';
 import { RolFuncional, UsuarioPerfil } from '../types';
 import { esAdminMaestro, nombreFuncion } from '../services/usuariosService';
 
-export type TabTipo = 'inicio' | 'lotes' | 'analitica' | 'configuracion' | 'usuarios' | 'reparto';
+export type TabTipo = 'inicio' | 'lotes' | 'pedidos' | 'analitica' | 'configuracion' | 'usuarios' | 'reparto';
 
 interface DefinicionTab {
   id: TabTipo;
@@ -25,6 +25,7 @@ interface DefinicionTab {
 const TABS: Record<TabTipo, DefinicionTab> = {
   inicio: { id: 'inicio', etiqueta: 'Inicio', etiquetaMovil: 'Inicio' },
   lotes: { id: 'lotes', etiqueta: 'Lotes', etiquetaMovil: 'Lotes' },
+  pedidos: { id: 'pedidos', etiqueta: 'Pedidos', etiquetaMovil: 'Pedidos' },
   analitica: { id: 'analitica', etiqueta: 'Analítica', etiquetaMovil: 'Analítica' },
   configuracion: { id: 'configuracion', etiqueta: 'Configuración & Estanques', etiquetaMovil: 'Configuración' },
   usuarios: {
@@ -41,7 +42,7 @@ const TABS: Record<TabTipo, DefinicionTab> = {
   }
 };
 
-const TABS_PRODUCCION: TabTipo[] = ['inicio', 'lotes', 'analitica', 'configuracion', 'usuarios'];
+const TABS_PRODUCCION: TabTipo[] = ['inicio', 'lotes', 'pedidos', 'analitica', 'configuracion', 'usuarios'];
 
 /**
  * Pestañas visibles según la función activa. Ocultarlas no da ni quita permisos: los controla

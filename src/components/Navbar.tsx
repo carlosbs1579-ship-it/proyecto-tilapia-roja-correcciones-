@@ -2,27 +2,64 @@ import React from 'react';
 import {
   Fish,
   Users,
-  Settings,
   LogIn,
   LogOut,
   User as UserIcon,
-  Plus,
   Crown,
-  LayoutDashboard,
-  Layers,
-  BarChart2
+  Truck,
+  Repeat
 } from 'lucide-react';
 import { User } from 'firebase/auth';
-import { UsuarioPerfil } from '../types';
-import { esAdminMaestro } from '../services/usuariosService';
+import { RolFuncional, UsuarioPerfil } from '../types';
+import { esAdminMaestro, nombreFuncion } from '../services/usuariosService';
 
-export type TabTipo = 'inicio' | 'lotes' | 'analitica' | 'configuracion' | 'usuarios';
+export type TabTipo = 'inicio' | 'lotes' | 'analitica' | 'configuracion' | 'usuarios' | 'reparto';
+
+interface DefinicionTab {
+  id: TabTipo;
+  etiqueta: string;
+  etiquetaMovil: string;
+  icono?: React.ReactNode;
+}
+
+const TABS: Record<TabTipo, DefinicionTab> = {
+  inicio: { id: 'inicio', etiqueta: 'Inicio', etiquetaMovil: 'Inicio' },
+  lotes: { id: 'lotes', etiqueta: 'Lotes', etiquetaMovil: 'Lotes' },
+  analitica: { id: 'analitica', etiqueta: 'Analítica', etiquetaMovil: 'Analítica' },
+  configuracion: { id: 'configuracion', etiqueta: 'Configuración & Estanques', etiquetaMovil: 'Configuración' },
+  usuarios: {
+    id: 'usuarios',
+    etiqueta: 'Personal & Permisos',
+    etiquetaMovil: 'Personal & Permisos',
+    icono: <Users className="w-4 h-4 text-sky-400" />
+  },
+  reparto: {
+    id: 'reparto',
+    etiqueta: 'Reparto',
+    etiquetaMovil: 'Reparto',
+    icono: <Truck className="w-4 h-4 text-sky-400" />
+  }
+};
+
+const TABS_PRODUCCION: TabTipo[] = ['inicio', 'lotes', 'analitica', 'configuracion', 'usuarios'];
+
+/**
+ * Pestañas visibles según la función activa. Ocultarlas no da ni quita permisos: los controla
+ * Firestore según los roles asignados.
+ */
+export function tabsDeFuncion(funcion: RolFuncional | null): TabTipo[] {
+  return funcion === 'courier' ? ['reparto'] : TABS_PRODUCCION;
+}
 
 interface NavbarProps {
   tabActiva: TabTipo;
   setTabActiva: (tab: TabTipo) => void;
   usuario: User | null;
   perfilUsuario: UsuarioPerfil | null;
+  funcionActiva: RolFuncional | null;
+  puedeCambiarFuncion: boolean;
+  eligiendoFuncion?: boolean;
+  onCambiarFuncion: () => void;
   onAbrirAuth: () => void;
   onCerrarSesion: () => void;
   onNuevoLote: () => void;
@@ -33,19 +70,25 @@ export const Navbar: React.FC<NavbarProps> = ({
   setTabActiva,
   usuario,
   perfilUsuario,
+  funcionActiva,
+  puedeCambiarFuncion,
+  eligiendoFuncion = false,
+  onCambiarFuncion,
   onAbrirAuth,
   onCerrarSesion,
   onNuevoLote
 }) => {
   const esAdmin = esAdminMaestro(usuario?.email);
-  const puedeCrear = esAdmin || Boolean(perfilUsuario?.estado === 'activo' && perfilUsuario?.permisos?.crearLotes);
+  // Mientras se elige la función no se muestran pestañas
+  const tabs = eligiendoFuncion ? [] : tabsDeFuncion(funcionActiva).map((id) => TABS[id]);
+  const tabInicial = tabsDeFuncion(funcionActiva)[0];
 
   return (
     <header className="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-40">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo y Nombre de la Granja */}
-          <div className="flex items-center space-x-3 cursor-pointer shrink-0" onClick={() => setTabActiva('inicio')}>
+          <div className="flex items-center space-x-3 cursor-pointer shrink-0" onClick={() => setTabActiva(tabInicial)}>
             <div className="w-10 h-10 rounded-lg bg-sky-600 flex items-center justify-center shadow-inner">
               <Fish className="w-6 h-6 text-white" />
             </div>
@@ -60,68 +103,22 @@ export const Navbar: React.FC<NavbarProps> = ({
             </div>
           </div>
 
-          {/* Navegación por 5 pestañas principales (Desktop) */}
+          {/* Navegación por pestañas de la función activa (Desktop) */}
           <nav className="hidden md:flex items-center space-x-1">
-            {/* 1. Inicio */}
-            <button
-              onClick={() => setTabActiva('inicio')}
-              className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                tabActiva === 'inicio'
-                  ? 'bg-slate-800 text-sky-400 border-b-2 border-sky-400 font-bold'
-                  : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
-              }`}
-            >
-              Inicio
-            </button>
-
-            {/* 2. Lotes */}
-            <button
-              onClick={() => setTabActiva('lotes')}
-              className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                tabActiva === 'lotes'
-                  ? 'bg-slate-800 text-sky-400 border-b-2 border-sky-400 font-bold'
-                  : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
-              }`}
-            >
-              Lotes
-            </button>
-
-            {/* 3. Analítica */}
-            <button
-              onClick={() => setTabActiva('analitica')}
-              className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                tabActiva === 'analitica'
-                  ? 'bg-slate-800 text-sky-400 border-b-2 border-sky-400 font-bold'
-                  : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
-              }`}
-            >
-              Analítica
-            </button>
-
-            {/* 4. Configuración de Granja */}
-            <button
-              onClick={() => setTabActiva('configuracion')}
-              className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                tabActiva === 'configuracion'
-                  ? 'bg-slate-800 text-sky-400 border-b-2 border-sky-400 font-bold'
-                  : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
-              }`}
-            >
-              Configuración & Estanques
-            </button>
-
-            {/* 5. Personal y Permisos */}
-            <button
-              onClick={() => setTabActiva('usuarios')}
-              className={`px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center space-x-1.5 ${
-                tabActiva === 'usuarios'
-                  ? 'bg-slate-800 text-sky-400 border-b-2 border-sky-400 font-bold'
-                  : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
-              }`}
-            >
-              <Users className="w-4 h-4 text-sky-400" />
-              <span>Personal & Permisos</span>
-            </button>
+            {tabs.map((t) => (
+              <button
+                key={t.id}
+                onClick={() => setTabActiva(t.id)}
+                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${t.icono ? 'flex items-center space-x-1.5' : ''} ${
+                  tabActiva === t.id
+                    ? 'bg-slate-800 text-sky-400 border-b-2 border-sky-400 font-bold'
+                    : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+                }`}
+              >
+                {t.icono}
+                <span>{t.etiqueta}</span>
+              </button>
+            ))}
           </nav>
 
           {/* Acciones de usuario */}
@@ -137,21 +134,35 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <div className="hidden lg:block text-left text-xs">
                     <p className="font-semibold text-slate-200 truncate max-w-[150px]">{usuario.email}</p>
                     <p className={`text-[10px] flex items-center truncate max-w-[150px] ${
-                      esAdmin
+                      funcionActiva === 'admin'
                         ? 'text-amber-400 font-bold'
-                        : perfilUsuario?.estado === 'activo'
+                        : funcionActiva
                         ? 'text-emerald-400 font-semibold'
                         : 'text-amber-400'
                     }`}>
-                      {esAdmin ? (
+                      {funcionActiva ? (
+                        <>{nombreFuncion(perfilUsuario, funcionActiva)}</>
+                      ) : eligiendoFuncion ? (
+                        <>Elige una función</>
+                      ) : esAdmin ? (
                         <>Administrador Maestro</>
                       ) : perfilUsuario?.estado === 'activo' ? (
-                        <>{perfilUsuario.cargo || 'Operario Activo'}</>
+                        <>Sin función asignada</>
                       ) : (
                         <>En espera de Carlos</>
                       )}
                     </p>
                   </div>
+                  {puedeCambiarFuncion && (
+                    <button
+                      onClick={onCambiarFuncion}
+                      title="Cambiar de función"
+                      className="inline-flex items-center space-x-1 px-2 py-1 text-[11px] font-semibold text-sky-300 hover:text-white rounded-md hover:bg-slate-800 transition-colors"
+                    >
+                      <Repeat className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">Cambiar función</span>
+                    </button>
+                  )}
                   <button
                     onClick={onCerrarSesion}
                     title="Cerrar sesión"
@@ -173,38 +184,17 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
         </div>
 
-        {/* Navegación móvil con 5 pestañas */}
+        {/* Navegación móvil */}
         <div className="md:hidden flex border-t border-slate-800 py-2 space-x-1 overflow-x-auto">
-          <button
-            onClick={() => setTabActiva('inicio')}
-            className={`px-3 py-1 text-xs rounded font-medium whitespace-nowrap ${tabActiva === 'inicio' ? 'bg-sky-600 text-white font-bold' : 'text-slate-300'}`}
-          >
-            Inicio
-          </button>
-          <button
-            onClick={() => setTabActiva('lotes')}
-            className={`px-3 py-1 text-xs rounded font-medium whitespace-nowrap ${tabActiva === 'lotes' ? 'bg-sky-600 text-white font-bold' : 'text-slate-300'}`}
-          >
-            Lotes
-          </button>
-          <button
-            onClick={() => setTabActiva('analitica')}
-            className={`px-3 py-1 text-xs rounded font-medium whitespace-nowrap ${tabActiva === 'analitica' ? 'bg-sky-600 text-white font-bold' : 'text-slate-300'}`}
-          >
-            Analítica
-          </button>
-          <button
-            onClick={() => setTabActiva('configuracion')}
-            className={`px-3 py-1 text-xs rounded font-medium whitespace-nowrap ${tabActiva === 'configuracion' ? 'bg-sky-600 text-white font-bold' : 'text-slate-300'}`}
-          >
-            Configuración
-          </button>
-          <button
-            onClick={() => setTabActiva('usuarios')}
-            className={`px-3 py-1 text-xs rounded font-medium whitespace-nowrap ${tabActiva === 'usuarios' ? 'bg-sky-600 text-white font-bold' : 'text-slate-300'}`}
-          >
-            Personal & Permisos
-          </button>
+          {tabs.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setTabActiva(t.id)}
+              className={`px-3 py-1 text-xs rounded font-medium whitespace-nowrap ${tabActiva === t.id ? 'bg-sky-600 text-white font-bold' : 'text-slate-300'}`}
+            >
+              {t.etiquetaMovil}
+            </button>
+          ))}
         </div>
       </div>
     </header>

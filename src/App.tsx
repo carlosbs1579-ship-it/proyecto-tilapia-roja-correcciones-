@@ -1,13 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { onAuthStateChanged, signOut, User } from 'firebase/auth';
 import { auth, db } from './firebase/firebaseConfig';
-import { Lote, ConfiguracionGeneral, UsuarioPerfil } from './types';
+import { Lote, ConfiguracionGeneral, UsuarioPerfil, RolFuncional } from './types';
 import { CONFIG_DEFAULT } from './utils/constants';
 import { escucharConfiguracion } from './services/configService';
 import { escucharLotes } from './services/lotesService';
-import { sincronizarPerfilUsuario, esAdminMaestro, esMiembroActivo } from './services/usuariosService';
+import {
+  sincronizarPerfilUsuario,
+  escucharPerfilPropio,
+  esAdminMaestro,
+  funcionesDisponibles
+} from './services/usuariosService';
 
-import { Navbar, TabTipo } from './components/Navbar';
+import { Navbar, TabTipo, tabsDeFuncion } from './components/Navbar';
+import { SelectorFuncion } from './components/SelectorFuncion';
+import { RepartidorPanel } from './components/RepartidorPanel';
 import { DashboardTab } from './components/DashboardTab';
 import { LotesTab } from './components/LotesTab';
 import { AnaliticaTab } from './components/AnaliticaTab';
@@ -21,6 +28,25 @@ import { PublicTraceabilityView } from './components/PublicTraceabilityView';
 import { AlertCircle, Lock, Crown, ShieldAlert, Users } from 'lucide-react';
 
 const SESION_STORAGE_KEY_ANTIGUA = 'cultivos_lore_sesion_activa';
+
+// Función elegida por cada cuenta en este navegador. Solo decide qué se muestra; los permisos
+// reales los aplica Firestore según los roles asignados.
+const claveFuncion = (uid: string) => `cultivos_lore_funcion_${uid}`;
+
+function leerFuncionGuardada(uid: string): string | null {
+  try {
+    return localStorage.getItem(claveFuncion(uid));
+  } catch {
+    return null;
+  }
+}
+
+function guardarFuncion(uid: string, funcion: RolFuncional | null): void {
+  try {
+    if (funcion) localStorage.setItem(claveFuncion(uid), funcion);
+    else localStorage.removeItem(claveFuncion(uid));
+  } catch {}
+}
 
 interface UsuarioSesion {
   uid: string;
@@ -65,6 +91,53 @@ export default function App() {
   const [loteQr, setLoteQr] = useState<Lote | null>(null);
 
   const esAdmin = esAdminMaestro(usuario?.email);
+
+  // Funciones (roles) con las que la cuenta puede trabajar y la elegida en esta sesión
+  const [funcionActiva, setFuncionActiva] = useState<RolFuncional | null>(null);
+  const funciones = usuario ? funcionesDisponibles(perfilUsuario) : [];
+  const clavefunciones = funciones.join(',');
+  const mostrarSelectorFuncion = Boolean(usuario) && funciones.length > 1 && !funcionActiva;
+  const puedeVerProduccion = funcionActiva === 'admin' || funcionActiva === 'operator';
+
+  // 1. Elegir la función: directa si solo hay una; la guardada si sigue asignada; si no, el selector
+  useEffect(() => {
+    if (!usuario || funciones.length === 0) {
+      setFuncionActiva(null);
+      return;
+    }
+    if (funciones.length === 1) {
+      setFuncionActiva(funciones[0]);
+      return;
+    }
+    setFuncionActiva((actual) => {
+      if (actual && funciones.includes(actual)) return actual;
+      const guardada = leerFuncionGuardada(usuario.uid) as RolFuncional | null;
+      return guardada && funciones.includes(guardada) ? guardada : null;
+    });
+  }, [usuario?.uid, clavefunciones]);
+
+  // Mantener la pestaña dentro de las de la función activa
+  useEffect(() => {
+    const permitidas = tabsDeFuncion(funcionActiva);
+    if (!permitidas.includes(tabActiva)) setTabActiva(permitidas[0]);
+    if (funcionActiva !== 'admin' && funcionActiva !== 'operator') {
+      setLoteDetalle(null);
+      setLoteQr(null);
+      setNuevoLoteModalOpen(false);
+    }
+  }, [funcionActiva]);
+
+  const handleSeleccionarFuncion = (funcion: RolFuncional) => {
+    if (!usuario || !funciones.includes(funcion)) return;
+    guardarFuncion(usuario.uid, funcion);
+    setFuncionActiva(funcion);
+    setTabActiva(tabsDeFuncion(funcion)[0]);
+  };
+
+  const handleCambiarFuncion = () => {
+    if (usuario) guardarFuncion(usuario.uid, null);
+    setFuncionActiva(null);
+  };
 
 
   // 2. Escuchar cambios de autenticación de Firebase
@@ -114,6 +187,13 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
+  // 2b. Mantener el perfil propio al día (roles, nombres de función y estado) una vez sincronizado
+  const perfilSincronizado = Boolean(perfilUsuario);
+  useEffect(() => {
+    if (!usuario?.uid || !perfilSincronizado) return;
+    return escucharPerfilPropio(usuario.uid, (perfil) => setPerfilUsuario(perfil));
+  }, [usuario?.uid, perfilSincronizado]);
+
   // 3. Escuchar configuración en tiempo real
   useEffect(() => {
     const unsubConfig = escucharConfiguracion(
@@ -129,8 +209,15 @@ export default function App() {
     return () => unsubConfig();
   }, []);
 
-  // 4. Escuchar en tiempo real los lotes de la granja (permanentes en vivo)
+  // 4. Escuchar en tiempo real los lotes de la granja (permanentes en vivo). Solo para las
+  // funciones de producción: Firestore no permite listarlos a los demás.
   useEffect(() => {
+    if (!puedeVerProduccion) {
+      setLotes([]);
+      setLotesCargando(false);
+      setErrorConexion(null);
+      return;
+    }
     setLotesCargando(true);
     const unsubLotes = escucharLotes(
       (listaLotes) => {
@@ -161,9 +248,15 @@ export default function App() {
     );
 
     return () => unsubLotes();
-  }, []);
+  }, [puedeVerProduccion]);
 
   const handleCerrarSesion = async () => {
+    // Al volver a ingresar, una cuenta con varias funciones elige de nuevo
+    if (usuario) guardarFuncion(usuario.uid, null);
+    // La copia local de los lotes no queda en el navegador para la siguiente persona
+    try {
+      localStorage.removeItem('cultivos_lore_lotes_backup');
+    } catch {}
     try {
       await signOut(auth);
     } catch (err) {
@@ -171,7 +264,22 @@ export default function App() {
     }
     setUsuario(null);
     setPerfilUsuario(null);
+    setFuncionActiva(null);
   };
+
+  const accesoRestringido = (
+    <div className="max-w-2xl mx-auto bg-white rounded-xl border border-slate-200 shadow-xs p-6 flex items-start space-x-3 text-xs text-slate-700">
+      <Lock className="w-5 h-5 text-slate-400 shrink-0" />
+      <div>
+        <p className="font-bold text-sm text-slate-900">Información productiva restringida</p>
+        <p className="mt-1">
+          {!usuario
+            ? 'Ingresa al sistema con una cuenta autorizada para consultar los lotes de la granja.'
+            : 'Tu cuenta no tiene una función de producción autorizada. Si crees que es un error, contacta al administrador.'}
+        </p>
+      </div>
+    </div>
+  );
 
   const handleAbrirNuevoLote = () => {
     if (!usuario) {
@@ -214,6 +322,10 @@ export default function App() {
         setTabActiva={setTabActiva}
         usuario={usuario as User}
         perfilUsuario={perfilUsuario}
+        funcionActiva={funcionActiva}
+        puedeCambiarFuncion={funciones.length > 1 && Boolean(funcionActiva)}
+        eligiendoFuncion={mostrarSelectorFuncion}
+        onCambiarFuncion={handleCambiarFuncion}
         onAbrirAuth={() => setAuthModalOpen(true)}
         onCerrarSesion={handleCerrarSesion}
         onNuevoLote={handleAbrirNuevoLote}
@@ -239,8 +351,8 @@ export default function App() {
         </div>
       )}
 
-      {/* BANNER 2: SESIÓN DE ADMINISTRADOR MAESTRO (CARLOS) */}
-      {usuario && esAdmin && (
+      {/* BANNER 2: SESIÓN DE ADMINISTRADOR MAESTRO (CARLOS), TRABAJANDO COMO ADMINISTRADOR */}
+      {usuario && esAdmin && funcionActiva === 'admin' && (
         <div className="bg-amber-500/10 border-b border-amber-400/30 px-4 py-2 text-xs text-amber-900">
           <div className="max-w-7xl mx-auto flex items-center justify-between">
             <div className="flex items-center space-x-2">
@@ -284,6 +396,18 @@ export default function App() {
         </div>
       )}
 
+      {/* BANNER 5: CUENTA ACTIVA SIN FUNCIONES ASIGNADAS */}
+      {usuario && perfilUsuario && perfilUsuario.estado === 'activo' && funciones.length === 0 && (
+        <div className="bg-amber-50 border-b border-amber-300 px-4 py-2 text-xs text-amber-900">
+          <div className="max-w-7xl mx-auto flex items-center space-x-2">
+            <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0" />
+            <span>
+              <strong>Sin funciones asignadas:</strong> Tu cuenta ({usuario.email}) está autorizada, pero aún no tiene una función (operador o repartidor). El administrador debe asignártela en "Personal & Permisos".
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* ERROR AL CARGAR EL PERFIL OPERATIVO */}
       {usuario && errorPerfil && (
         <div className="bg-red-600 text-white px-4 py-2 text-xs flex items-center justify-center space-x-2">
@@ -302,6 +426,28 @@ export default function App() {
 
       {/* CONTENIDO PRINCIPAL SEGÚN PESTAÑA SELECCIONADA */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {/* SELECCIÓN DE FUNCIÓN (CUENTAS CON VARIOS ROLES) */}
+        {mostrarSelectorFuncion && perfilUsuario && (
+          <SelectorFuncion
+            perfil={perfilUsuario}
+            funciones={funciones}
+            onSeleccionar={handleSeleccionarFuncion}
+            onCerrarSesion={handleCerrarSesion}
+          />
+        )}
+
+        {!mostrarSelectorFuncion && (
+        <>
+        {/* PANEL DE REPARTO */}
+        {tabActiva === 'reparto' && funcionActiva === 'courier' && perfilUsuario && (
+          <RepartidorPanel perfil={perfilUsuario} />
+        )}
+
+        {/* SIN FUNCIÓN DE PRODUCCIÓN: SIN ACCESO A LOTES */}
+        {!puedeVerProduccion && (tabActiva === 'inicio' || tabActiva === 'lotes' || tabActiva === 'analitica') && accesoRestringido}
+
+        {puedeVerProduccion && (
+        <>
         {/* 1. INICIO */}
         {tabActiva === 'inicio' && (
           <DashboardTab
@@ -332,6 +478,8 @@ export default function App() {
             onSeleccionarLote={(lote) => setLoteDetalle(lote)}
           />
         )}
+        </>
+        )}
 
         {/* 4. CONFIGURACIÓN DE GRANJA Y ESTANQUES */}
         {tabActiva === 'configuracion' && (
@@ -348,7 +496,10 @@ export default function App() {
           <UsuariosTab
             userEmail={usuario?.email || ''}
             perfilActual={perfilUsuario}
+            gestionHabilitada={funcionActiva === 'admin'}
           />
+        )}
+        </>
         )}
       </main>
 

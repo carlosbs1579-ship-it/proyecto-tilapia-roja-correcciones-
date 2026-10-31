@@ -47,10 +47,23 @@ service cloud.firestore {
       return isMasterAdmin() || (esActivo() && perfil().get('rol', '') == 'admin');
     }
 
+    // Roles funcionales: admin, operator (producción) y courier (reparto); una cuenta puede tener
+    // varios. Los perfiles anteriores a la lista de roles se interpretan desde su campo rol.
+    // Los nombres visibles de cada función (cargos) nunca se usan para autorizar.
+    function rolesDe(datos) {
+      return datos.get('roles', datos.get('rol', 'operario') == 'admin' ? ['admin'] : ['operator']);
+    }
+
+    function tieneRol(rol) {
+      return isMasterAdmin() || (esActivo() && rolesDe(perfil()).hasAny([rol]));
+    }
+
+    // Los permisos de producción solo aplican a administradores y a quienes tienen el rol de operador
     function tienePermiso(permiso) {
       return isMasterAdmin()
         || esAdminGranja()
         || (esActivo()
+            && rolesDe(perfil()).hasAny(['operator'])
             && perfil().get('rol', '') != 'consulta'
             && perfil().get('permisos', {}).get(permiso, false) == true);
     }
@@ -72,9 +85,11 @@ service cloud.firestore {
         && request.resource.data.get('creadoEn', null) == resource.data.get('creadoEn', null);
     }
 
-    // Lectura pública para trazabilidad oficial (QR de teléfonos, consulta y panel)
+    // Lectura pública de UN lote por su código para la trazabilidad oficial (QR). Listar los lotes
+    // de la granja, con toda su información productiva, queda para administradores y operadores.
     match /lotes/{codigo} {
-      allow read: if true;
+      allow get: if true;
+      allow list: if esAdminGranja() || tieneRol('operator');
 
       // Creación: Solo lotes activos nuevos con los permisos correspondientes
       allow create: if (isMasterAdmin() || (isSignedIn() && tienePermiso('crearLotes')))
@@ -188,10 +203,39 @@ service cloud.firestore {
       return datos.get('email', '').lower() == 'carlosbs1579@gmail.com';
     }
 
+    function esPerfilAdmin(datos) {
+      return datos.get('rol', '') == 'admin';
+    }
+
+    function cargoValido(cargos, rol) {
+      return !(rol in cargos) || (cargos[rol] is string && cargos[rol].size() <= 80);
+    }
+
+    // Lista de roles válida y coherente con el campo rol (admin en la lista si y solo si rol es admin)
+    function rolesAsignablesValidos(datos) {
+      return !('roles' in datos)
+        || (datos.roles is list
+            && datos.roles.size() <= 3
+            && datos.roles.hasOnly(['admin', 'operator', 'courier'])
+            && datos.roles.hasAny(['admin']) == esPerfilAdmin(datos));
+    }
+
+    // Nombres visibles por función: solo texto, y solo para funciones existentes
+    function cargosValidos(datos) {
+      return !('cargos' in datos)
+        || (datos.cargos is map
+            && datos.cargos.keys().hasOnly(['admin', 'operator', 'courier'])
+            && cargoValido(datos.cargos, 'admin')
+            && cargoValido(datos.cargos, 'operator')
+            && cargoValido(datos.cargos, 'courier'));
+    }
+
     // Valores válidos que un administrador puede asignar a un perfil
     function perfilAsignableValido() {
       return request.resource.data.get('rol', 'operario') in ['admin', 'operario', 'consulta']
         && request.resource.data.get('estado', 'pendiente') in ['activo', 'pendiente', 'inactivo']
+        && rolesAsignablesValidos(request.resource.data)
+        && cargosValidos(request.resource.data)
         && (isMasterAdmin() || request.resource.data.get('granjaId', 'cultivos-lore') == granjaUsuario());
     }
 
@@ -199,7 +243,8 @@ service cloud.firestore {
       // Cada usuario lee su propio perfil; los administradores leen todos (pestaña Usuarios)
       allow read: if (isSignedIn() && request.auth.uid == userId) || esAdminGranja();
 
-      // Alta propia al primer ingreso: siempre operario pendiente, sin permisos, en la granja predeterminada
+      // Alta propia al primer ingreso: siempre operario pendiente, sin permisos ni funciones, en la
+      // granja predeterminada
       allow create: if isSignedIn()
         && request.auth.uid == userId
         && request.resource.data.uid == userId
@@ -207,7 +252,9 @@ service cloud.firestore {
         && request.resource.data.rol == 'operario'
         && request.resource.data.estado == 'pendiente'
         && request.resource.data.granjaId == 'cultivos-lore'
-        && !request.resource.data.permisos.values().hasAny([true]);
+        && !request.resource.data.permisos.values().hasAny([true])
+        && request.resource.data.get('roles', []).size() == 0
+        && request.resource.data.get('cargos', {}).size() == 0;
 
       // El Administrador Maestro crea o actualiza su propio perfil con todos los permisos
       allow create, update: if isMasterAdmin() && request.auth.uid == userId;
@@ -218,23 +265,31 @@ service cloud.firestore {
         && soloCambia(['displayName', 'actualizadoEn']);
 
       // Un administrador crea perfiles de otros usuarios (si aún no existían)...
+      // Solo el Administrador Maestro otorga el rol de administrador.
       allow create: if esAdminGranja()
         && request.auth.uid != userId
         && !esPerfilMaestro(request.resource.data)
+        && (isMasterAdmin() || !esPerfilAdmin(request.resource.data))
         && perfilAsignableValido();
 
-      // ...y gestiona su rol, cargo, estado y permisos, sin cambiarles el correo.
-      // El perfil del Administrador Maestro solo lo modifica él mismo.
+      // ...y gestiona sus roles, nombres de función, estado y permisos, sin cambiarles el correo.
+      // El perfil del Administrador Maestro solo lo modifica él mismo, y los perfiles de los demás
+      // administradores (o convertir a alguien en administrador) solo el Administrador Maestro.
+      // Nadie modifica sus propios roles por esta vía.
       allow update: if esAdminGranja()
+        && request.auth.uid != userId
         && !esPerfilMaestro(resource.data)
         && (isMasterAdmin() || resource.data.get('granjaId', 'cultivos-lore') == granjaUsuario())
-        && soloCambia(['rol', 'granjaId', 'cargo', 'estado', 'permisos', 'autorizadoPor', 'actualizadoEn', 'email', 'displayName'])
+        && (isMasterAdmin() || (!esPerfilAdmin(resource.data) && !esPerfilAdmin(request.resource.data)))
+        && soloCambia(['rol', 'roles', 'cargos', 'granjaId', 'cargo', 'estado', 'permisos', 'autorizadoPor', 'actualizadoEn', 'email', 'displayName'])
         && request.resource.data.get('email', '').lower() == resource.data.get('email', '').lower()
         && perfilAsignableValido();
 
-      // Borrar perfiles: administradores de la misma granja; nunca el del Administrador Maestro
+      // Borrar perfiles: administradores de la misma granja; nunca el del Administrador Maestro, y
+      // los de otros administradores solo el Administrador Maestro
       allow delete: if esAdminGranja()
         && !esPerfilMaestro(resource.data)
+        && (isMasterAdmin() || !esPerfilAdmin(resource.data))
         && (isMasterAdmin() || resource.data.get('granjaId', 'cultivos-lore') == granjaUsuario());
     }
   }

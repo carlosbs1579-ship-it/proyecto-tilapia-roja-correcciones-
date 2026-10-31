@@ -1,0 +1,13 @@
+{
+  "name": "pruebas-reglas-firestore",
+  "private": true,
+  "type": "module",
+  "description": "Pruebas de firestore.rules en el emulador local. No forman parte de la aplicación publicada.",
+  "scripts": {
+    "test": "firebase emulators:exec --only firestore --project demo-tilapia \"node --test reglas.test.mjs\""
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^6.0.0",
+    "firebase": "^13.1.0"
+  }
+}

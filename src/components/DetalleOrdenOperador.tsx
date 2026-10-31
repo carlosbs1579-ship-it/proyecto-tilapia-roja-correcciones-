@@ -19,6 +19,7 @@ import { formatearFechaColombia } from '../utils/constants';
 import { ETIQUETA_FUNCION, EstadoOrdenBadge, num } from './entregasUi';
 import { SolicitudAjusteTarjeta } from './SolicitudesPendientes';
 import { NovedadTarjeta } from './NovedadesIncidencias';
+import { DocumentacionEntrega } from './DocumentacionEntrega';
 
 type Ejecutar = (accion: () => Promise<void>, exito: string) => Promise<void>;
 
@@ -292,6 +293,13 @@ export const DetalleOrdenOperador: React.FC<{
         )}
         {cerrada && <p className="text-slate-500">Esta orden está cerrada y no admite más cambios (sus novedades se pueden seguir atendiendo).</p>}
       </Seccion>
+
+      {/* Comprobantes de entrega (fase 5) */}
+      {o.estado !== 'borrador' && (
+        <Seccion titulo="Documentación de entrega">
+          <DocumentacionEntrega orden={o} uidActual={perfilActual?.uid} procesando={procesando} ejecutar={ejecutar} />
+        </Seccion>
+      )}
 
       {/* D. Seguimiento cronológico */}
       <Seccion titulo="Seguimiento cronológico">

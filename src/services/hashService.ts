@@ -20,6 +20,14 @@ function ordenarObjeto(obj: any): any {
   return ordenado;
 }
 
+/**
+ * JSON canónico de cualquier valor (claves ordenadas en todos los niveles): el mismo contenido da
+ * siempre el mismo texto y, por tanto, el mismo hash
+ */
+export function jsonCanonico(valor: unknown): string {
+  return JSON.stringify(ordenarObjeto(valor));
+}
+
 export interface PayloadHashEvento {
   codigoLote: string;
   indice: number;

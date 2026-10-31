@@ -531,3 +531,132 @@ describe('Atención de novedades (fase 4)', () => {
     await assertSucceeds(atender('vendedor', 'PED-AE', { nid: o.historial[indice].eventoId, indice }, 'cerrada'));
   });
 });
+
+describe('Comprobantes de entrega (fase 5)', () => {
+  const TOKEN = 'tok_' + 'a'.repeat(28);
+  const H64 = 'f'.repeat(64);
+  let n = 0;
+  const idNuevo = () => 'cmp_' + String(++n).padStart(4, '0') + 'b'.repeat(24);
+
+  async function entregaParcial(id) {
+    await crearAsignada(id, { 'LT-001': 300, 'LT-002': 200 });
+    await iniciarRuta('repartidor', id);
+    await llegar('repartidor', id);
+    await entregar('repartidor', id, { 'LT-001': 250, 'LT-002': 200 });
+  }
+
+  // Emite un comprobante como lo hace el servicio: comprobante + índice público + orden, en una sola operación
+  async function emitir(uid, ordenId, { token = TOKEN, alterar = {}, alterarProc, indice, idComp, versionForzada } = {}) {
+    const o = await leer(`ordenes/${ordenId}`);
+    const consulta = await leer(`consultasEntrega/${token}`);
+    const idx = indice ?? o.historial.map((e) => e.tipo).lastIndexOf('Entrega');
+    const entrega = { ...o.historial[idx], eventoId: o.historial[idx].eventoId || 'evento-sin-id' };
+    const id = idComp || idNuevo();
+    const previas = consulta?.versiones || {};
+    const versiones = {
+      ...previas,
+      [entrega.eventoId]: { comprobanteId: id, version: Object.keys(previas).length + 1, emitidoEn: 'x', estadoEntrega: o.estado, hashComprobante: H64 }
+    };
+    const procedencias = Object.fromEntries(
+      Object.entries(o.procedencias).map(([c, p]) => [c, { estanque: p.estanque, autorizada: p.cantidad, entregada: (o.entregadoPorLote || {})[c] || 0 }])
+    );
+    if (alterarProc) Object.assign(procedencias[alterarProc.lote], alterarProc.cambios);
+    const comprobante = {
+      id, version: versionForzada ?? Object.keys(versiones).length, ordenId, granjaId: GRANJA, tokenConsulta: token, emitidoEn: 'x',
+      emitidoPorUid: uid, empresa: 'Cultivos Loré', estadoEntrega: o.estado, cliente: { nombre: 'Restaurante', direccion: 'Calle 1' },
+      repartidor: 'r', fechas: { creacion: 'x', programada: null, salida: 'x', llegada: 'x', confirmacion: 'x' }, unidad: o.unidad,
+      cantidadSolicitada: o.cantidadSolicitada, cantidadAutorizada: o.cantidadAutorizada, cantidadEntregada: o.cantidadEntregada,
+      cantidadLiberada: o.cantidadLiberada || 0,
+      cantidadPendiente: o.cantidadAutorizada - o.cantidadEntregada - (o.cantidadLiberada || 0),
+      procedencias, entregas: [], novedades: [], ajustes: [], eventoEntregaId: entrega.eventoId, eventoEntregaIndice: idx,
+      eventosUsados: [entrega.eventoId], hashEventos: H64, hashComprobante: H64, ...alterar
+    };
+    const db = como(uid);
+    const batch = writeBatch(db);
+    batch.set(doc(db, 'comprobantes', id), comprobante);
+    batch.set(doc(db, 'consultasEntrega', token), { token, ordenId, granjaId: GRANJA, versiones, ultimaVersion: id, actualizadoEn: 'x' });
+    batch.update(doc(db, 'ordenes', ordenId), {
+      tokenConsulta: token,
+      actualizadoEn: 'y',
+      historial: [
+        ...o.historial,
+        evento(uid, o.historial.length, 'Comprobante emitido', { datos: { comprobanteId: id, eventoEntregaId: entrega.eventoId, version: comprobante.version } })
+      ]
+    });
+    await batch.commit();
+    return id;
+  }
+
+  const reprogramar = (id) =>
+    accion('vendedor', id, { estado: 'asignado', rutaIniciadaEn: null, llegadaEn: null }, 'Reprogramación de saldo', {}, false);
+
+  test('1, 2 y 3. comprobante de una entrega parcial igual a la orden; consulta pública solo por código', async () => {
+    await entregaParcial('PED-C1');
+    const id = await emitir('vendedor', 'PED-C1');
+    const c = await leer(`comprobantes/${id}`);
+    assert.equal(c.estadoEntrega, 'entrega_parcial');
+    assert.equal(c.cantidadPendiente, 50);
+    const anonimo = env.unauthenticatedContext().firestore();
+    await assertSucceeds(getDoc(doc(anonimo, 'comprobantes', id)));
+    await assertSucceeds(getDoc(doc(anonimo, 'consultasEntrega', TOKEN)));
+    await assertFails(getDocs(collection(anonimo, 'consultasEntrega')));
+    await assertFails(getDocs(query(collection(anonimo, 'comprobantes'), where('granjaId', '==', GRANJA))));
+    await assertFails(getDoc(doc(anonimo, 'ordenes', 'PED-C1')));
+  });
+
+  test('12. no se emite un comprobante cuyas cantidades no coinciden con lo confirmado', async () => {
+    await entregaParcial('PED-C2');
+    await assertFails(emitir('vendedor', 'PED-C2', { alterar: { cantidadEntregada: 500 } }));
+    await assertFails(emitir('vendedor', 'PED-C2', { alterar: { cantidadPendiente: 0 } }));
+    await assertFails(emitir('vendedor', 'PED-C2', { alterar: { estadoEntrega: 'entregado' } }));
+    await assertFails(emitir('vendedor', 'PED-C2', { alterarProc: { lote: 'LT-001', cambios: { entregada: 300 } } }));
+    await assertFails(emitir('vendedor', 'PED-C2', { indice: 0 }));
+  });
+
+  test('15. sin entrega confirmada en el servidor no hay comprobante definitivo', async () => {
+    await crearAsignada('PED-C3', { 'LT-001': 100 });
+    await iniciarRuta('repartidor', 'PED-C3');
+    await assertFails(emitir('vendedor', 'PED-C3', { indice: 1 }));
+  });
+
+  test('10 y 11. la segunda entrega genera la versión 2 sin tocar la 1; no se duplica la versión de una entrega', async () => {
+    await entregaParcial('PED-C4');
+    const v1 = await emitir('vendedor', 'PED-C4');
+    const antes = await leer(`comprobantes/${v1}`);
+    await assertFails(emitir('vendedor', 'PED-C4'));
+    await reprogramar('PED-C4');
+    await iniciarRuta('repartidor', 'PED-C4');
+    await llegar('repartidor', 'PED-C4');
+    await entregar('repartidor', 'PED-C4', { 'LT-001': 50 });
+    const v2 = await emitir('vendedor', 'PED-C4');
+    const c2 = await leer(`comprobantes/${v2}`);
+    assert.equal(c2.version, 2);
+    assert.equal(c2.estadoEntrega, 'entregado');
+    assert.deepEqual(await leer(`comprobantes/${v1}`), antes);
+    const consulta = await leer(`consultasEntrega/${TOKEN}`);
+    assert.equal(Object.keys(consulta.versiones).length, 2);
+    assert.equal(consulta.ultimaVersion, v2);
+    await assertFails(updateDoc(doc(como('vendedor'), 'comprobantes', v1), { cantidadEntregada: 1 }));
+    const { deleteDoc } = await import('firebase/firestore');
+    await assertFails(deleteDoc(doc(como('vendedor'), 'comprobantes', v1)));
+  });
+
+  test('9. el repartidor y quien no gestiona pedidos no emiten; el código de consulta no se cambia', async () => {
+    await entregaParcial('PED-C5');
+    await assertFails(emitir('repartidor', 'PED-C5'));
+    await assertFails(emitir('operario', 'PED-C5'));
+    await emitir('vendedor', 'PED-C5');
+    await reprogramar('PED-C5');
+    await iniciarRuta('repartidor', 'PED-C5');
+    await llegar('repartidor', 'PED-C5');
+    await entregar('repartidor', 'PED-C5', { 'LT-001': 50 });
+    await assertFails(emitir('vendedor', 'PED-C5', { token: 'tok_' + 'z'.repeat(28) }));
+  });
+
+  test('14. los lotes no cambian al emitir comprobantes', async () => {
+    const antes = await leer('lotes/LT-001');
+    await entregaParcial('PED-C6');
+    await emitir('vendedor', 'PED-C6');
+    assert.deepEqual(await leer('lotes/LT-001'), antes);
+  });
+});

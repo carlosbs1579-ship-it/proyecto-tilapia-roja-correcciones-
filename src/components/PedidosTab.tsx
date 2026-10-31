@@ -64,7 +64,8 @@ const ESTILO_ALERTA: Record<TipoAlerta, string> = {
   requiere_revision: 'border-orange-200 bg-orange-50 text-orange-900',
   ajuste_pendiente: 'border-indigo-200 bg-indigo-50 text-indigo-900',
   novedad_abierta: 'border-orange-200 bg-orange-50 text-orange-900',
-  conflicto_disponibilidad: 'border-red-300 bg-red-50 text-red-800'
+  conflicto_disponibilidad: 'border-red-300 bg-red-50 text-red-800',
+  entrega_sin_comprobante: 'border-violet-200 bg-violet-50 text-violet-900'
 };
 
 /**

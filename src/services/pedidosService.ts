@@ -145,7 +145,7 @@ export function cantidadPendiente(orden: OrdenEntrega): number {
   );
 }
 
-function mensajeError(accion: string, err: any): Error {
+export function mensajeError(accion: string, err: any): Error {
   const codigo = err?.code || '';
   if (codigo === 'permission-denied') {
     return new Error(
@@ -175,7 +175,7 @@ function sesion(): { email: string; uid: string } {
   return { email: user.email.toLowerCase(), uid: user.uid };
 }
 
-function nuevoEvento(
+export function nuevoEvento(
   indice: number,
   tipo: TipoEventoOrden,
   descripcion: string,

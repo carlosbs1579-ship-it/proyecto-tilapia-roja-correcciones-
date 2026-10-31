@@ -15,6 +15,17 @@ export function construirUrlPublicaTrazabilidad(codigoLote: string): string {
 }
 
 /**
+ * URL pública de consulta de una entrega. Lleva solo el código aleatorio de consulta de la orden;
+ * es distinta del QR del lote, que lleva el código del lote.
+ */
+export function construirUrlConsultaEntrega(token: string): string {
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    return `${window.location.origin}/?entrega=${encodeURIComponent(token)}`;
+  }
+  return `https://cultivos-lore.web.app/?entrega=${encodeURIComponent(token)}`;
+}
+
+/**
  * Construye la URL del PDF del lote (o la vista pública directa)
  */
 export function construirUrlPublicaPdf(codigoLote: string): string {

@@ -145,7 +145,8 @@ export type TipoAlerta =
   | 'requiere_revision'
   | 'ajuste_pendiente'
   | 'novedad_abierta'
-  | 'conflicto_disponibilidad';
+  | 'conflicto_disponibilidad'
+  | 'entrega_sin_comprobante';
 
 export const ETIQUETA_ALERTA: Record<TipoAlerta, string> = {
   sin_iniciar_ruta: 'Programado para hoy sin iniciar ruta',
@@ -154,7 +155,8 @@ export const ETIQUETA_ALERTA: Record<TipoAlerta, string> = {
   requiere_revision: 'Pedido en revisión',
   ajuste_pendiente: 'Solicitud de ajuste sin resolver',
   novedad_abierta: 'Novedad sin atender',
-  conflicto_disponibilidad: 'Conflicto de disponibilidad'
+  conflicto_disponibilidad: 'Conflicto de disponibilidad',
+  entrega_sin_comprobante: 'Entrega confirmada sin comprobante'
 };
 
 export interface Alerta {
@@ -196,6 +198,17 @@ export function calcularAlertas(
       if (a.estado === 'pendiente_aprobacion') {
         alertas.push({ id: `${o.id}-${a.id}`, tipo: 'ajuste_pendiente', ordenId: o.id, detalle: `Solicitada por ${a.solicitadoPor}.` });
       }
+    }
+    // Entregas confirmadas que aún no tienen comprobante definitivo
+    const conComprobante = new Set(o.historial.filter((e) => e.tipo === 'Comprobante emitido').map((e) => e.datos?.eventoEntregaId));
+    const sinComprobante = o.historial.filter((e) => e.tipo === 'Entrega' && e.eventoId && !conComprobante.has(e.eventoId));
+    if (sinComprobante.length) {
+      alertas.push({
+        id: `${o.id}-comprobante`,
+        tipo: 'entrega_sin_comprobante',
+        ordenId: o.id,
+        detalle: `${sinComprobante.length} entrega(s) confirmada(s) sin comprobante definitivo.`
+      });
     }
     for (const n of novedadesDeOrden(o)) {
       if (novedadAbierta(n)) {

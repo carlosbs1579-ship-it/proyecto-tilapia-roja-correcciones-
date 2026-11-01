@@ -12,8 +12,10 @@ import {
   CheckCircle,
   Clock,
   XCircle,
-  Smartphone
+  Smartphone,
+  Camera
 } from 'lucide-react';
+import { DIAS_RETENCION_FOTOS, FotoPreparada, prepararFoto } from '../services/fotosService';
 import { CategoriaNovedad, EstadoAjuste, OrdenEntrega } from '../types';
 import {
   ESTADOS_CON_RESERVA,
@@ -84,6 +86,8 @@ export const DetalleEntregaRepartidor: React.FC<DetalleEntregaRepartidorProps> =
   // Formulario de entrega
   const [entregas, setEntregas] = useState<Record<string, number | ''>>({});
   const [obsEntrega, setObsEntrega] = useState('');
+  const [foto, setFoto] = useState<FotoPreparada | null>(null);
+  const [procesandoFoto, setProcesandoFoto] = useState(false);
   // Novedad
   const [categoria, setCategoria] = useState<CategoriaNovedad>('Cliente no disponible');
   const [descripcionNovedad, setDescripcionNovedad] = useState('');
@@ -118,6 +122,31 @@ export const DetalleEntregaRepartidor: React.FC<DetalleEntregaRepartidorProps> =
     [orden.ajustes]
   );
 
+  const registrar = (accion: Parameters<typeof registrarAccion>[1]): boolean => {
+    try {
+      registrarAccion(uid, accion);
+      return true;
+    } catch (err: any) {
+      setMensaje(null);
+      setErrorMsg(err?.message || 'No se pudo guardar la acción.');
+      return false;
+    }
+  };
+
+  const elegirFoto = async (archivo: File | undefined) => {
+    if (!archivo) return;
+    setProcesandoFoto(true);
+    setErrorMsg(null);
+    try {
+      setFoto(await prepararFoto(archivo));
+    } catch (err: any) {
+      setFoto(null);
+      setErrorMsg(err?.message || 'No se pudo procesar la foto.');
+    } finally {
+      setProcesandoFoto(false);
+    }
+  };
+
   const avisar = (texto: string) => {
     setErrorMsg(null);
     // Sin conexión la acción solo queda guardada en el teléfono: el aviso lo dice
@@ -128,6 +157,7 @@ export const DetalleEntregaRepartidor: React.FC<DetalleEntregaRepartidorProps> =
   const abrirEntrega = () => {
     setEntregas(Object.fromEntries(lotes.map(([codigo]) => [codigo, saldoLote(orden, codigo)])));
     setObsEntrega('');
+    setFoto(null);
     setErrorMsg(null);
     setPanel('entrega');
   };
@@ -147,12 +177,18 @@ export const DetalleEntregaRepartidor: React.FC<DetalleEntregaRepartidorProps> =
       setErrorMsg('Indica cuánto entregaste.');
       return;
     }
-    registrarAccion(uid, {
+    if (faltante > 0 && !foto) {
+      setErrorMsg('En una entrega parcial la foto es obligatoria: tómala antes de confirmar.');
+      return;
+    }
+    if (!registrar({
       ordenId: orden.id,
       tipo: 'Entrega',
       descripcion: obsEntrega,
-      datos: { entregas: Object.fromEntries(Object.entries(entregas).map(([c, v]) => [c, Number(v) || 0])) }
-    });
+      datos: { entregas: Object.fromEntries(Object.entries(entregas).map(([c, v]) => [c, Number(v) || 0])) },
+      ...(foto ? { foto } : {})
+    })) return;
+    setFoto(null);
     avisar(
       faltante > 0
         ? `Entrega parcial registrada: faltan ${num(faltante)} ${orden.unidad}. El operador decidirá cómo continuar.`
@@ -165,12 +201,12 @@ export const DetalleEntregaRepartidor: React.FC<DetalleEntregaRepartidorProps> =
       setErrorMsg('Describe la novedad.');
       return;
     }
-    registrarAccion(uid, {
+    if (!registrar({
       ordenId: orden.id,
       tipo: 'Novedad',
       descripcion: `${categoria}: ${descripcionNovedad.trim()}`,
       datos: { categoria }
-    });
+    })) return;
     setDescripcionNovedad('');
     avisar('Novedad registrada.');
   };
@@ -225,17 +261,17 @@ export const DetalleEntregaRepartidor: React.FC<DetalleEntregaRepartidorProps> =
       setErrorMsg('Explica el motivo de la solicitud.');
       return;
     }
-    registrarAccion(uid, {
+    if (!registrar({
       ordenId: orden.id,
       tipo: 'Solicitud de ajuste',
       descripcion: motivoAjuste,
       datos: datosSolicitudAjuste(orden, nueva)
-    });
+    })) return;
     avisar('Solicitud enviada al operador. Mientras responde, entrega solo lo autorizado.');
   };
 
   const cancelarSolicitud = (ajusteId: string) => {
-    registrarAccion(uid, { ordenId: orden.id, tipo: 'Cancelación de solicitud', datos: { ajusteId } });
+    if (!registrar({ ordenId: orden.id, tipo: 'Cancelación de solicitud', datos: { ajusteId } })) return;
     avisar('Cancelación de la solicitud registrada.');
   };
 
@@ -378,7 +414,7 @@ export const DetalleEntregaRepartidor: React.FC<DetalleEntregaRepartidorProps> =
                 rutaIniciada,
                 puedeIniciar,
                 () => {
-                  registrarAccion(uid, { ordenId: orden.id, tipo: 'Inicio de ruta' });
+                  if (!registrar({ ordenId: orden.id, tipo: 'Inicio de ruta' })) return;
                   avisar('Ruta iniciada.');
                 },
                 orden.rutaIniciadaEn ? `Iniciada: ${formatearFechaColombia(orden.rutaIniciadaEn)}` : pendiente('Inicio de ruta') ? 'Guardada en el teléfono' : 'Cuando salgas con el pedido'
@@ -390,7 +426,7 @@ export const DetalleEntregaRepartidor: React.FC<DetalleEntregaRepartidorProps> =
                 llegadaRegistrada,
                 puedeLlegar,
                 () => {
-                  registrarAccion(uid, { ordenId: orden.id, tipo: 'Llegada' });
+                  if (!registrar({ ordenId: orden.id, tipo: 'Llegada' })) return;
                   avisar('Llegada registrada.');
                 },
                 orden.llegadaEn ? `Llegada: ${formatearFechaColombia(orden.llegadaEn)}` : pendiente('Llegada') ? 'Guardada en el teléfono' : 'Cuando llegues al cliente'
@@ -431,6 +467,36 @@ export const DetalleEntregaRepartidor: React.FC<DetalleEntregaRepartidorProps> =
                 Total: <strong>{num(totalEntrega)} {orden.unidad}</strong>
                 {faltante > 0 ? ` · faltan ${num(faltante)} (quedará como entrega parcial)` : ' · entrega completa'}
               </p>
+              <div className="space-y-2">
+                <label className="flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-slate-300 rounded-xl bg-white text-sm font-semibold text-slate-700 cursor-pointer">
+                  <Camera className="w-5 h-5" />
+                  <span>
+                    {procesandoFoto ? 'Procesando foto...' : foto ? 'Cambiar foto' : 'Tomar foto de la entrega'}
+                    {faltante > 0 ? ' (obligatoria)' : ' (opcional)'}
+                  </span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    className="hidden"
+                    onChange={(e) => {
+                      void elegirFoto(e.target.files?.[0]);
+                      e.target.value = '';
+                    }}
+                  />
+                </label>
+                {foto && (
+                  <div className="flex items-center gap-3">
+                    <img src={foto.datos} alt="Foto de la entrega" className="w-20 h-20 object-cover rounded-lg border border-slate-200" />
+                    <div className="text-xs text-slate-500 space-y-1">
+                      <p>{Math.round(foto.bytes / 1024)} KB · se guarda {DIAS_RETENCION_FOTOS} días y solo la ve el operador.</p>
+                      <button type="button" onClick={() => setFoto(null)} className="text-red-600 font-semibold">
+                        Quitar foto
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
               <textarea
                 rows={2}
                 maxLength={1000}
@@ -441,7 +507,7 @@ export const DetalleEntregaRepartidor: React.FC<DetalleEntregaRepartidorProps> =
               />
               {errorMsg && <p className="text-sm text-red-700">{errorMsg}</p>}
               <div className="flex flex-col sm:flex-row gap-2">
-                <button onClick={confirmarEntrega} className="flex-1 px-4 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold">
+                <button onClick={confirmarEntrega} disabled={procesandoFoto} className="flex-1 px-4 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold">
                   Confirmar entrega
                 </button>
                 <button onClick={() => setPanel(null)} className="px-4 py-3 bg-slate-100 text-slate-700 rounded-xl font-semibold">

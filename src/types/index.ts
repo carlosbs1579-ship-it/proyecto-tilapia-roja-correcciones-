@@ -170,6 +170,7 @@ export interface EntregaComprobante {
   cantidades: Record<string, number>; // por lote
   faltante: number;
   observacion: string;
+  fotoHash?: string; // SHA-256 de la foto de la entrega, si la hubo (la imagen se borra a los 15 días)
 }
 
 export interface ComprobanteEntrega {

@@ -865,6 +865,60 @@ service cloud.firestore {
         && soloCambiaAjuste(antes, despues, id);
     }
 
+    // ===== Fotos de entrega =====
+    // fotosEntrega/{id}: foto comprimida (texto JPEG) de una entrega, escrita en la misma operación
+    // que el evento "Entrega". Firestore la borra a los 15 días con una política TTL sobre expiraEn;
+    // el evento conserva su identificador y su hash. Nunca es pública.
+    function rutaFoto(fotoId) {
+      return /databases/$(database)/documents/fotosEntrega/$(fotoId);
+    }
+
+    // En la orden: la entrega parcial exige foto; si hay foto, debe ser la que se escribe en esta
+    // misma operación para este evento y esta orden
+    function fotoDeEntregaValida(id, despues, evento) {
+      let foto = evento.datos.get('foto', null);
+      return (foto == null && despues.estado == 'entregado')
+        || (foto != null
+            && foto.keys().hasOnly(['id', 'hash', 'bytes'])
+            && fotoCoincide(getAfter(rutaFoto(foto.id)).data, foto, id, evento));
+    }
+
+    function fotoCoincide(f, foto, id, evento) {
+      return f.hash == foto.hash && f.ordenId == id && f.eventoId == evento.eventoId;
+    }
+
+    function fotoValida(fotoId) {
+      let f = request.resource.data;
+      let o = getAfter(rutaOrden(f.ordenId)).data;
+      let ev = o.historial[o.historial.size() - 1];
+      return f.keys().hasOnly(['id', 'ordenId', 'granjaId', 'eventoId', 'subidaPorUid', 'tomadaEn', 'expiraEn', 'tipo',
+                               'ancho', 'alto', 'bytes', 'hash', 'datos'])
+        && f.id == fotoId
+        && fotoId.size() >= 20
+        && f.subidaPorUid == request.auth.uid
+        && o.repartidorUid == request.auth.uid
+        && f.granjaId == o.granjaId
+        && ev.tipo == 'Entrega'
+        && ev.eventoId == f.eventoId
+        && ev.datos.foto.id == fotoId
+        && ev.datos.foto.hash == f.hash
+        && f.tipo == 'image/jpeg'
+        && f.datos is string && f.datos.size() > 100 && f.datos.size() <= 700000
+        && f.hash is string && f.hash.size() == 64
+        && f.expiraEn is timestamp
+        && f.expiraEn > request.time + duration.value(14, 'd')
+        && f.expiraEn < request.time + duration.value(16, 'd');
+    }
+
+    match /fotosEntrega/{fotoId} {
+      // La ven el operador de la granja y el repartidor que la tomó; no hay lectura pública
+      allow get: if isSignedIn() && (resource.data.subidaPorUid == request.auth.uid || gestionaPedidosEn(resource.data.granjaId));
+      allow list: if isSignedIn() && gestionaPedidosEn(resource.data.granjaId);
+      allow create: if isSignedIn() && fotoValida(fotoId);
+      // Nadie la modifica ni la borra desde la app: la borra Firestore al vencer (TTL)
+      allow update, delete: if false;
+    }
+
     // Repartidor asignado: solo sus acciones sobre la entrega, cada una con un evento propio (con
     // identificador único y la función de repartidor). No cambia cantidades autorizadas,
     // distribución, repartidor ni datos del cliente.
@@ -909,7 +963,8 @@ service cloud.firestore {
             && antes.estado == 'en_ruta'
             && antes.get('llegadaEn', null) != null
             && cambios.hasOnly(['estado', 'entregadoPorLote', 'cantidadEntregada', 'actualizadoEn', 'historial'])
-            && entregaOrdenValida(id, antes, despues))
+            && entregaOrdenValida(id, antes, despues)
+            && fotoDeEntregaValida(id, despues, evento))
           // Solicitar ajuste: queda pendiente de aprobación; la distribución vigente no cambia
           || (tipo == 'Solicitud de ajuste'
             && antes.estado in estadosConReserva()

@@ -129,7 +129,8 @@ export function construirComprobante(
         Object.entries((e.datos?.entregas || {}) as Record<string, number>).filter(([, n]) => Number(n) > 0).map(([l, n]) => [l, Number(n)])
       ),
       faltante: Number(e.datos?.faltante) || 0,
-      observacion: e.descripcion || ''
+      observacion: e.descripcion || '',
+      ...(e.datos?.foto?.hash ? { fotoHash: String(e.datos.foto.hash) } : {})
     }));
   const ajustes = orden.historial
     .filter((e) => e.tipo === 'Ajuste aplicado')

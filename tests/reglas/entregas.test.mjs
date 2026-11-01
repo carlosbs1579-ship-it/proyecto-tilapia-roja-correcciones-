@@ -14,6 +14,7 @@ import {
   query,
   serverTimestamp,
   setDoc,
+  Timestamp,
   updateDoc,
   where,
   writeBatch
@@ -127,7 +128,10 @@ const iniciarRuta = (uid, id) => accion(uid, id, { estado: 'en_ruta', rutaInicia
 const llegar = (uid, id) => accion(uid, id, { llegadaEn: new Date().toISOString() }, 'Llegada');
 
 // Confirma una entrega: mueve el inventario de cada lote (reservado -> entregado) y actualiza la orden
-async function entregar(uid, id, entregas, { estado, moverInventario = true, delta } = {}) {
+let nFoto = 0;
+const DIA = 24 * 60 * 60 * 1000;
+// foto: undefined = automática (solo en parciales) · false = sin foto · objeto = cambios sobre la foto
+async function entregar(uid, id, entregas, { estado, moverInventario = true, delta, foto, fotoEnEvento } = {}) {
   const o = await leer(`ordenes/${id}`);
   const previo = o.entregadoPorLote || {};
   const nuevo = { ...previo };
@@ -135,6 +139,19 @@ async function entregar(uid, id, entregas, { estado, moverInventario = true, del
   const total = Object.values(nuevo).reduce((s, n) => s + n, 0);
   const db = como(uid);
   const batch = writeBatch(db);
+  const parcial = total !== o.cantidadAutorizada;
+  const eventoId = `ev-${uid}-${o.historial.length}-${id}`;
+  let datosEvento = { entregas };
+  if (foto !== false && (parcial || foto)) {
+    const fotoId = 'foto_' + String(++nFoto).padStart(4, '0') + 'x'.repeat(20);
+    const registro = {
+      id: fotoId, ordenId: id, granjaId: GRANJA, eventoId, subidaPorUid: uid, tomadaEn: 'x',
+      expiraEn: Timestamp.fromMillis(Date.now() + 15 * DIA), tipo: 'image/jpeg', ancho: 800, alto: 600, bytes: 1000,
+      hash: 'a'.repeat(64), datos: 'data:image/jpeg;base64,' + 'A'.repeat(1000), ...(typeof foto === 'object' ? foto : {})
+    };
+    batch.set(doc(db, 'fotosEntrega', fotoId), registro);
+    datosEvento = { entregas, foto: { id: fotoId, hash: 'a'.repeat(64), bytes: 1000, ...(fotoEnEvento || {}) } };
+  }
   if (moverInventario) {
     for (const [c, n] of Object.entries(entregas)) {
       const d = delta ?? n;
@@ -146,7 +163,7 @@ async function entregar(uid, id, entregas, { estado, moverInventario = true, del
   batch.update(doc(db, 'ordenes', id), {
     estado: estado ?? (total === o.cantidadAutorizada ? 'entregado' : 'entrega_parcial'),
     entregadoPorLote: nuevo, cantidadEntregada: total, actualizadoEn: 'y',
-    historial: [...o.historial, eventoRep(uid, o.historial.length, 'Entrega', { datos: { entregas } })]
+    historial: [...o.historial, { ...eventoRep(uid, o.historial.length, 'Entrega', { datos: datosEvento }), eventoId }]
   });
   return batch.commit();
 }
@@ -658,5 +675,61 @@ describe('Comprobantes de entrega (fase 5)', () => {
     await entregaParcial('PED-C6');
     await emitir('vendedor', 'PED-C6');
     assert.deepEqual(await leer('lotes/LT-001'), antes);
+  });
+});
+
+describe('Fotos de entrega (fase 7)', () => {
+  async function enLlegada(id, lotes = { 'LT-001': 100 }) {
+    await crearAsignada(id, lotes);
+    await iniciarRuta('repartidor', id);
+    await llegar('repartidor', id);
+  }
+
+  test('una entrega parcial sin foto se rechaza; con foto se acepta', async () => {
+    await enLlegada('PED-F1');
+    await assertFails(entregar('repartidor', 'PED-F1', { 'LT-001': 60 }, { foto: false }));
+    await assertSucceeds(entregar('repartidor', 'PED-F1', { 'LT-001': 60 }));
+  });
+
+  test('una entrega completa puede ir sin foto o con foto', async () => {
+    await enLlegada('PED-F2');
+    await assertSucceeds(entregar('repartidor', 'PED-F2', { 'LT-001': 100 }, { foto: false }));
+    await enLlegada('PED-F3');
+    await assertSucceeds(entregar('repartidor', 'PED-F3', { 'LT-001': 100 }, { foto: {} }));
+  });
+
+  test('la foto debe coincidir con el evento (hash, orden) y vencer a los 15 días', async () => {
+    await enLlegada('PED-F4');
+    await assertFails(entregar('repartidor', 'PED-F4', { 'LT-001': 60 }, { fotoEnEvento: { hash: 'b'.repeat(64) } }));
+    await assertFails(entregar('repartidor', 'PED-F4', { 'LT-001': 60 }, { foto: { ordenId: 'PED-OTRA' } }));
+    await assertFails(entregar('repartidor', 'PED-F4', { 'LT-001': 60 }, { foto: { expiraEn: Timestamp.fromMillis(Date.now() + 400 * DIA) } }));
+    await assertFails(entregar('repartidor', 'PED-F4', { 'LT-001': 60 }, { foto: { tipo: 'image/png' } }));
+    await assertFails(entregar('repartidor', 'PED-F4', { 'LT-001': 60 }, { foto: { datos: 'x'.repeat(700001) } }));
+    await assertFails(entregar('repartidor', 'PED-F4', { 'LT-001': 60 }, { foto: { extra: 1 } }));
+  });
+
+  test('una foto suelta (sin entrega en la misma operación) se rechaza', async () => {
+    await enLlegada('PED-F5');
+    await assertFails(setDoc(doc(como('repartidor'), 'fotosEntrega', 'foto_suelta_xxxxxxxxxxxxxxxx'), {
+      id: 'foto_suelta_xxxxxxxxxxxxxxxx', ordenId: 'PED-F5', granjaId: GRANJA, eventoId: 'e', subidaPorUid: 'repartidor', tomadaEn: 'x',
+      expiraEn: Timestamp.fromMillis(Date.now() + 15 * DIA), tipo: 'image/jpeg', ancho: 1, alto: 1, bytes: 1,
+      hash: 'a'.repeat(64), datos: 'A'.repeat(200)
+    }));
+  });
+
+  test('la foto la ven el operador y quien la tomó; no el público ni otro repartidor; nadie la cambia ni la borra', async () => {
+    await enLlegada('PED-F6');
+    await entregar('repartidor', 'PED-F6', { 'LT-001': 60 });
+    const o = await leer('ordenes/PED-F6');
+    const fotoId = o.historial[o.historial.length - 1].datos.foto.id;
+    await assertSucceeds(getDoc(doc(como('vendedor'), 'fotosEntrega', fotoId)));
+    await assertSucceeds(getDoc(doc(como('repartidor'), 'fotosEntrega', fotoId)));
+    await assertFails(getDoc(doc(como('repartidor2'), 'fotosEntrega', fotoId)));
+    await assertFails(getDoc(doc(env.unauthenticatedContext().firestore(), 'fotosEntrega', fotoId)));
+    await assertFails(getDocs(collection(como('repartidor'), 'fotosEntrega')));
+    await assertSucceeds(getDocs(query(collection(como('vendedor'), 'fotosEntrega'), where('granjaId', '==', GRANJA), where('ordenId', '==', 'PED-F6'))));
+    await assertFails(updateDoc(doc(como('repartidor'), 'fotosEntrega', fotoId), { datos: 'otra' }));
+    const { deleteDoc } = await import('firebase/firestore');
+    await assertFails(deleteDoc(doc(como('vendedor'), 'fotosEntrega', fotoId)));
   });
 });

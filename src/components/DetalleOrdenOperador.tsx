@@ -20,6 +20,7 @@ import { ETIQUETA_FUNCION, EstadoOrdenBadge, num } from './entregasUi';
 import { SolicitudAjusteTarjeta } from './SolicitudesPendientes';
 import { NovedadTarjeta } from './NovedadesIncidencias';
 import { DocumentacionEntrega } from './DocumentacionEntrega';
+import { FotosEntregaOrden } from './FotosEntregaOrden';
 
 type Ejecutar = (accion: () => Promise<void>, exito: string) => Promise<void>;
 
@@ -293,6 +294,13 @@ export const DetalleOrdenOperador: React.FC<{
         )}
         {cerrada && <p className="text-slate-500">Esta orden está cerrada y no admite más cambios (sus novedades se pueden seguir atendiendo).</p>}
       </Seccion>
+
+      {/* Fotos de las entregas (solo operador; se borran a los 15 días) */}
+      {o.historial.some((e) => e.tipo === 'Entrega' && e.datos?.foto?.id) && (
+        <Seccion titulo="Fotos de entrega">
+          <FotosEntregaOrden orden={o} />
+        </Seccion>
+      )}
 
       {/* Comprobantes de entrega (fase 5) */}
       {o.estado !== 'borrador' && (

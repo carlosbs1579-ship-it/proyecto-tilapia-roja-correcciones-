@@ -9,13 +9,16 @@ import { cantidadPendiente, mensajeError, nuevoEvento, redondear } from './pedid
 // de una transacción); las acciones que siguen en el teléfono del repartidor no están en el
 // servidor y no pueden entrar. El PDF se genera a partir del registro cada vez.
 //
-// Integridad (no es una blockchain: son hashes SHA-256 guardados en Firebase):
+// Integridad: registro tipo blockchain (cadena de bloques privada sobre Firebase). Cada comprobante
+// es un bloque que guarda el hash del bloque anterior de la misma orden (64 ceros en el primero):
 //  - hashEventos: SHA-256 del JSON canónico de los eventos de la orden usados (inicio de ruta,
 //    llegada, entregas, novedades, ajustes y decisiones de saldo), tal como están guardados.
+//  - hashAnterior: hashComprobante de la versión anterior (enlace de la cadena).
 //  - hashComprobante: SHA-256 del JSON canónico de todo el comprobante salvo este mismo campo.
 // Verificar = recalcular ambos y compararlos. El hash del lote productivo no se toca.
 
 export const EMPRESA = 'Cultivos Loré — Tilapia Pro';
+export const HASH_GENESIS_COMPROBANTES = '0'.repeat(64);
 
 // Eventos de la orden que documenta un comprobante
 const TIPOS_DOCUMENTADOS = new Set([
@@ -209,7 +212,10 @@ export async function emitirComprobanteDefinitivo(ordenId: string): Promise<Comp
       const emitidoEn = new Date().toISOString();
       const base = construirComprobante(orden, { id, version, token, uid, emitidoEn });
       const hashEventos = await hashDeEventos(eventosDocumentados(orden));
-      const sinHash = { ...base, hashEventos };
+      // Enlace con el bloque anterior: el hash de la última versión emitida de esta orden
+      const anterior = consulta ? Object.values(consulta.versiones).find((v) => v.comprobanteId === consulta.ultimaVersion) : null;
+      const hashAnterior = anterior?.hashComprobante || HASH_GENESIS_COMPROBANTES;
+      const sinHash = { ...base, hashEventos, hashAnterior };
       const comprobante: ComprobanteEntrega = { ...sinHash, hashComprobante: await calcularHashComprobante(sinHash as ComprobanteEntrega) };
 
       tx.set(doc(db, 'comprobantes', id), comprobante);
@@ -291,6 +297,33 @@ export async function leerConsultaEntrega(token: string): Promise<{ consulta: Co
 
 // ---------- Verificación ----------
 
+/**
+ * Revisa la cadena de bloques de una orden: cada versión debe enlazar el hash de la anterior.
+ * Las versiones emitidas antes del encadenamiento (sin hashAnterior) se informan aparte.
+ */
+export function verificarCadena(comprobantes: ComprobanteEntrega[]): { integra: boolean; sinEnlace: number; mensaje: string } {
+  const orden = [...comprobantes].sort((a, b) => a.version - b.version);
+  let sinEnlace = 0;
+  for (let i = 0; i < orden.length; i++) {
+    const c = orden[i];
+    if (!c.hashAnterior) {
+      sinEnlace++;
+      continue;
+    }
+    const esperado = i === 0 ? HASH_GENESIS_COMPROBANTES : orden[i - 1].hashComprobante;
+    if (c.hashAnterior !== esperado) {
+      return { integra: false, sinEnlace, mensaje: `Cadena rota: el bloque v${c.version} no enlaza con el bloque anterior.` };
+    }
+  }
+  return {
+    integra: true,
+    sinEnlace,
+    mensaje: sinEnlace
+      ? `Cadena íntegra en los bloques encadenados (${sinEnlace} versión(es) anteriores al encadenamiento).`
+      : `Cadena de bloques íntegra: ${orden.length} bloque(s) enlazados desde el bloque génesis.`
+  };
+}
+
 export interface ResultadoVerificacionComprobante {
   contenidoIntegro: boolean; // el hash del comprobante coincide con su contenido
   eventosIntegros: boolean | null; // los eventos de la orden siguen iguales (solo si se tiene la orden)
@@ -328,6 +361,6 @@ export async function verificarComprobante(
     indiceCoincide,
     mensaje: fallas.length
       ? `Verificación fallida: ${fallas.join('; ')}.`
-      : `Comprobante íntegro: el contenido coincide con su hash SHA-256${eventosIntegros ? ' y con los eventos registrados en la orden' : ''}.`
+      : `Bloque íntegro: el contenido coincide con su hash SHA-256${eventosIntegros ? ' y con los eventos registrados en la orden' : ''}.`
   };
 }

@@ -562,9 +562,10 @@ describe('Comprobantes de entrega (fase 5)', () => {
   }
 
   // Emite un comprobante como lo hace el servicio: comprobante + índice público + orden, en una sola operación
-  async function emitir(uid, ordenId, { token = TOKEN, alterar = {}, alterarProc, indice, idComp, versionForzada } = {}) {
+  async function emitir(uid, ordenId, { token = TOKEN, alterar = {}, alterarProc, indice, idComp, versionForzada, hashAnterior } = {}) {
     const o = await leer(`ordenes/${ordenId}`);
     const consulta = await leer(`consultasEntrega/${token}`);
+    const previo = consulta ? await leer(`comprobantes/${consulta.ultimaVersion}`) : null;
     const idx = indice ?? o.historial.map((e) => e.tipo).lastIndexOf('Entrega');
     const entrega = { ...o.historial[idx], eventoId: o.historial[idx].eventoId || 'evento-sin-id' };
     const id = idComp || idNuevo();
@@ -585,7 +586,8 @@ describe('Comprobantes de entrega (fase 5)', () => {
       cantidadLiberada: o.cantidadLiberada || 0,
       cantidadPendiente: o.cantidadAutorizada - o.cantidadEntregada - (o.cantidadLiberada || 0),
       procedencias, entregas: [], novedades: [], ajustes: [], eventoEntregaId: entrega.eventoId, eventoEntregaIndice: idx,
-      eventosUsados: [entrega.eventoId], hashEventos: H64, hashComprobante: H64, ...alterar
+      eventosUsados: [entrega.eventoId], hashEventos: H64, hashComprobante: idComp ? H64 : (id.slice(-1) + 'e'.repeat(63)).slice(0, 64),
+      hashAnterior: hashAnterior ?? (previo ? previo.hashComprobante : '0'.repeat(64)), ...alterar
     };
     const db = como(uid);
     const batch = writeBatch(db);
@@ -667,6 +669,20 @@ describe('Comprobantes de entrega (fase 5)', () => {
     await llegar('repartidor', 'PED-C5');
     await entregar('repartidor', 'PED-C5', { 'LT-001': 50 });
     await assertFails(emitir('vendedor', 'PED-C5', { token: 'tok_' + 'z'.repeat(28) }));
+  });
+
+  test('los comprobantes se encadenan como bloques: cada uno enlaza el hash del anterior', async () => {
+    await entregaParcial('PED-C7');
+    await assertFails(emitir('vendedor', 'PED-C7', { hashAnterior: 'f'.repeat(64) }));
+    const v1 = await emitir('vendedor', 'PED-C7');
+    assert.equal((await leer(`comprobantes/${v1}`)).hashAnterior, '0'.repeat(64));
+    await reprogramar('PED-C7');
+    await iniciarRuta('repartidor', 'PED-C7');
+    await llegar('repartidor', 'PED-C7');
+    await entregar('repartidor', 'PED-C7', { 'LT-001': 50 });
+    await assertFails(emitir('vendedor', 'PED-C7', { hashAnterior: '0'.repeat(64) }));
+    const v2 = await emitir('vendedor', 'PED-C7');
+    assert.equal((await leer(`comprobantes/${v2}`)).hashAnterior, (await leer(`comprobantes/${v1}`)).hashComprobante);
   });
 
   test('14. los lotes no cambian al emitir comprobantes', async () => {

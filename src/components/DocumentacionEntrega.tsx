@@ -6,6 +6,7 @@ import {
   emitirComprobanteDefinitivo,
   entregasConComprobante,
   escucharComprobantesOrden,
+  verificarCadena,
   problemasParaEmitir,
   ultimaEntrega,
   verificarComprobante
@@ -114,6 +115,9 @@ export const DocumentacionEntrega: React.FC<{
       )}
       {errorLectura && <p className="text-red-600">{errorLectura}</p>}
 
+      {comprobantes.length > 0 && (
+        <p className={verificarCadena(comprobantes).integra ? 'text-emerald-700' : 'text-red-600'}>{verificarCadena(comprobantes).mensaje}</p>
+      )}
       {comprobantes.length > 0 && (
         <ul className="divide-y divide-slate-100 border border-slate-100 rounded">
           {comprobantes.map((c) => (

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ArrowLeft, Download, FileText, ShieldAlert, ShieldCheck, Truck } from 'lucide-react';
 import { ComprobanteEntrega, ConsultaEntrega } from '../types';
-import { EMPRESA, leerConsultaEntrega, verificarComprobante } from '../services/comprobantesService';
+import { EMPRESA, leerConsultaEntrega, verificarCadena, verificarComprobante } from '../services/comprobantesService';
 import { descargarComprobantePdf, verComprobantePdf } from '../services/pdfService';
 import { formatearFechaColombia } from '../utils/constants';
 
@@ -139,11 +139,20 @@ export const ConsultaEntregaPublica: React.FC<{
 
             <section className="bg-white rounded-lg border border-slate-200 p-4 space-y-2">
               <span className="font-bold block">Comprobantes emitidos ({comprobantes.length})</span>
+              {(() => {
+                const cadena = verificarCadena(comprobantes);
+                return (
+                  <span className={`flex items-start text-xs ${cadena.integra ? 'text-emerald-700' : 'text-red-600'}`}>
+                    {cadena.integra ? <ShieldCheck className="w-3 h-3 mr-1 mt-0.5 shrink-0" /> : <ShieldAlert className="w-3 h-3 mr-1 mt-0.5 shrink-0" />}
+                    {cadena.mensaje}
+                  </span>
+                );
+              })()}
               {comprobantes.map((c) => (
                 <div key={c.id} className="border border-slate-100 rounded p-2 space-y-1 text-xs">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <span>
-                      <strong>Versión {c.version}</strong> · {formatearFechaColombia(c.emitidoEn)} ·{' '}
+                      <strong>Bloque v{c.version}</strong> · {formatearFechaColombia(c.emitidoEn)} ·{' '}
                       {c.estadoEntrega === 'entregado' ? 'entrega completa' : 'entrega parcial'} · entregado {num(c.cantidadEntregada)} {c.unidad}
                     </span>
                     <span className="flex gap-1">
@@ -168,7 +177,8 @@ export const ConsultaEntregaPublica: React.FC<{
                 </div>
               ))}
               <p className="text-[10px] text-slate-400">
-                Cada comprobante se guarda una sola vez y no se modifica; su hash SHA-256 se recalcula aquí para verificarlo (no es una blockchain).
+                Registro tipo blockchain: cada comprobante es un bloque sellado con SHA-256 que contiene el hash del bloque anterior; se guarda una
+                sola vez y aquí se recalcula para verificarlo. Cadena de bloques privada sobre Firebase.
               </p>
             </section>
           </>

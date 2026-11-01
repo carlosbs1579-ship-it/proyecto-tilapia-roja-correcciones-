@@ -752,6 +752,77 @@ describe('Comprobantes de entrega (fase 5)', () => {
     assert.equal(c3.hashAnterior, (await leer(`comprobantes/${anu}`)).hashComprobante);
   });
 
+  // Corrige lo entregado como lo hace el servicio: inventario por la diferencia + orden + evento
+  async function corregir(uid, id, nuevo, { motivo = 'El repartidor registró mal la cantidad', delta, sinInventario, estado } = {}) {
+    const o = await leer(`ordenes/${id}`);
+    const anterior = o.entregadoPorLote || {};
+    const total = Object.values(nuevo).reduce((a, n) => a + n, 0);
+    const db = como(uid);
+    const batch = writeBatch(db);
+    if (!sinInventario) {
+      for (const c of Object.keys(o.procedencias)) {
+        const d = delta ?? ((nuevo[c] || 0) - (anterior[c] || 0));
+        if (d === 0) continue;
+        batch.update(doc(db, 'inventarioLotes', c), {
+          entregado: increment(d), reservado: increment(-d), ultimaOrden: id, movidoEn: serverTimestamp(), tipoMovimiento: 'correccion'
+        });
+      }
+    }
+    batch.update(doc(db, 'ordenes', id), {
+      entregadoPorLote: nuevo, cantidadEntregada: total,
+      estado: estado ?? (total === o.cantidadAutorizada ? 'entregado' : 'entrega_parcial'), actualizadoEn: 'c',
+      historial: [...o.historial, evento(uid, o.historial.length, 'Corrección de entrega', { descripcion: motivo, datos: { anterior, nuevo }, eventoId: `ev-corr-${id}-${o.historial.length}` })]
+    });
+    return batch.commit();
+  }
+
+  async function entregaCompleta(id) {
+    await crearAsignada(id, { 'LT-001': 300, 'LT-002': 200 });
+    await iniciarRuta('repartidor', id);
+    await llegar('repartidor', id);
+    await entregar('repartidor', id, { 'LT-001': 300, 'LT-002': 200 });
+  }
+
+  test('corrección: el operador corrige lo entregado; inventario y estado se recalculan', async () => {
+    await entregaCompleta('PED-K1');
+    const invAntes = await leer('inventarioLotes/LT-001');
+    await corregir('vendedor', 'PED-K1', { 'LT-001': 280, 'LT-002': 200 });
+    const o = await leer('ordenes/PED-K1');
+    assert.equal(o.estado, 'entrega_parcial');
+    assert.equal(o.cantidadEntregada, 480);
+    const inv = await leer('inventarioLotes/LT-001');
+    assert.equal(inv.entregado, invAntes.entregado - 20);
+    assert.equal(inv.reservado, invAntes.reservado + 20);
+    await assertSucceeds(reprogramar('PED-K1'));
+  });
+
+  test('corrección: se rechaza sin permiso, sin motivo, por encima de lo autorizado o si el inventario no cuadra', async () => {
+    await entregaCompleta('PED-K2');
+    await assertFails(corregir('repartidor', 'PED-K2', { 'LT-001': 280, 'LT-002': 200 }));
+    await assertFails(corregir('vendedor', 'PED-K2', { 'LT-001': 280, 'LT-002': 200 }, { motivo: 'corto' }));
+    await assertFails(corregir('vendedor', 'PED-K2', { 'LT-001': 310, 'LT-002': 200 }));
+    await assertFails(corregir('vendedor', 'PED-K2', { 'LT-001': 280, 'LT-002': 200 }, { delta: -5 }));
+    await assertFails(corregir('vendedor', 'PED-K2', { 'LT-001': 280, 'LT-002': 200 }, { sinInventario: true }));
+    await assertFails(corregir('vendedor', 'PED-K2', { 'LT-001': 280, 'LT-002': 200 }, { estado: 'entregado' }));
+    await assertFails(corregir('vendedor', 'PED-K2', { 'LT-001': 300, 'LT-002': 200 }));
+    await env.withSecurityRulesDisabled((ctx) => updateDoc(doc(ctx.firestore(), 'ordenes', 'PED-K2'), { cantidadLiberada: 10 }));
+    await assertFails(corregir('vendedor', 'PED-K2', { 'LT-001': 280, 'LT-002': 200 }));
+  });
+
+  test('corrección: tras anular el comprobante, se emite uno nuevo con los datos corregidos', async () => {
+    await entregaCompleta('PED-K3');
+    const v1 = await emitir('vendedor', 'PED-K3');
+    await anular('vendedor', v1);
+    await corregir('vendedor', 'PED-K3', { 'LT-001': 290, 'LT-002': 200 });
+    const o = await leer('ordenes/PED-K3');
+    const idx = o.historial.map((e) => e.tipo).lastIndexOf('Corrección de entrega');
+    const v3 = await emitir('vendedor', 'PED-K3', { indice: idx });
+    const c3 = await leer(`comprobantes/${v3}`);
+    assert.equal(c3.version, 3);
+    assert.equal(c3.cantidadEntregada, 490);
+    assert.equal(c3.estadoEntrega, 'entrega_parcial');
+  });
+
   test('14. los lotes no cambian al emitir comprobantes', async () => {
     const antes = await leer('lotes/LT-001');
     await entregaParcial('PED-C6');

@@ -28,8 +28,12 @@ const TIPOS_DOCUMENTADOS = new Set([
   'Novedad',
   'Ajuste aplicado',
   'Reprogramación de saldo',
-  'Cierre con saldo liberado'
+  'Cierre con saldo liberado',
+  'Corrección de entrega'
 ]);
+
+// Hechos que se documentan con un comprobante: una entrega o la corrección de una entrega
+const TIPOS_COMPROBABLES = new Set(['Entrega', 'Corrección de entrega']);
 
 function generarToken(prefijo: string): string {
   const bytes = new Uint8Array(20);
@@ -42,7 +46,7 @@ function generarToken(prefijo: string): string {
  */
 export function ultimaEntrega(orden: OrdenEntrega): { evento: EventoOrden; indice: number } | null {
   for (let i = (orden.historial || []).length - 1; i >= 0; i--) {
-    if (orden.historial[i].tipo === 'Entrega') return { evento: orden.historial[i], indice: i };
+    if (TIPOS_COMPROBABLES.has(orden.historial[i].tipo)) return { evento: orden.historial[i], indice: i };
   }
   return null;
 }
@@ -72,7 +76,11 @@ export function problemasParaEmitir(orden: OrdenEntrega): string[] {
   }
   if (!ultima.evento.eventoId) problemas.push('La última entrega no tiene identificador de evento.');
   if (ultima.evento.eventoId && entregasConComprobante(orden).has(ultima.evento.eventoId)) {
-    problemas.push('La última entrega ya tiene su comprobante definitivo.');
+    problemas.push(
+      ultima.evento.tipo === 'Corrección de entrega'
+        ? 'La corrección de la entrega ya tiene su comprobante definitivo.'
+        : 'La última entrega ya tiene su comprobante definitivo.'
+    );
   }
   const porLote = orden.entregadoPorLote || {};
   const suma = redondear(Object.values(porLote).reduce((s, n) => s + n, 0), orden.unidad);
@@ -81,6 +89,14 @@ export function problemasParaEmitir(orden: OrdenEntrega): string[] {
   }
   const segunEventos: Record<string, number> = {};
   for (const e of orden.historial) {
+    // Una corrección fija lo entregado por lote; las entregas posteriores suman sobre ese valor
+    if (e.tipo === 'Corrección de entrega') {
+      for (const lote of Object.keys(segunEventos)) delete segunEventos[lote];
+      for (const [lote, cantidad] of Object.entries((e.datos?.nuevo || {}) as Record<string, number>)) {
+        segunEventos[lote] = redondear(Number(cantidad) || 0, orden.unidad);
+      }
+      continue;
+    }
     if (e.tipo !== 'Entrega') continue;
     for (const [lote, cantidad] of Object.entries((e.datos?.entregas || {}) as Record<string, number>)) {
       segunEventos[lote] = redondear((segunEventos[lote] || 0) + (Number(cantidad) || 0), orden.unidad);
@@ -234,13 +250,22 @@ export function construirComprobante(
       ...(e.datos?.foto?.hash ? { fotoHash: String(e.datos.foto.hash) } : {})
     }));
   const ajustes = orden.historial
-    .filter((e) => e.tipo === 'Ajuste aplicado')
-    .map((e) => ({
-      fecha: e.fecha,
-      anterior: Object.fromEntries(Object.entries((e.datos?.anterior || {}) as Record<string, any>).map(([l, p]) => [l, Number(p?.cantidad) || 0])),
-      nueva: Object.fromEntries(Object.entries((e.datos?.nueva || {}) as Record<string, any>).map(([l, p]) => [l, Number(p?.cantidad) || 0])),
-      motivo: orden.ajustes?.[e.datos?.ajusteId]?.motivo || e.descripcion || ''
-    }));
+    .filter((e) => e.tipo === 'Ajuste aplicado' || e.tipo === 'Corrección de entrega')
+    .map((e) =>
+      e.tipo === 'Corrección de entrega'
+        ? {
+            fecha: e.fecha,
+            anterior: Object.fromEntries(Object.entries((e.datos?.anterior || {}) as Record<string, number>).map(([l, n]) => [l, Number(n) || 0])),
+            nueva: Object.fromEntries(Object.entries((e.datos?.nuevo || {}) as Record<string, number>).map(([l, n]) => [l, Number(n) || 0])),
+            motivo: `Corrección de la cantidad entregada: ${e.descripcion || ''}`
+          }
+        : {
+            fecha: e.fecha,
+            anterior: Object.fromEntries(Object.entries((e.datos?.anterior || {}) as Record<string, any>).map(([l, p]) => [l, Number(p?.cantidad) || 0])),
+            nueva: Object.fromEntries(Object.entries((e.datos?.nueva || {}) as Record<string, any>).map(([l, p]) => [l, Number(p?.cantidad) || 0])),
+            motivo: orden.ajustes?.[e.datos?.ajusteId]?.motivo || e.descripcion || ''
+          }
+    );
   return {
     id: datos.id,
     version: datos.version,

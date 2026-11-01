@@ -21,6 +21,7 @@ import { SolicitudAjusteTarjeta } from './SolicitudesPendientes';
 import { NovedadTarjeta } from './NovedadesIncidencias';
 import { DocumentacionEntrega } from './DocumentacionEntrega';
 import { FotosEntregaOrden } from './FotosEntregaOrden';
+import { CorreccionEntrega } from './CorreccionEntrega';
 
 type Ejecutar = (accion: () => Promise<void>, exito: string) => Promise<void>;
 
@@ -292,7 +293,12 @@ export const DetalleOrdenOperador: React.FC<{
             </div>
           </div>
         )}
-        {cerrada && <p className="text-slate-500">Esta orden está cerrada y no admite más cambios (sus novedades se pueden seguir atendiendo).</p>}
+        {cerrada && (
+          <p className="text-slate-500">
+            Esta orden está cerrada: no admite cambios de estado ni de repartidor (sus novedades se pueden seguir atendiendo y, si la entrega quedó mal registrada, se puede corregir).
+          </p>
+        )}
+        <CorreccionEntrega orden={o} procesando={procesando} ejecutar={ejecutar} />
       </Seccion>
 
       {/* Fotos de las entregas (solo operador; se borran a los 15 días) */}

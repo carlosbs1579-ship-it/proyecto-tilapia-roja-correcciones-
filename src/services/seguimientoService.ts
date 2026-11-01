@@ -201,7 +201,12 @@ export function calcularAlertas(
     }
     // Entregas confirmadas que aún no tienen comprobante definitivo
     const conComprobante = new Set(o.historial.filter((e) => e.tipo === 'Comprobante emitido').map((e) => e.datos?.eventoEntregaId));
-    const sinComprobante = o.historial.filter((e) => e.tipo === 'Entrega' && e.eventoId && !conComprobante.has(e.eventoId));
+    // La última entrega o corrección sin comprobante (una corrección reemplaza a las entregas anteriores)
+    const comprobables = o.historial.filter((e) => e.tipo === 'Entrega' || e.tipo === 'Corrección de entrega');
+    const ultimaCorreccion = comprobables.map((e) => e.tipo).lastIndexOf('Corrección de entrega');
+    const sinComprobante = comprobables
+      .slice(Math.max(0, ultimaCorreccion))
+      .filter((e) => e.eventoId && !conComprobante.has(e.eventoId));
     if (sinComprobante.length) {
       alertas.push({
         id: `${o.id}-comprobante`,
@@ -357,6 +362,10 @@ export function cambiosDeEvento(e: EventoOrden): string | null {
   }
   if (d.repartidorAnterior !== undefined && d.repartidor !== undefined && d.repartidorAnterior !== d.repartidor) {
     return `${d.repartidorAnterior} → ${d.repartidor}`;
+  }
+  if (e.tipo === 'Corrección de entrega' && d.nuevo) {
+    const lotes = Array.from(new Set([...Object.keys(d.anterior || {}), ...Object.keys(d.nuevo || {})]));
+    return lotes.map((l) => `${l}: ${(d.anterior || {})[l] ?? 0} → ${(d.nuevo || {})[l] ?? 0}`).join(', ');
   }
   if (d.entregas) {
     return (

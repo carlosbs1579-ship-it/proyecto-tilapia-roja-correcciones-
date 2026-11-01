@@ -126,6 +126,12 @@ export const DocumentacionEntrega: React.FC<{
         <p className="font-semibold text-amber-700">Entrega confirmada sin comprobante definitivo: emítalo para documentarla.</p>
       )}
       {errorLectura && <p className="text-red-600">{errorLectura}</p>}
+      {ultimaEntrega(o)?.evento.tipo === 'Corrección de entrega' &&
+        comprobantes.some((c) => !anulaciones[c.id] && c.eventoEntregaId !== ultimaEntrega(o)?.evento.eventoId) && (
+          <p className="font-semibold text-amber-700">
+            La entrega se corrigió después de emitir el comprobante vigente: anúlalo (tiene los datos anteriores) y emite uno nuevo.
+          </p>
+        )}
 
       {comprobantes.length > 0 && (
         <p className={verificarCadena(bloques).integra ? 'text-emerald-700' : 'text-red-600'}>{verificarCadena(bloques).mensaje}</p>

@@ -152,7 +152,9 @@ export type TipoEventoOrden =
   | 'Atención de novedad'
   // Documentación (fase 5): emisión de un comprobante definitivo y anulación (sin borrarlo)
   | 'Comprobante emitido'
-  | 'Comprobante anulado';
+  | 'Comprobante anulado'
+  // Corrección de una entrega ya confirmada (cantidades reales por lote, con motivo)
+  | 'Corrección de entrega';
 
 // ---------- Comprobantes de entrega (fase 5) ----------
 // Un comprobante definitivo es un registro inmutable en comprobantes/{id} (id aleatorio, no

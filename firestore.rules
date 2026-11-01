@@ -291,6 +291,22 @@ service cloud.firestore {
         && nuevo.reservado > -0.000001;
     }
 
+    // Corrección de una entrega ya confirmada (operador): lo entregado de este lote cambia en d y lo
+    // reservado en -d, igual que en la orden; lo comprometido del lote (reservado + entregado) no cambia
+    function correccionInventarioValida(codigo, antes, nuevo) {
+      let id = nuevo.ultimaOrden;
+      let oa = get(rutaOrden(id)).data;
+      let od = getAfter(rutaOrden(id)).data;
+      let d = od.entregadoPorLote.get(codigo, 0) - oa.get('entregadoPorLote', {}).get(codigo, 0);
+      return oa.estado in ['entregado', 'entrega_parcial']
+        && od.historial[od.historial.size() - 1].tipo == 'Corrección de entrega'
+        && !igualCantidad(d, 0)
+        && igualCantidad(nuevo.entregado - antes.entregado, d)
+        && igualCantidad(antes.reservado - nuevo.reservado, d)
+        && nuevo.reservado > -0.000001
+        && nuevo.entregado > -0.000001;
+    }
+
     // movidoEn es la hora del servidor de esta operación: así la orden comprueba que se movió aquí.
     // Cada movimiento declara su tipo; sin tipo (versión anterior de la app) se trata como reserva.
     // Todo movimiento exige que su orden cambie en esta misma operación de una forma que solo permite
@@ -321,7 +337,10 @@ service cloud.firestore {
         && ((tipo == 'entrega'
               && cambios.hasOnly(['reservado', 'entregado', 'ultimaOrden', 'movidoEn', 'tipoMovimiento'])
               && entregaValida(codigo, antes, nuevo))
-            || (tipo != 'entrega'
+            || (tipo == 'correccion'
+              && cambios.hasOnly(['reservado', 'entregado', 'ultimaOrden', 'movidoEn', 'tipoMovimiento'])
+              && correccionInventarioValida(codigo, antes, nuevo))
+            || (!(tipo in ['entrega', 'correccion'])
               && cambios.hasOnly(['reservado', 'ultimaOrden', 'movidoEn', 'tipoMovimiento'])
               && isSignedIn()
               && ((tipo == 'reserva' && reservaValida(codigo, antes.reservado, nuevo))
@@ -558,6 +577,37 @@ service cloud.firestore {
         && (despues.repartidorUid == antes.repartidorUid || repartidorValido(despues.repartidorUid, antes.granjaId));
     }
 
+    // Corrección de una entrega confirmada: el operador fija lo realmente entregado por lote (sin superar
+    // lo autorizado de cada lote), con motivo. El inventario se mueve en esta misma operación y el
+    // evento guarda el valor anterior y el nuevo. No aplica si el saldo ya se liberó al cerrar.
+    function correccionLote(id, antes, e0, e1, claves, i) {
+      return claves.size() <= i
+        || (e1.get(claves[i], 0) >= 0
+            && e1.get(claves[i], 0) <= antes.procedencias[claves[i]].cantidad + 0.000001
+            && (e1.get(claves[i], 0) == e0.get(claves[i], 0) || movidoAqui(id, claves[i])));
+    }
+
+    function correccionEntregaValida(id, antes, despues, cambios, evento) {
+      let claves = antes.procedencias.keys();
+      let e0 = antes.get('entregadoPorLote', {});
+      let e1 = despues.entregadoPorLote;
+      return antes.estado in ['entregado', 'entrega_parcial']
+        && antes.get('cantidadLiberada', 0) == 0
+        && cambios.hasOnly(['entregadoPorLote', 'cantidadEntregada', 'estado', 'actualizadoEn', 'historial'])
+        && e1.keys().hasOnly(claves)
+        && e1 != e0
+        && despues.cantidadEntregada > 0
+        && igualCantidad(despues.cantidadEntregada,
+             entregadoLote(e1, claves, 0) + entregadoLote(e1, claves, 1) + entregadoLote(e1, claves, 2))
+        && despues.estado == (igualCantidad(despues.cantidadEntregada, antes.cantidadAutorizada) ? 'entregado' : 'entrega_parcial')
+        && evento.descripcion.size() >= 10
+        && evento.datos.anterior == e0
+        && evento.datos.nuevo == e1
+        && correccionLote(id, antes, e0, e1, claves, 0)
+        && correccionLote(id, antes, e0, e1, claves, 1)
+        && correccionLote(id, antes, e0, e1, claves, 2);
+    }
+
     // Entrega parcial: liberar el saldo y cerrar (sin pendientes)
     function cierreSaldoValido(id, antes, despues, cambios) {
       return antes.estado == 'entrega_parcial'
@@ -647,7 +697,7 @@ service cloud.firestore {
       let cambios = despues.diff(antes).affectedKeys();
       return tipo in ['Modificación', 'Cambio de repartidor', 'Asignación y reserva', 'Cambio de estado', 'Cancelación',
                       'Reprogramación de saldo', 'Cierre con saldo liberado', 'Ajuste rechazado', 'Ajuste aplicado',
-                      'Atención de novedad', 'Comprobante emitido', 'Comprobante anulado']
+                      'Atención de novedad', 'Comprobante emitido', 'Comprobante anulado', 'Corrección de entrega']
         && despues.historial.size() == n + 1
         && eventoOrdenValido(evento, n)
         && despues.historial[0:n] == antes.historial
@@ -666,7 +716,8 @@ service cloud.firestore {
               && ajusteAplicadoValido(id, antes, despues, cambios, evento.datos.ajusteId))
             || (tipo == 'Atención de novedad' && atencionNovedadValida(antes, despues, cambios, evento))
             || (tipo == 'Comprobante emitido' && emisionComprobanteValida(id, antes, despues, cambios, evento))
-            || (tipo == 'Comprobante anulado' && registroAnulacionValido(id, cambios, evento)));
+            || (tipo == 'Comprobante anulado' && registroAnulacionValido(id, cambios, evento))
+            || (tipo == 'Corrección de entrega' && correccionEntregaValida(id, antes, despues, cambios, evento)));
     }
 
     // ===== Comprobantes de entrega (fase 5) =====
@@ -766,7 +817,7 @@ service cloud.firestore {
         && c.tokenConsulta == o.tokenConsulta
         && o.estado in ['entregado', 'entrega_parcial']
         && c.estadoEntrega == o.estado
-        && entrega.tipo == 'Entrega'
+        && entrega.tipo in ['Entrega', 'Corrección de entrega']
         && entrega.eventoId == c.eventoEntregaId
         && c.unidad == o.unidad
         && c.cantidadSolicitada == o.cantidadSolicitada

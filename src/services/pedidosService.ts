@@ -3,6 +3,7 @@ import {
   doc,
   onSnapshot,
   query,
+  increment,
   runTransaction,
   serverTimestamp,
   setDoc,
@@ -986,5 +987,70 @@ export async function atenderNovedad(
   } catch (err) {
     console.error('Error atendiendo la novedad:', err);
     throw mensajeError('registrar la atención de la novedad', err);
+  }
+}
+
+/**
+ * Corrige una entrega ya confirmada: fija lo realmente entregado de cada lote (sin superar lo
+ * autorizado), mueve el inventario por la diferencia y recalcula el estado de la orden. Queda un
+ * evento "Corrección de entrega" con el valor anterior, el nuevo y el motivo; nada se borra.
+ */
+export async function corregirEntrega(ordenId: string, nuevo: Record<string, number>, motivo: string): Promise<void> {
+  const motivoLimpio = motivo.trim();
+  if (motivoLimpio.length < 10) throw new Error('Explica el motivo de la corrección (mínimo 10 caracteres).');
+  try {
+    await runTransaction(db, async (tx) => {
+      const snap = await tx.get(ordenRef(ordenId));
+      if (!snap.exists()) throw new Error('La orden no existe.');
+      const orden = snap.data() as OrdenEntrega;
+      if (!['entregado', 'entrega_parcial'].includes(orden.estado)) {
+        throw new Error('Solo se corrige una orden con entrega confirmada (entregada o con entrega parcial).');
+      }
+      if ((orden.cantidadLiberada || 0) > 0) {
+        throw new Error('Esta orden se cerró liberando el saldo; ya no se puede corregir la entrega.');
+      }
+      const anterior: Record<string, number> = { ...(orden.entregadoPorLote || {}) };
+      const corregido: Record<string, number> = {};
+      for (const codigo of Object.keys(orden.procedencias)) {
+        const valor = redondear(Number(nuevo[codigo]) || 0, orden.unidad);
+        if (valor < 0) throw new Error('Las cantidades no pueden ser negativas.');
+        if (valor > orden.procedencias[codigo].cantidad) {
+          throw new Error(`Del lote ${codigo} se autorizaron ${orden.procedencias[codigo].cantidad} ${orden.unidad}; no se puede registrar más.`);
+        }
+        if (valor > 0 || codigo in anterior) corregido[codigo] = valor;
+      }
+      const cambia = Object.keys(orden.procedencias).some(
+        (c) => redondear(corregido[c] || 0, orden.unidad) !== redondear(anterior[c] || 0, orden.unidad)
+      );
+      if (!cambia) throw new Error('Las cantidades son iguales a las registradas: no hay nada que corregir.');
+      const cantidadEntregada = redondear(Object.values(corregido).reduce((s, n) => s + n, 0), orden.unidad);
+      if (cantidadEntregada <= 0) throw new Error('La entrega corregida debe tener alguna cantidad entregada.');
+      const ahora = new Date().toISOString();
+      for (const codigo of Object.keys(orden.procedencias)) {
+        const d = redondear((corregido[codigo] || 0) - (anterior[codigo] || 0), orden.unidad);
+        if (d === 0) continue;
+        tx.update(doc(db, 'inventarioLotes', codigo), {
+          entregado: increment(d),
+          reservado: increment(-d),
+          ultimaOrden: ordenId,
+          movidoEn: serverTimestamp(),
+          tipoMovimiento: 'correccion'
+        });
+      }
+      const completa = redondear(orden.cantidadAutorizada - cantidadEntregada, orden.unidad) <= 0;
+      tx.update(ordenRef(ordenId), {
+        entregadoPorLote: corregido,
+        cantidadEntregada,
+        estado: completa ? 'entregado' : 'entrega_parcial',
+        actualizadoEn: ahora,
+        historial: [
+          ...orden.historial,
+          nuevoEvento(orden.historial.length, 'Corrección de entrega', motivoLimpio, { anterior, nuevo: corregido })
+        ]
+      });
+    });
+  } catch (err) {
+    console.error('Error corrigiendo la entrega:', err);
+    throw mensajeError('corregir la entrega', err);
   }
 }

@@ -4,8 +4,7 @@ import { db } from '../firebase/firebaseConfig';
 import { Lote, ConfiguracionGeneral } from '../types';
 import { verificarIntegridadCadena } from '../services/hashService';
 import { descargarPdfLoteLocal } from '../services/pdfService';
-import { EntregasPublicas } from './EntregasPublicas';
-import { CONFIG_DEFAULT, formatearFechaColombia } from '../utils/constants';
+import { CONFIG_DEFAULT, formatearFechaColombia, ocultarCorreo } from '../utils/constants';
 import {
   ShieldCheck,
   CheckCircle2,
@@ -42,6 +41,7 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
   const [lote, setLote] = useState<Lote | null>(loteInicial || null);
   const [cargando, setCargando] = useState(!loteInicial);
   const [error, setError] = useState<string | null>(null);
+  const [errorPdf, setErrorPdf] = useState<string | null>(null);
 
   // Estado de verificación criptográfica
   const [verificandoHash, setVerificandoHash] = useState(false);
@@ -128,10 +128,11 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
   const handleDescargarPdf = async () => {
     if (!lote) return;
     setDescargandoPdf(true);
+    setErrorPdf(null);
     try {
       await descargarPdfLoteLocal(lote, config);
     } catch (err: any) {
-      alert(`Error generando PDF: ${err.message || err}`);
+      setErrorPdf('No se pudo generar el PDF en este dispositivo. Intente de nuevo o use otro navegador.');
     } finally {
       setDescargandoPdf(false);
     }
@@ -311,6 +312,7 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
               <Download className="w-4 h-4" />
               <span>{descargandoPdf ? 'Generando PDF...' : 'Descargar Certificado Oficial (PDF)'}</span>
             </button>
+            {errorPdf && <p className="text-xs text-red-600 mt-2">{errorPdf}</p>}
           </div>
         </div>
 
@@ -470,7 +472,7 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
                     )}
 
                     <div className="mt-2 text-[10px] text-slate-400 flex items-center justify-between">
-                      <span>Registrado por: {ev.registradoPor}</span>
+                      <span>Registrado por: {ocultarCorreo(ev.registradoPor)}</span>
                       <span className="font-mono text-[9px]">Hash: {ev.hash.substring(0, 12)}...</span>
                     </div>
                   </div>
@@ -479,9 +481,6 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
             </div>
           )}
         </div>
-
-        {/* DESTINO COMERCIAL: entregas posteriores al sellado, separadas de la producción */}
-        {lote.estado === 'cerrado' && <EntregasPublicas lote={lote} />}
 
         {/* FICHA NUTRICIONAL */}
         <div className="bg-white rounded-2xl shadow-xs border border-slate-200 p-6 space-y-4">

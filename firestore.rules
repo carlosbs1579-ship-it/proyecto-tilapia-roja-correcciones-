@@ -87,29 +87,61 @@ service cloud.firestore {
 
     // Lectura pública de UN lote por su código para la trazabilidad oficial (QR). Listar los lotes
     // de la granja, con toda su información productiva, queda para administradores y operadores.
+    // Un lote solo lo crea o modifica alguien de su misma granja (el Administrador Maestro, cualquiera)
+    function loteDeMiGranja(datos) {
+      return isMasterAdmin() || datos.get('granjaId', 'cultivos-lore') == perfil().get('granjaId', 'cultivos-lore');
+    }
+
+    // La cadena de eventos de un lote solo crece: los eventos registrados no se modifican, no se
+    // borran ni se reordenan. El evento nuevo continúa la cadena (índice y hash anterior) y queda a
+    // nombre de quien tiene la sesión. Las correcciones se registran como eventos "Corrección".
+    function eventoNuevoValido(e, antes) {
+      return e.indice == antes.size()
+        && e.tipo != 'Siembra'
+        && e.hashAnterior == (antes.size() == 0 ? '0000000000000000000000000000000000000000000000000000000000000000' : antes[antes.size() - 1].hash)
+        && e.hash is string && e.hash.size() == 64
+        && e.registradoPor is string && e.registradoPor.lower() == correoSesion();
+    }
+
+    function eventosSoloCrecen() {
+      let antes = resource.data.get('eventos', []);
+      let despues = request.resource.data.get('eventos', []);
+      return despues == antes
+        || (despues.size() == antes.size() + 1
+            && despues[0:antes.size()] == antes
+            && eventoNuevoValido(despues[antes.size()], antes));
+    }
+
     match /lotes/{codigo} {
       allow get: if true;
       allow list: if esAdminGranja() || tieneRol('operator');
 
-      // Creación: Solo lotes activos nuevos con los permisos correspondientes
+      // Creación: solo lotes activos nuevos, de la granja de quien los crea, con un único evento de siembra
       allow create: if (isMasterAdmin() || (isSignedIn() && tienePermiso('crearLotes')))
-                    && request.resource.data.estado == 'activo';
+                    && request.resource.data.estado == 'activo'
+                    && loteDeMiGranja(request.resource.data)
+                    && request.resource.data.eventos.size() == 1
+                    && request.resource.data.eventos[0].tipo == 'Siembra'
+                    && request.resource.data.eventos[0].indice == 0;
 
       // Modificación o cierre: Solo permitido si el lote actualmente está ACTIVO (no sellado)
       // Una vez cerrado/sellado (resource.data.estado == 'cerrado'), queda estrictamente bloqueado.
       allow update: if (!('estado' in resource.data) || resource.data.estado == 'activo')
                     && camposFijosDelLoteIntactos()
+                    && loteDeMiGranja(resource.data)
                     && (
-                      // Caso A: Incorporar eventos o modificar alevinos/piscina mientras el lote está activo
+                      // Caso A: Incorporar eventos o corregir alevinos/piscina mientras el lote está activo
                       (request.resource.data.estado == 'activo'
-                        && (isMasterAdmin() || (isSignedIn() && (tienePermiso('registrarEventos') || tienePermiso('crearLotes')))))
-                      // Caso B: Cerrar o sellar el lote activo
+                        && (isMasterAdmin() || (isSignedIn() && (tienePermiso('registrarEventos') || tienePermiso('crearLotes'))))
+                        && eventosSoloCrecen())
+                      // Caso B: Cerrar o sellar el lote activo, sin tocar sus eventos
                       || (request.resource.data.estado == 'cerrado'
-                        && (isMasterAdmin() || (isSignedIn() && tienePermiso('cerrarLotes'))))
+                        && (isMasterAdmin() || (isSignedIn() && tienePermiso('cerrarLotes')))
+                        && request.resource.data.get('eventos', []) == resource.data.get('eventos', []))
                     );
 
-      // Eliminación: Reservada únicamente para el Administrador Maestro
-      allow delete: if isMasterAdmin();
+      // Eliminación: solo el Administrador Maestro y nunca un lote sellado
+      allow delete: if isMasterAdmin() && resource.data.get('estado', 'activo') != 'cerrado';
     }
 
     // ---------- Entregas a clientes (sistema anterior, solo historial) ----------
@@ -117,8 +149,9 @@ service cloud.firestore {
     // pedidos queda como historial de solo lectura: las reservas y entregas nuevas pasan por las
     // órdenes de entrega, para no comprometer dos veces el mismo lote.
     match /entregas/{codigo} {
-      // Lectura pública de las entregas de UN lote (vista del QR); listar, solo administradores
-      allow get: if true;
+      // Solo lectura interna (detalle del lote): ya no se muestran en el QR público porque
+      // contienen nombres de clientes. Listar, solo administradores.
+      allow get: if esAdminGranja() || tieneRol('operator');
       allow list: if esAdminGranja();
       allow create, update, delete: if false;
     }
@@ -917,7 +950,12 @@ service cloud.firestore {
     // ---------- Configuración General ----------
     match /configuracion/{docId} {
       allow read: if true;
-      allow write: if isMasterAdmin() || esAdminGranja() || tienePermiso('gestionarConfiguracion') || tienePermiso('gestionarEstanques');
+      // Configuración completa: administradores o permiso de configuración. Quien solo gestiona
+      // estanques puede cambiar únicamente la lista de estanques.
+      allow write: if isMasterAdmin() || esAdminGranja() || tienePermiso('gestionarConfiguracion')
+        || (resource != null
+            && tienePermiso('gestionarEstanques')
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['estanques', 'actualizadoPor', 'actualizadoEn']));
     }
 
     // ---------- Perfiles de Usuario ----------

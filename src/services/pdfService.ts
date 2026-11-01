@@ -1,12 +1,15 @@
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
-import { ref, uploadBytes } from 'firebase/storage';
-import { storage } from '../firebase/firebaseConfig';
 import { Lote, ConfiguracionGeneral, ComprobanteEntrega } from '../types';
 import { construirUrlConsultaEntrega, construirUrlPublicaPdf, generarQrDataUrl } from './qrService';
 import { verificarIntegridadCadena } from './hashService';
-import { formatearFechaColombia, getFechaHoyBogota } from '../utils/constants';
+import { formatearFechaColombia, getFechaHoyBogota, ocultarCorreo } from '../utils/constants';
 import { evaluarParametroAgua } from './calculosService';
+
+
+// jsPDF y autotable (~500 KB) se cargan solo al generar un PDF, no al abrir la aplicación
+async function cargarPdf() {
+  const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([import('jspdf'), import('jspdf-autotable')]);
+  return { jsPDF, autoTable };
+}
 
 /**
  * Genera el documento PDF con jsPDF y jspdf-autotable
@@ -15,6 +18,7 @@ export async function generarLotePdfBlob(
   lote: Lote,
   config: ConfiguracionGeneral
 ): Promise<{ blob: Blob; urlPublica: string }> {
+  const { jsPDF, autoTable } = await cargarPdf();
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
@@ -184,7 +188,7 @@ export async function generarLotePdfBlob(
       }
 
       const estadoParam = fuera.length > 0 ? `ALERTA (${fuera.length})` : 'ÓPTIMO';
-      return [ev.fechaEvento, t, ox, ph, am, nit, sec, estadoParam, ev.registradoPor];
+      return [ev.fechaEvento, t, ox, ph, am, nit, sec, estadoParam, ocultarCorreo(ev.registradoPor)];
     });
 
     autoTable(doc, {
@@ -216,7 +220,7 @@ export async function generarLotePdfBlob(
       } else if (ev.tipo === 'Despacho/transporte') {
         detalle = `Destino: ${d.destino || '-'} | Salida: ${d.fechaHoraSalida || '-'} | Temp despacho: ${d.temperaturaDespachoC ?? '-'}°C | Contenedor c/hielo: ${d.contenedorIsotermico ? 'SÍ' : 'NO'} | Resp: ${d.responsable || '-'}`;
       }
-      return [ev.fechaEvento, ev.tipo, detalle, ev.registradoPor];
+      return [ev.fechaEvento, ev.tipo, detalle, ocultarCorreo(ev.registradoPor)];
     });
 
     autoTable(doc, {
@@ -241,7 +245,7 @@ export async function generarLotePdfBlob(
       const det = ev.tipo === 'Probióticos'
         ? `Producto: ${d.producto || '-'} | Dosis: ${d.dosis || '-'} ${d.unidad || ''} | Vía: ${d.viaAplicacion || '-'} | Obj: ${d.objetivo || '-'}`
         : `Descripción: ${d.descripcion || ev.descripcion || '-'} | Producto: ${d.producto || '-'} | Dosis: ${d.dosis || '-'}`;
-      return [ev.fechaEvento, ev.tipo, det, ev.registradoPor];
+      return [ev.fechaEvento, ev.tipo, det, ocultarCorreo(ev.registradoPor)];
     });
 
     autoTable(doc, {
@@ -270,7 +274,7 @@ export async function generarLotePdfBlob(
       ev.fechaEvento,
       ev.tipo,
       contenido || '-',
-      ev.registradoPor,
+      ocultarCorreo(ev.registradoPor),
       ev.hash.substring(0, 12) + '...'
     ];
   });
@@ -332,7 +336,7 @@ export async function generarLotePdfBlob(
   doc.setFontSize(7.5);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(15, 23, 42);
-  doc.text('VERIFICACIÓN CRIPTOGRÁFICA DE INTEGRIDAD (BLOCKCHAIN LEDGER):', 13, currentY + 5);
+  doc.text('VERIFICACIÓN CRIPTOGRÁFICA DE INTEGRIDAD (CADENA DE HASHES SHA-256):', 13, currentY + 5);
 
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(resultadoIntegridad.valido ? 22 : 185, resultadoIntegridad.valido ? 101 : 28, resultadoIntegridad.valido ? 52 : 28);
@@ -363,36 +367,15 @@ export async function generarLotePdfBlob(
 }
 
 /**
- * Genera el PDF del lote y lo sube a Firebase Cloud Storage en lotes/{codigo}.pdf
- * Cuenta con protección de tiempo límite de 2 segundos para no bloquear la aplicación si Storage no responde.
+ * Genera el PDF del lote (certificado). No se sube a Firebase Storage: el QR abre la vista pública
+ * del lote, que siempre muestra los datos vigentes, y el PDF se genera en el navegador al pedirlo.
  */
 export async function generarYSubirPdfLote(
   lote: Lote,
   config: ConfiguracionGeneral
 ): Promise<{ urlPublica: string; versionPdf: number }> {
-  const { blob, urlPublica } = await generarLotePdfBlob(lote, config);
-  const versionPdf = (lote.versionPdf || 0) + 1;
-
-  try {
-    const storagePath = `lotes/${lote.codigo}.pdf`;
-    const storageRef = ref(storage, storagePath);
-    
-    // Subida con tiempo de espera máximo de 2 segundos para evitar bloqueos
-    const subidaPromise = uploadBytes(storageRef, blob, {
-      contentType: 'application/pdf',
-      cacheControl: 'no-cache, max-age=0'
-    });
-    const limiteTiempo = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('Tiempo de espera de Firebase Storage excedido')), 2000)
-    );
-
-    await Promise.race([subidaPromise, limiteTiempo]);
-    console.log(`PDF sincronizado exitosamente con Cloud Storage en ${storagePath}`);
-  } catch (err) {
-    console.warn('Storage en modo contingencia (el lote y PDF se mantienen disponibles inmediatamente):', err);
-  }
-
-  return { urlPublica, versionPdf };
+  void config;
+  return { urlPublica: construirUrlPublicaPdf(lote.codigo), versionPdf: (lote.versionPdf || 0) + 1 };
 }
 
 /**
@@ -429,6 +412,7 @@ type ContenidoComprobante = Omit<ComprobanteEntrega, 'hashEventos' | 'hashCompro
 const cantidadTexto = (n: number, unidad: string) => `${(Number(n) || 0).toLocaleString('es-CO')} ${unidad}`;
 
 export async function generarComprobantePdfBlob(c: ContenidoComprobante, opciones: { preliminar: boolean }): Promise<Blob> {
+  const { jsPDF, autoTable } = await cargarPdf();
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const pageWidth = doc.internal.pageSize.getWidth();
   const parcial = c.estadoEntrega === 'entrega_parcial' || c.cantidadPendiente > 0;

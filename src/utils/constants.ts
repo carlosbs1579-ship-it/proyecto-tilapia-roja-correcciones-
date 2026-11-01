@@ -78,3 +78,14 @@ export function formatearFechaColombia(fechaIsoOString: string | undefined): str
     return fechaIsoOString;
   }
 }
+
+/**
+ * Oculta un correo para mostrarlo en documentos y vistas públicas (QR, certificado): conserva las
+ * dos primeras letras y el dominio, ej. "ca•••@gmail.com". El dato completo queda en el registro.
+ */
+export function ocultarCorreo(correo: string | undefined): string {
+  if (!correo) return '—';
+  const [usuario, dominio] = correo.split('@');
+  if (!dominio) return correo.slice(0, 2) + '•••';
+  return `${usuario.slice(0, 2)}•••@${dominio}`;
+}

@@ -42,7 +42,7 @@ export function obtenerLetraConsecutiva(consecutivo: number): string {
 /**
  * Traduce un error de Firestore a un mensaje comprensible para el operario
  */
-function mensajeErrorFirestore(accion: string, err: any): Error {
+export function mensajeErrorFirestore(accion: string, err: any): Error {
   const codigo = err?.code || '';
   if (codigo === 'permission-denied') {
     return new Error(`No tienes permiso para ${accion} en la base de datos de la granja.`);
@@ -357,49 +357,63 @@ export async function modificarDatosSiembraOPiscina(params: ParamsModificarSiemb
       }
 
       const fechaIsoAhora = new Date().toISOString();
-      const eventos = [...(lote.eventos || [])];
+      const eventosPrevios = lote.eventos || [];
 
-      // Actualizar el evento inicial de Siembra (índice 0)
-      if (eventos.length > 0 && eventos[0].tipo === 'Siembra') {
-        const datosSiembra = {
-          ...eventos[0].datos,
-          cantidad: cantidadSembrada,
-          pesoPromedioInicialG: pesoInicialPromedioG,
-          proveedor: proveedorAlevinos?.trim() || ''
-        };
-        const descripcionSiembra = observaciones?.trim() || `Siembra inicial del lote en estanque ${estanque}`;
+      // La corrección NO reescribe la siembra original ni recalcula la cadena: se agrega un evento
+      // "Corrección" con los valores anteriores y los nuevos, encadenado como cualquier otro. Así
+      // los eventos ya registrados y sus hashes no cambian y la corrección queda auditada.
+      const anterior = {
+        estanque: lote.estanque,
+        cantidadSembrada: lote.cantidadSembrada,
+        pesoInicialPromedioG: lote.pesoInicialPromedioG,
+        proveedorAlevinos: lote.proveedorAlevinos || '',
+        observacionesIniciales: lote.observacionesIniciales || ''
+      };
+      const nuevo = {
+        estanque,
+        cantidadSembrada,
+        pesoInicialPromedioG,
+        proveedorAlevinos: proveedorAlevinos?.trim() || '',
+        observacionesIniciales: observaciones?.trim() || ''
+      };
+      const cambios = (Object.keys(nuevo) as (keyof typeof nuevo)[]).filter((k) => anterior[k] !== nuevo[k]);
+      if (!cambios.length) throw new Error('No hay cambios para guardar en los datos de alevinos o piscina.');
 
-        eventos[0] = {
-          ...eventos[0],
-          descripcion: descripcionSiembra,
-          datos: datosSiembra,
-          registradoPor: userEmail,
-          registradoEn: fechaIsoAhora
-        };
-
-        // Recalcular hash del bloque 0
-        eventos[0].hash = await calcularHashEvento({
-          codigoLote: lote.codigo,
-          indice: 0,
-          tipo: 'Siembra',
-          fechaEvento: eventos[0].fechaEvento,
-          descripcion: descripcionSiembra,
-          datos: datosSiembra,
+      const indice = eventosPrevios.length;
+      const hashAnterior = indice === 0 ? HASH_GENESIS : eventosPrevios[indice - 1].hash;
+      const descripcion = `Corrección de datos de siembra/piscina: ${cambios.join(', ')}`;
+      // Datos planos ("antes → después") para que se lean igual en el detalle, el QR y el PDF
+      const datos: Record<string, string> = {
+        ambito: 'siembra',
+        ...Object.fromEntries(cambios.map((k) => [k, `${anterior[k] === '' ? '—' : anterior[k]} → ${nuevo[k] === '' ? '—' : nuevo[k]}`]))
+      };
+      const fechaEvento = getFechaHoyBogota();
+      const hash = await calcularHashEvento({
+        codigoLote: lote.codigo,
+        indice,
+        tipo: 'Corrección',
+        fechaEvento,
+        descripcion,
+        datos,
+        registradoPor: userEmail,
+        registradoEn: fechaIsoAhora,
+        hashAnterior
+      });
+      const eventos: EventoLote[] = [
+        ...eventosPrevios,
+        {
+          id: generarIdEvento(),
+          indice,
+          tipo: 'Corrección',
+          fechaEvento,
+          descripcion,
+          datos,
           registradoPor: userEmail,
           registradoEn: fechaIsoAhora,
-          hashAnterior: HASH_GENESIS
-        });
-
-        // Recalcular la cadena hacia adelante para preservar la inalterabilidad matemática
-        for (let i = 1; i < eventos.length; i++) {
-          eventos[i] = {
-            ...eventos[i],
-            hashAnterior: eventos[i - 1].hash
-          };
-          // El hash incluye el código del lote, igual que al registrar y al verificar la cadena
-          eventos[i].hash = await calcularHashEvento({ ...eventos[i], codigoLote: lote.codigo });
+          hashAnterior,
+          hash
         }
-      }
+      ];
 
       const estanqueInfo = config.estanques.find((e) => e.codigo === estanque);
       const nuevoResumen = recalcularResumenLote({

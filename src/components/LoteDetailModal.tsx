@@ -65,6 +65,7 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
   const [confirmarCierre, setConfirmarCierre] = useState(false);
   const [procesandoAccion, setProcesandoAccion] = useState(false);
   const [mensajeExito, setMensajeExito] = useState<string | null>(null);
+  const [errorAccion, setErrorAccion] = useState<string | null>(null);
   const [filtroTipo, setFiltroTipo] = useState<string>('todos');
 
   // Estado para modificación de registros de alevinos y piscina (solo lote activo)
@@ -169,7 +170,7 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
         setTimeout(() => setMensajeExito(null), 4000);
       }
     } catch (err: any) {
-      alert(`Error al cerrar lote: ${err.message || err}`);
+      setErrorAccion(`No se pudo cerrar el lote: ${err.message || err}`);
     } finally {
       setProcesandoAccion(false);
     }
@@ -179,10 +180,10 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
     setProcesandoAccion(true);
     try {
       const { urlPublica, versionPdf } = await generarYSubirPdfLote(lote, config);
-      setMensajeExito(`PDF v${versionPdf} regenerado y sincronizado con Cloud Storage exitosamente.`);
+      setMensajeExito(`Certificado PDF v${versionPdf} listo: se genera con los datos vigentes del lote.`);
       setTimeout(() => setMensajeExito(null), 4000);
     } catch (err: any) {
-      alert(`Error regenerando PDF: ${err.message || err}`);
+      setErrorAccion(`No se pudo regenerar el PDF: ${err.message || err}`);
     } finally {
       setProcesandoAccion(false);
     }
@@ -192,7 +193,7 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
     try {
       await previsualizarPdfLote(lote, config);
     } catch (err: any) {
-      alert(`Error al abrir vista previa del PDF: ${err.message || err}`);
+      setErrorAccion(`No se pudo abrir la vista previa del PDF: ${err.message || err}`);
     }
   };
 
@@ -285,6 +286,15 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
           </div>
 
           {/* MENSAJES DE ÉXITO O ALERTA */}
+          {errorAccion && (
+            <div className="bg-red-50 border-b border-red-200 px-6 py-2.5 flex items-center justify-between gap-2 text-xs text-red-800">
+              <span>{errorAccion}</span>
+              <button type="button" onClick={() => setErrorAccion(null)} className="font-semibold underline shrink-0">
+                Cerrar
+              </button>
+            </div>
+          )}
+
           {mensajeExito && (
             <div className="bg-emerald-50 border-b border-emerald-200 px-6 py-2.5 flex items-center space-x-2 text-xs text-emerald-800">
               <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
@@ -687,7 +697,7 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
 
             <form onSubmit={handleGuardarEditarSiembra} className="p-6 space-y-4">
               <div className="bg-sky-50 border border-sky-200 rounded-lg p-3 text-xs text-sky-900">
-                Esta modificación actualizará los registros de alevinos y asignación de piscina en el bloque génesis de la cadena inalterable, recalculando los hashes criptográficos del lote.
+                Los cambios se registran como un evento «Corrección» con los valores anteriores y los nuevos. Los eventos ya registrados y sus hashes no se modifican.
               </div>
 
               {errorEdicion && (

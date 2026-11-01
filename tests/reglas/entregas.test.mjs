@@ -685,6 +685,144 @@ describe('Comprobantes de entrega (fase 5)', () => {
     assert.equal((await leer(`comprobantes/${v2}`)).hashAnterior, (await leer(`comprobantes/${v1}`)).hashComprobante);
   });
 
+  // Anula un comprobante como lo hace el servicio: bloque de anulación + índice público + evento en la orden
+  let nAnu = 0;
+  async function anular(uid, compId, { token = TOKEN, motivo = 'Cantidad mal registrada por el repartidor', hashAnterior, alterar = {}, sinEvento } = {}) {
+    const comp = await leer(`comprobantes/${compId}`);
+    const consulta = await leer(`consultasEntrega/${token}`);
+    const previo = await leer(`comprobantes/${consulta.ultimaVersion}`);
+    const id = 'anu_' + String(++nAnu).padStart(4, '0') + 'c'.repeat(24);
+    const clave = `anulacion-${compId}`;
+    const version = Object.keys(consulta.versiones).length + 1;
+    const bloque = {
+      id, version, tipoBloque: 'anulacion', ordenId: comp.ordenId, granjaId: GRANJA, tokenConsulta: token, emitidoEn: 'x',
+      emitidoPorUid: uid, empresa: 'Cultivos Loré', anulaA: compId, versionAnulada: comp.version, motivo, eventoEntregaId: clave,
+      hashAnterior: hashAnterior ?? previo.hashComprobante, hashComprobante: 'a' + String(nAnu).padStart(63, '0'), ...alterar
+    };
+    const o = await leer(`ordenes/${comp.ordenId}`);
+    const db = como(uid);
+    const batch = writeBatch(db);
+    batch.set(doc(db, 'comprobantes', id), bloque);
+    batch.set(doc(db, 'consultasEntrega', token), {
+      ...consulta,
+      versiones: { ...consulta.versiones, [clave]: { comprobanteId: id, version, emitidoEn: 'x', estadoEntrega: 'anulacion', hashComprobante: bloque.hashComprobante } },
+      ultimaVersion: id
+    });
+    if (!sinEvento) {
+      batch.update(doc(db, 'ordenes', comp.ordenId), {
+        actualizadoEn: 'z',
+        historial: [...o.historial, evento(uid, o.historial.length, 'Comprobante anulado', { datos: { bloqueId: id, anulaA: compId, versionAnulada: comp.version } })]
+      });
+    }
+    await batch.commit();
+    return id;
+  }
+
+  test('anulación: agrega un bloque encadenado sin borrar ni cambiar el comprobante; una sola vez', async () => {
+    await entregaParcial('PED-A1');
+    const v1 = await emitir('vendedor', 'PED-A1');
+    const antes = await leer(`comprobantes/${v1}`);
+    await assertFails(anular('repartidor', v1));
+    await assertFails(anular('vendedor', v1, { motivo: 'corto' }));
+    await assertFails(anular('vendedor', v1, { hashAnterior: '0'.repeat(64) }));
+    await assertFails(anular('vendedor', v1, { sinEvento: true }));
+    await assertFails(anular('vendedor', v1, { alterar: { versionAnulada: 7 } }));
+    const anu = await anular('vendedor', v1);
+    assert.deepEqual(await leer(`comprobantes/${v1}`), antes);
+    assert.equal((await leer(`comprobantes/${anu}`)).hashAnterior, antes.hashComprobante);
+    await assertFails(anular('vendedor', v1));
+    await assertFails(anular('vendedor', anu));
+    const { deleteDoc } = await import('firebase/firestore');
+    await assertFails(deleteDoc(doc(como('vendedor'), 'comprobantes', anu)));
+    await assertFails(updateDoc(doc(como('vendedor'), 'comprobantes', anu), { motivo: 'otro motivo distinto' }));
+  });
+
+  test('anulación: el siguiente comprobante se encadena al bloque de anulación', async () => {
+    await entregaParcial('PED-A2');
+    const v1 = await emitir('vendedor', 'PED-A2');
+    const anu = await anular('vendedor', v1);
+    await reprogramar('PED-A2');
+    await iniciarRuta('repartidor', 'PED-A2');
+    await llegar('repartidor', 'PED-A2');
+    await entregar('repartidor', 'PED-A2', { 'LT-001': 50 });
+    await assertFails(emitir('vendedor', 'PED-A2', { hashAnterior: (await leer(`comprobantes/${v1}`)).hashComprobante }));
+    const v3 = await emitir('vendedor', 'PED-A2');
+    const c3 = await leer(`comprobantes/${v3}`);
+    assert.equal(c3.version, 3);
+    assert.equal(c3.hashAnterior, (await leer(`comprobantes/${anu}`)).hashComprobante);
+  });
+
+  // Corrige lo entregado como lo hace el servicio: inventario por la diferencia + orden + evento
+  async function corregir(uid, id, nuevo, { motivo = 'El repartidor registró mal la cantidad', delta, sinInventario, estado } = {}) {
+    const o = await leer(`ordenes/${id}`);
+    const anterior = o.entregadoPorLote || {};
+    const total = Object.values(nuevo).reduce((a, n) => a + n, 0);
+    const db = como(uid);
+    const batch = writeBatch(db);
+    if (!sinInventario) {
+      for (const c of Object.keys(o.procedencias)) {
+        const d = delta ?? ((nuevo[c] || 0) - (anterior[c] || 0));
+        if (d === 0) continue;
+        batch.update(doc(db, 'inventarioLotes', c), {
+          entregado: increment(d), reservado: increment(-d), ultimaOrden: id, movidoEn: serverTimestamp(), tipoMovimiento: 'correccion'
+        });
+      }
+    }
+    batch.update(doc(db, 'ordenes', id), {
+      entregadoPorLote: nuevo, cantidadEntregada: total,
+      estado: estado ?? (total === o.cantidadAutorizada ? 'entregado' : 'entrega_parcial'), actualizadoEn: 'c',
+      historial: [...o.historial, evento(uid, o.historial.length, 'Corrección de entrega', { descripcion: motivo, datos: { anterior, nuevo }, eventoId: `ev-corr-${id}-${o.historial.length}` })]
+    });
+    return batch.commit();
+  }
+
+  async function entregaCompleta(id) {
+    await crearAsignada(id, { 'LT-001': 300, 'LT-002': 200 });
+    await iniciarRuta('repartidor', id);
+    await llegar('repartidor', id);
+    await entregar('repartidor', id, { 'LT-001': 300, 'LT-002': 200 });
+  }
+
+  test('corrección: el operador corrige lo entregado; inventario y estado se recalculan', async () => {
+    await entregaCompleta('PED-K1');
+    const invAntes = await leer('inventarioLotes/LT-001');
+    await corregir('vendedor', 'PED-K1', { 'LT-001': 280, 'LT-002': 200 });
+    const o = await leer('ordenes/PED-K1');
+    assert.equal(o.estado, 'entrega_parcial');
+    assert.equal(o.cantidadEntregada, 480);
+    const inv = await leer('inventarioLotes/LT-001');
+    assert.equal(inv.entregado, invAntes.entregado - 20);
+    assert.equal(inv.reservado, invAntes.reservado + 20);
+    await assertSucceeds(reprogramar('PED-K1'));
+  });
+
+  test('corrección: se rechaza sin permiso, sin motivo, por encima de lo autorizado o si el inventario no cuadra', async () => {
+    await entregaCompleta('PED-K2');
+    await assertFails(corregir('repartidor', 'PED-K2', { 'LT-001': 280, 'LT-002': 200 }));
+    await assertFails(corregir('vendedor', 'PED-K2', { 'LT-001': 280, 'LT-002': 200 }, { motivo: 'corto' }));
+    await assertFails(corregir('vendedor', 'PED-K2', { 'LT-001': 310, 'LT-002': 200 }));
+    await assertFails(corregir('vendedor', 'PED-K2', { 'LT-001': 280, 'LT-002': 200 }, { delta: -5 }));
+    await assertFails(corregir('vendedor', 'PED-K2', { 'LT-001': 280, 'LT-002': 200 }, { sinInventario: true }));
+    await assertFails(corregir('vendedor', 'PED-K2', { 'LT-001': 280, 'LT-002': 200 }, { estado: 'entregado' }));
+    await assertFails(corregir('vendedor', 'PED-K2', { 'LT-001': 300, 'LT-002': 200 }));
+    await env.withSecurityRulesDisabled((ctx) => updateDoc(doc(ctx.firestore(), 'ordenes', 'PED-K2'), { cantidadLiberada: 10 }));
+    await assertFails(corregir('vendedor', 'PED-K2', { 'LT-001': 280, 'LT-002': 200 }));
+  });
+
+  test('corrección: tras anular el comprobante, se emite uno nuevo con los datos corregidos', async () => {
+    await entregaCompleta('PED-K3');
+    const v1 = await emitir('vendedor', 'PED-K3');
+    await anular('vendedor', v1);
+    await corregir('vendedor', 'PED-K3', { 'LT-001': 290, 'LT-002': 200 });
+    const o = await leer('ordenes/PED-K3');
+    const idx = o.historial.map((e) => e.tipo).lastIndexOf('Corrección de entrega');
+    const v3 = await emitir('vendedor', 'PED-K3', { indice: idx });
+    const c3 = await leer(`comprobantes/${v3}`);
+    assert.equal(c3.version, 3);
+    assert.equal(c3.cantidadEntregada, 490);
+    assert.equal(c3.estadoEntrega, 'entrega_parcial');
+  });
+
   test('14. los lotes no cambian al emitir comprobantes', async () => {
     const antes = await leer('lotes/LT-001');
     await entregaParcial('PED-C6');

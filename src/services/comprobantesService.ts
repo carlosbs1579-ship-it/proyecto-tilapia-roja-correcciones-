@@ -1,6 +1,6 @@
 import { collection, doc, getDoc, onSnapshot, query, runTransaction, where } from 'firebase/firestore';
 import { auth, db } from '../firebase/firebaseConfig';
-import { ComprobanteEntrega, ConsultaEntrega, EventoOrden, OrdenEntrega } from '../types';
+import { BloqueAnulacion, ComprobanteEntrega, ConsultaEntrega, EventoOrden, OrdenEntrega } from '../types';
 import { calcularSha256, jsonCanonico } from './hashService';
 import { cantidadPendiente, mensajeError, nuevoEvento, redondear } from './pedidosService';
 
@@ -28,8 +28,12 @@ const TIPOS_DOCUMENTADOS = new Set([
   'Novedad',
   'Ajuste aplicado',
   'Reprogramación de saldo',
-  'Cierre con saldo liberado'
+  'Cierre con saldo liberado',
+  'Corrección de entrega'
 ]);
+
+// Hechos que se documentan con un comprobante: una entrega o la corrección de una entrega
+const TIPOS_COMPROBABLES = new Set(['Entrega', 'Corrección de entrega']);
 
 function generarToken(prefijo: string): string {
   const bytes = new Uint8Array(20);
@@ -42,7 +46,7 @@ function generarToken(prefijo: string): string {
  */
 export function ultimaEntrega(orden: OrdenEntrega): { evento: EventoOrden; indice: number } | null {
   for (let i = (orden.historial || []).length - 1; i >= 0; i--) {
-    if (orden.historial[i].tipo === 'Entrega') return { evento: orden.historial[i], indice: i };
+    if (TIPOS_COMPROBABLES.has(orden.historial[i].tipo)) return { evento: orden.historial[i], indice: i };
   }
   return null;
 }
@@ -72,7 +76,11 @@ export function problemasParaEmitir(orden: OrdenEntrega): string[] {
   }
   if (!ultima.evento.eventoId) problemas.push('La última entrega no tiene identificador de evento.');
   if (ultima.evento.eventoId && entregasConComprobante(orden).has(ultima.evento.eventoId)) {
-    problemas.push('La última entrega ya tiene su comprobante definitivo.');
+    problemas.push(
+      ultima.evento.tipo === 'Corrección de entrega'
+        ? 'La corrección de la entrega ya tiene su comprobante definitivo.'
+        : 'La última entrega ya tiene su comprobante definitivo.'
+    );
   }
   const porLote = orden.entregadoPorLote || {};
   const suma = redondear(Object.values(porLote).reduce((s, n) => s + n, 0), orden.unidad);
@@ -81,6 +89,14 @@ export function problemasParaEmitir(orden: OrdenEntrega): string[] {
   }
   const segunEventos: Record<string, number> = {};
   for (const e of orden.historial) {
+    // Una corrección fija lo entregado por lote; las entregas posteriores suman sobre ese valor
+    if (e.tipo === 'Corrección de entrega') {
+      for (const lote of Object.keys(segunEventos)) delete segunEventos[lote];
+      for (const [lote, cantidad] of Object.entries((e.datos?.nuevo || {}) as Record<string, number>)) {
+        segunEventos[lote] = redondear(Number(cantidad) || 0, orden.unidad);
+      }
+      continue;
+    }
     if (e.tipo !== 'Entrega') continue;
     for (const [lote, cantidad] of Object.entries((e.datos?.entregas || {}) as Record<string, number>)) {
       segunEventos[lote] = redondear((segunEventos[lote] || 0) + (Number(cantidad) || 0), orden.unidad);
@@ -108,9 +124,107 @@ async function hashDeEventos(eventos: EventoOrden[]): Promise<string> {
   return calcularSha256(jsonCanonico(eventos));
 }
 
-export async function calcularHashComprobante(c: Omit<ComprobanteEntrega, 'hashComprobante'> | ComprobanteEntrega): Promise<string> {
+export async function calcularHashComprobante(
+  c: Omit<ComprobanteEntrega, 'hashComprobante'> | ComprobanteEntrega | Omit<BloqueAnulacion, 'hashComprobante'> | BloqueAnulacion
+): Promise<string> {
   const { hashComprobante, ...contenido } = c as ComprobanteEntrega;
   return calcularSha256(jsonCanonico(contenido));
+}
+
+export const esAnulacion = (b: ComprobanteEntrega | BloqueAnulacion): b is BloqueAnulacion =>
+  (b as BloqueAnulacion).tipoBloque === 'anulacion';
+
+/**
+ * Separa los bloques de una orden en comprobantes de entrega y anulaciones (por comprobante anulado)
+ */
+export function separarBloques(bloques: (ComprobanteEntrega | BloqueAnulacion)[]): {
+  comprobantes: ComprobanteEntrega[];
+  anulaciones: Record<string, BloqueAnulacion>;
+} {
+  const comprobantes: ComprobanteEntrega[] = [];
+  const anulaciones: Record<string, BloqueAnulacion> = {};
+  for (const b of bloques) {
+    if (esAnulacion(b)) anulaciones[b.anulaA] = b;
+    else comprobantes.push(b);
+  }
+  return { comprobantes: comprobantes.sort((a, b) => b.version - a.version), anulaciones };
+}
+
+/**
+ * Anula un comprobante de entrega: agrega a la cadena un bloque de anulación con el motivo. El
+ * comprobante original no se borra ni se modifica; queda visible y marcado como anulado.
+ */
+export async function anularComprobante(comprobanteId: string, motivo: string): Promise<BloqueAnulacion> {
+  const uid = auth.currentUser?.uid;
+  if (!uid) throw new Error('Debes iniciar sesión.');
+  const motivoLimpio = motivo.trim();
+  if (motivoLimpio.length < 10) throw new Error('Explica el motivo de la anulación (mínimo 10 caracteres).');
+  try {
+    return await runTransaction(db, async (tx) => {
+      const compSnap = await tx.get(doc(db, 'comprobantes', comprobanteId));
+      if (!compSnap.exists()) throw new Error('El comprobante no existe.');
+      const anulado = compSnap.data() as ComprobanteEntrega | BloqueAnulacion;
+      if (esAnulacion(anulado)) throw new Error('Un bloque de anulación no se puede anular.');
+      const ordenRef = doc(db, 'ordenes', anulado.ordenId);
+      const ordenSnap = await tx.get(ordenRef);
+      if (!ordenSnap.exists()) throw new Error('La orden no existe.');
+      const orden = ordenSnap.data() as OrdenEntrega;
+      const consultaRef = doc(db, 'consultasEntrega', anulado.tokenConsulta);
+      const consultaSnap = await tx.get(consultaRef);
+      if (!consultaSnap.exists()) throw new Error('No se encontró el índice de consulta de la orden.');
+      const consulta = consultaSnap.data() as ConsultaEntrega;
+      const clave = `anulacion-${comprobanteId}`;
+      if (consulta.versiones[clave]) throw new Error('Este comprobante ya fue anulado.');
+
+      const id = generarToken('anu');
+      const version = Object.keys(consulta.versiones).length + 1;
+      const emitidoEn = new Date().toISOString();
+      const anterior = Object.values(consulta.versiones).find((v) => v.comprobanteId === consulta.ultimaVersion);
+      const sinHash: Omit<BloqueAnulacion, 'hashComprobante'> = {
+        id,
+        version,
+        tipoBloque: 'anulacion',
+        ordenId: anulado.ordenId,
+        granjaId: anulado.granjaId,
+        tokenConsulta: anulado.tokenConsulta,
+        emitidoEn,
+        emitidoPorUid: uid,
+        empresa: EMPRESA,
+        anulaA: comprobanteId,
+        versionAnulada: anulado.version,
+        motivo: motivoLimpio,
+        eventoEntregaId: clave,
+        hashAnterior: anterior?.hashComprobante || HASH_GENESIS_COMPROBANTES
+      };
+      const bloque: BloqueAnulacion = { ...sinHash, hashComprobante: await calcularHashComprobante(sinHash) };
+
+      tx.set(doc(db, 'comprobantes', id), bloque);
+      tx.set(consultaRef, {
+        ...consulta,
+        versiones: {
+          ...consulta.versiones,
+          [clave]: { comprobanteId: id, version, emitidoEn, estadoEntrega: 'anulacion', hashComprobante: bloque.hashComprobante }
+        },
+        ultimaVersion: id,
+        actualizadoEn: emitidoEn
+      });
+      tx.update(ordenRef, {
+        actualizadoEn: emitidoEn,
+        historial: [
+          ...orden.historial,
+          nuevoEvento(orden.historial.length, 'Comprobante anulado', `Comprobante versión ${anulado.version} anulado: ${motivoLimpio}`, {
+            bloqueId: id,
+            anulaA: comprobanteId,
+            versionAnulada: anulado.version
+          })
+        ]
+      });
+      return bloque;
+    });
+  } catch (err) {
+    console.error('Error anulando el comprobante:', err);
+    throw mensajeError('anular el comprobante', err);
+  }
 }
 
 /**
@@ -136,13 +250,22 @@ export function construirComprobante(
       ...(e.datos?.foto?.hash ? { fotoHash: String(e.datos.foto.hash) } : {})
     }));
   const ajustes = orden.historial
-    .filter((e) => e.tipo === 'Ajuste aplicado')
-    .map((e) => ({
-      fecha: e.fecha,
-      anterior: Object.fromEntries(Object.entries((e.datos?.anterior || {}) as Record<string, any>).map(([l, p]) => [l, Number(p?.cantidad) || 0])),
-      nueva: Object.fromEntries(Object.entries((e.datos?.nueva || {}) as Record<string, any>).map(([l, p]) => [l, Number(p?.cantidad) || 0])),
-      motivo: orden.ajustes?.[e.datos?.ajusteId]?.motivo || e.descripcion || ''
-    }));
+    .filter((e) => e.tipo === 'Ajuste aplicado' || e.tipo === 'Corrección de entrega')
+    .map((e) =>
+      e.tipo === 'Corrección de entrega'
+        ? {
+            fecha: e.fecha,
+            anterior: Object.fromEntries(Object.entries((e.datos?.anterior || {}) as Record<string, number>).map(([l, n]) => [l, Number(n) || 0])),
+            nueva: Object.fromEntries(Object.entries((e.datos?.nuevo || {}) as Record<string, number>).map(([l, n]) => [l, Number(n) || 0])),
+            motivo: `Corrección de la cantidad entregada: ${e.descripcion || ''}`
+          }
+        : {
+            fecha: e.fecha,
+            anterior: Object.fromEntries(Object.entries((e.datos?.anterior || {}) as Record<string, any>).map(([l, p]) => [l, Number(p?.cantidad) || 0])),
+            nueva: Object.fromEntries(Object.entries((e.datos?.nueva || {}) as Record<string, any>).map(([l, p]) => [l, Number(p?.cantidad) || 0])),
+            motivo: orden.ajustes?.[e.datos?.ajusteId]?.motivo || e.descripcion || ''
+          }
+    );
   return {
     id: datos.id,
     version: datos.version,
@@ -263,12 +386,12 @@ export async function emitirComprobanteDefinitivo(ordenId: string): Promise<Comp
 export function escucharComprobantesOrden(
   granjaId: string,
   ordenId: string,
-  onUpdate: (comprobantes: ComprobanteEntrega[]) => void,
+  onUpdate: (bloques: (ComprobanteEntrega | BloqueAnulacion)[]) => void,
   onError?: (error: any) => void
 ): () => void {
   return onSnapshot(
     query(collection(db, 'comprobantes'), where('granjaId', '==', granjaId), where('ordenId', '==', ordenId)),
-    (snap) => onUpdate(snap.docs.map((d) => d.data() as ComprobanteEntrega).sort((a, b) => b.version - a.version)),
+    (snap) => onUpdate(snap.docs.map((d) => d.data() as ComprobanteEntrega | BloqueAnulacion).sort((a, b) => b.version - a.version)),
     (err) => {
       console.error('Error escuchando comprobantes:', err);
       if (onError) onError(err);
@@ -279,19 +402,21 @@ export function escucharComprobantesOrden(
 /**
  * Consulta pública de una entrega por su código (lectura de un solo documento; no lista nada)
  */
-export async function leerConsultaEntrega(token: string): Promise<{ consulta: ConsultaEntrega; comprobantes: ComprobanteEntrega[] } | null> {
+export async function leerConsultaEntrega(
+  token: string
+): Promise<{ consulta: ConsultaEntrega; bloques: (ComprobanteEntrega | BloqueAnulacion)[] } | null> {
   const snap = await getDoc(doc(db, 'consultasEntrega', token));
   if (!snap.exists()) return null;
   const consulta = snap.data() as ConsultaEntrega;
   const comprobantes = await Promise.all(
     Object.values(consulta.versiones).map(async (v) => {
       const c = await getDoc(doc(db, 'comprobantes', v.comprobanteId));
-      return c.exists() ? (c.data() as ComprobanteEntrega) : null;
+      return c.exists() ? (c.data() as ComprobanteEntrega | BloqueAnulacion) : null;
     })
   );
   return {
     consulta,
-    comprobantes: comprobantes.filter((c): c is ComprobanteEntrega => Boolean(c)).sort((a, b) => b.version - a.version)
+    bloques: comprobantes.filter((c): c is ComprobanteEntrega | BloqueAnulacion => Boolean(c)).sort((a, b) => b.version - a.version)
   };
 }
 
@@ -301,7 +426,9 @@ export async function leerConsultaEntrega(token: string): Promise<{ consulta: Co
  * Revisa la cadena de bloques de una orden: cada versión debe enlazar el hash de la anterior.
  * Las versiones emitidas antes del encadenamiento (sin hashAnterior) se informan aparte.
  */
-export function verificarCadena(comprobantes: ComprobanteEntrega[]): { integra: boolean; sinEnlace: number; mensaje: string } {
+export function verificarCadena(
+  comprobantes: { version: number; hashAnterior?: string; hashComprobante: string }[]
+): { integra: boolean; sinEnlace: number; mensaje: string } {
   const orden = [...comprobantes].sort((a, b) => a.version - b.version);
   let sinEnlace = 0;
   for (let i = 0; i < orden.length; i++) {
@@ -336,12 +463,12 @@ export interface ResultadoVerificacionComprobante {
  * los eventos usados sigan idénticos en el historial; con el índice público, que coincida el hash.
  */
 export async function verificarComprobante(
-  c: ComprobanteEntrega,
+  c: ComprobanteEntrega | BloqueAnulacion,
   extra: { orden?: OrdenEntrega; consulta?: ConsultaEntrega } = {}
 ): Promise<ResultadoVerificacionComprobante> {
   const contenidoIntegro = (await calcularHashComprobante(c)) === c.hashComprobante;
   let eventosIntegros: boolean | null = null;
-  if (extra.orden) {
+  if (extra.orden && !esAnulacion(c)) {
     const porId = new Map((extra.orden.historial || []).map((e) => [e.eventoId || `indice-${e.indice}`, e]));
     const usados = c.eventosUsados.map((id) => porId.get(id));
     eventosIntegros = usados.every(Boolean) && (await hashDeEventos(usados as EventoOrden[])) === c.hashEventos;

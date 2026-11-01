@@ -150,8 +150,11 @@ export type TipoEventoOrden =
   | 'Cierre con saldo liberado'
   // Seguimiento del operador sobre una novedad (no cambia la orden ni la novedad original)
   | 'Atención de novedad'
-  // Documentación (fase 5): emisión de un comprobante definitivo
-  | 'Comprobante emitido';
+  // Documentación (fase 5): emisión de un comprobante definitivo y anulación (sin borrarlo)
+  | 'Comprobante emitido'
+  | 'Comprobante anulado'
+  // Corrección de una entrega ya confirmada (cantidades reales por lote, con motivo)
+  | 'Corrección de entrega';
 
 // ---------- Comprobantes de entrega (fase 5) ----------
 // Un comprobante definitivo es un registro inmutable en comprobantes/{id} (id aleatorio, no
@@ -208,7 +211,27 @@ export interface VersionConsulta {
   comprobanteId: string;
   version: number;
   emitidoEn: string;
-  estadoEntrega: 'entregado' | 'entrega_parcial';
+  estadoEntrega: 'entregado' | 'entrega_parcial' | 'anulacion';
+  hashComprobante: string;
+}
+
+// Bloque de anulación: deja sin validez un comprobante de entrega sin borrarlo ni modificarlo.
+// Se guarda en comprobantes/{id} con tipoBloque "anulacion" y se encadena como cualquier bloque.
+export interface BloqueAnulacion {
+  id: string;
+  version: number; // número de bloque en la cadena de la orden
+  tipoBloque: 'anulacion';
+  ordenId: string;
+  granjaId: string;
+  tokenConsulta: string;
+  emitidoEn: string;
+  emitidoPorUid: string;
+  empresa: string;
+  anulaA: string; // id del comprobante anulado
+  versionAnulada: number;
+  motivo: string;
+  eventoEntregaId: string; // "anulacion-{anulaA}" (clave única en el índice público)
+  hashAnterior: string;
   hashComprobante: string;
 }
 

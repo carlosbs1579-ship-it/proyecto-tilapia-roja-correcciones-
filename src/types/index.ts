@@ -200,6 +200,7 @@ export interface ComprobanteEntrega {
   eventoEntregaIndice: number;
   eventosUsados: string[]; // eventoId de los eventos de la orden usados
   hashEventos: string; // SHA-256 del JSON canónico de esos eventos
+  hashAnterior?: string; // hash del bloque anterior (versión previa de la orden; 64 ceros en la primera)
   hashComprobante: string; // SHA-256 del JSON canónico de todo lo anterior
 }
 

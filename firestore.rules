@@ -693,6 +693,13 @@ service cloud.firestore {
         && c.eventoEntregaId == evento.datos.eventoEntregaId;
     }
 
+    // Enlace del bloque: el hash del comprobante anterior de la orden (64 ceros en el primero)
+    function hashBloqueAnterior(token) {
+      return !exists(rutaConsulta(token))
+        ? '0000000000000000000000000000000000000000000000000000000000000000'
+        : get(rutaComprobante(get(rutaConsulta(token)).data.ultimaVersion)).data.hashComprobante;
+    }
+
     function procedenciaComprobante(c, o, claves, i) {
       return claves.size() <= i
         || (c.procedencias[claves[i]].autorizada == o.procedencias[claves[i]].cantidad
@@ -714,7 +721,7 @@ service cloud.firestore {
                              'estadoEntrega', 'cliente', 'repartidor', 'fechas', 'unidad', 'cantidadSolicitada',
                              'cantidadAutorizada', 'cantidadEntregada', 'cantidadLiberada', 'cantidadPendiente', 'procedencias',
                              'entregas', 'novedades', 'ajustes', 'eventoEntregaId', 'eventoEntregaIndice', 'eventosUsados',
-                             'hashEventos', 'hashComprobante'])
+                             'hashEventos', 'hashAnterior', 'hashComprobante'])
         && gestionaPedidosEn(o.granjaId)
         && c.granjaId == o.granjaId
         && c.emitidoPorUid == request.auth.uid
@@ -737,7 +744,8 @@ service cloud.firestore {
         && versiones[c.eventoEntregaId].comprobanteId == id
         && c.version == versiones.size()
         && c.hashComprobante is string && c.hashComprobante.size() == 64
-        && c.hashEventos is string && c.hashEventos.size() == 64;
+        && c.hashEventos is string && c.hashEventos.size() == 64
+        && c.hashAnterior == hashBloqueAnterior(c.tokenConsulta);
     }
 
     // Índice público: cada emisión agrega una sola versión (una por entrega confirmada) y no cambia

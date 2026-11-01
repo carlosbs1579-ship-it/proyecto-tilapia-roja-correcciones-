@@ -336,7 +336,7 @@ export async function generarLotePdfBlob(
   doc.setFontSize(7.5);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(15, 23, 42);
-  doc.text('VERIFICACIÓN CRIPTOGRÁFICA DE INTEGRIDAD (CADENA DE HASHES SHA-256):', 13, currentY + 5);
+  doc.text('VERIFICACIÓN CRIPTOGRÁFICA DE INTEGRIDAD (REGISTRO TIPO BLOCKCHAIN · SHA-256):', 13, currentY + 5);
 
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(resultadoIntegridad.valido ? 22 : 185, resultadoIntegridad.valido ? 101 : 28, resultadoIntegridad.valido ? 52 : 28);
@@ -549,13 +549,18 @@ export async function generarComprobantePdfBlob(c: ContenidoComprobante, opcione
   if (opciones.preliminar) {
     doc.text('Documento preliminar: no tiene hash de verificación ni código de consulta.', 10, y);
   } else {
+    doc.setFont('helvetica', 'bold');
+    doc.text(`REGISTRO TIPO BLOCKCHAIN · BLOQUE N.º ${c.version}`, 10, y);
+    doc.setFont('helvetica', 'normal');
     const lineas = doc.splitTextToSize(
-      `Verificación: SHA-256 del comprobante ${c.hashComprobante} · SHA-256 de los eventos de entrega ${c.hashEventos}. ` +
-        'Son hashes guardados en Firebase (no una blockchain). Escanee el código QR para consultar la entrega y verificar el comprobante. ' +
-        'La trazabilidad de cada lote se consulta por separado con el QR del lote.',
+      `Hash del bloque: ${c.hashComprobante} · Hash del bloque anterior: ${c.hashAnterior || 'no registrado (emitido antes del encadenamiento)'} · ` +
+        `Hash de los eventos de entrega: ${c.hashEventos}. ` +
+        'Cada comprobante es un bloque sellado con SHA-256 que contiene el hash del bloque anterior de la misma orden; ' +
+        'alterar cualquier dato cambia su hash y rompe la cadena. Cadena de bloques privada registrada en Firebase. ' +
+        'Escanee el código QR para consultar la entrega y verificar la cadena. La trazabilidad de cada lote se consulta con el QR del lote.',
       pageWidth - 20
     );
-    doc.text(lineas, 10, y);
+    doc.text(lineas, 10, y + 4);
   }
 
   if (opciones.preliminar) {

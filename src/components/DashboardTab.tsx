@@ -76,7 +76,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
             Cultivos Loré — Tilapia Pro
           </h1>
           <p className="text-sm text-slate-300 mt-1 max-w-xl">
-            Monitoreo en tiempo real, cadena de registros con hash SHA-256 y certificados QR para Turbaco, Bolívar.
+            Monitoreo en tiempo real, registro tipo blockchain con hash SHA-256 y certificados QR para Turbaco, Bolívar.
           </p>
         </div>
 

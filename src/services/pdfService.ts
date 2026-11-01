@@ -519,7 +519,8 @@ export async function generarComprobantePdfBlob(c: ContenidoComprobante, opcione
       `Entrega ${formatearFechaColombia(e.fecha)}`,
       `${Object.entries(e.cantidades).map(([l, n]) => `${l}: ${cantidadTexto(n, c.unidad)}`).join(', ')}` +
         (e.faltante > 0 ? ` · faltaron ${cantidadTexto(e.faltante, c.unidad)}` : '') +
-        (e.observacion ? ` · ${e.observacion}` : '')
+        (e.observacion ? ` · ${e.observacion}` : '') +
+        (e.fotoHash ? ` · foto registrada (SHA-256 ${e.fotoHash.slice(0, 16)}…)` : '')
     ]),
     ...c.ajustes.map((a) => [
       `Ajuste aprobado ${formatearFechaColombia(a.fecha)}`,

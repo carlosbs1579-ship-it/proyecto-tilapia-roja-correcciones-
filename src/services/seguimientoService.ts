@@ -359,7 +359,11 @@ export function cambiosDeEvento(e: EventoOrden): string | null {
     return `${d.repartidorAnterior} → ${d.repartidor}`;
   }
   if (d.entregas) {
-    return Object.entries(d.entregas as Record<string, number>).map(([c, n]) => `${c}: ${n}`).join(', ') + (d.faltante ? ` (faltan ${d.faltante})` : '');
+    return (
+      Object.entries(d.entregas as Record<string, number>).map(([c, n]) => `${c}: ${n}`).join(', ') +
+      (d.faltante ? ` (faltan ${d.faltante})` : '') +
+      (d.foto?.id ? ' · con foto' : '')
+    );
   }
   return null;
 }

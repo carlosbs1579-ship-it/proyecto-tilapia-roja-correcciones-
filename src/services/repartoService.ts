@@ -6,11 +6,13 @@ import {
   query,
   runTransaction,
   serverTimestamp,
+  Timestamp,
   where
 } from 'firebase/firestore';
 import { auth, db } from '../firebase/firebaseConfig';
 import { AjusteDistribucion, EventoOrden, OrdenEntrega, TipoEventoOrden } from '../types';
 import { ESTADOS_CON_RESERVA, ETIQUETA_ESTADO_ORDEN, generarId, redondear, saldoLote } from './pedidosService';
+import { DIAS_RETENCION_FOTOS, FotoPreparada } from './fotosService';
 
 // Acciones del repartidor sobre sus órdenes. Cada acción se guarda primero en una bandeja local del
 // teléfono (localStorage) con un identificador único, y se envía a Firebase en una transacción que:
@@ -39,6 +41,8 @@ export interface AccionReparto {
   estado: EstadoAccion;
   mensaje?: string;
   actualizadaEn: string;
+  // Foto de la entrega mientras está pendiente de enviar (se quita del teléfono al recibirse)
+  foto?: FotoPreparada;
 }
 
 export const ETIQUETA_ESTADO_ACCION: Record<EstadoAccion, string> = {
@@ -66,15 +70,23 @@ export function leerBandeja(uid: string): AccionReparto[] {
   }
 }
 
-function guardarBandeja(uid: string, acciones: AccionReparto[]): void {
-  // Se conservan todas las pendientes y en conflicto, y solo las 30 confirmadas más recientes
-  const confirmadas = acciones.filter((a) => a.estado === 'confirmada').slice(-30);
-  const resto = acciones.filter((a) => a.estado !== 'confirmada');
+function guardarBandeja(uid: string, acciones: AccionReparto[]): boolean {
+  // Se conservan todas las pendientes y en conflicto, y solo las 30 confirmadas más recientes.
+  // La foto solo se guarda mientras la acción está pendiente de enviar.
+  const sinFotoEnviada = acciones.map((a) =>
+    a.foto && (a.estado === 'recibida' || a.estado === 'confirmada') ? { ...a, foto: undefined } : a
+  );
+  const confirmadas = sinFotoEnviada.filter((a) => a.estado === 'confirmada').slice(-30);
+  const resto = sinFotoEnviada.filter((a) => a.estado !== 'confirmada');
   const lista = [...resto, ...confirmadas].sort((a, b) => a.registradaEn.localeCompare(b.registradaEn));
+  let guardada = true;
   try {
     localStorage.setItem(claveBandeja(uid), JSON.stringify(lista));
-  } catch {}
+  } catch {
+    guardada = false;
+  }
   suscriptores.get(uid)?.forEach((cb) => cb(lista));
+  return guardada;
 }
 
 function actualizarAccion(uid: string, id: string, cambios: Partial<AccionReparto>): void {
@@ -167,7 +179,7 @@ function marcarConfirmadas(uid: string, ordenes: OrdenEntrega[]): void {
  */
 export function registrarAccion(
   uid: string,
-  accion: { ordenId: string; tipo: TipoAccionReparto; descripcion?: string; datos?: Record<string, any> }
+  accion: { ordenId: string; tipo: TipoAccionReparto; descripcion?: string; datos?: Record<string, any>; foto?: FotoPreparada }
 ): AccionReparto {
   const ahora = new Date().toISOString();
   const nueva: AccionReparto = {
@@ -178,9 +190,15 @@ export function registrarAccion(
     datos: accion.datos || {},
     registradaEn: ahora,
     estado: 'guardada',
-    actualizadaEn: ahora
+    actualizadaEn: ahora,
+    ...(accion.foto ? { foto: accion.foto } : {})
   };
-  guardarBandeja(uid, [...leerBandeja(uid), nueva]);
+  const previas = leerBandeja(uid);
+  if (!guardarBandeja(uid, [...previas, nueva])) {
+    // Sin espacio en el teléfono: no se registra (nunca se muestra como guardada si no lo está)
+    guardarBandeja(uid, previas);
+    throw new Error('No hay espacio en el teléfono para guardar esta acción. Conéctate para enviar las pendientes e intenta de nuevo.');
+  }
   void procesarBandeja(uid);
   return nueva;
 }
@@ -345,6 +363,30 @@ async function aplicarAccion(uid: string, accion: AccionReparto): Promise<'aplic
         const completa = redondear(orden.cantidadAutorizada - cantidadEntregada, orden.unidad) <= 0;
         evento.datos.faltante = Math.max(0, redondear(orden.cantidadAutorizada - cantidadEntregada, orden.unidad));
         evento.datos.unidad = orden.unidad;
+        // Foto: obligatoria en toda entrega (completa o parcial). Se guarda aparte (fotosEntrega) en
+        // esta misma operación y el evento conserva solo su identificador y su hash.
+        if (!accion.foto) {
+          throw new ConflictoReparto('La entrega necesita una foto. Registra la entrega de nuevo con la foto.');
+        }
+        if (accion.foto) {
+          const f = accion.foto;
+          evento.datos.foto = { id: f.id, hash: f.hash, bytes: f.bytes };
+          tx.set(doc(db, 'fotosEntrega', f.id), {
+            id: f.id,
+            ordenId: accion.ordenId,
+            granjaId: orden.granjaId,
+            eventoId: accion.id,
+            subidaPorUid: uid,
+            tomadaEn: f.tomadaEn,
+            expiraEn: Timestamp.fromMillis(Date.now() + DIAS_RETENCION_FOTOS * 24 * 60 * 60 * 1000),
+            tipo: 'image/jpeg',
+            ancho: f.ancho,
+            alto: f.alto,
+            bytes: f.bytes,
+            hash: f.hash,
+            datos: f.datos
+          });
+        }
         cambios = { estado: completa ? 'entregado' : 'entrega_parcial', entregadoPorLote, cantidadEntregada };
         break;
       }

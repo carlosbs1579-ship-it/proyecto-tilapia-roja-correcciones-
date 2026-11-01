@@ -363,10 +363,10 @@ async function aplicarAccion(uid: string, accion: AccionReparto): Promise<'aplic
         const completa = redondear(orden.cantidadAutorizada - cantidadEntregada, orden.unidad) <= 0;
         evento.datos.faltante = Math.max(0, redondear(orden.cantidadAutorizada - cantidadEntregada, orden.unidad));
         evento.datos.unidad = orden.unidad;
-        // Foto: obligatoria en las entregas parciales. Se guarda aparte (fotosEntrega) en esta misma
-        // operación y el evento conserva solo su identificador y su hash.
-        if (!completa && !accion.foto) {
-          throw new ConflictoReparto('Una entrega parcial necesita una foto. Registra la entrega de nuevo con la foto.');
+        // Foto: obligatoria en toda entrega (completa o parcial). Se guarda aparte (fotosEntrega) en
+        // esta misma operación y el evento conserva solo su identificador y su hash.
+        if (!accion.foto) {
+          throw new ConflictoReparto('La entrega necesita una foto. Registra la entrega de nuevo con la foto.');
         }
         if (accion.foto) {
           const f = accion.foto;

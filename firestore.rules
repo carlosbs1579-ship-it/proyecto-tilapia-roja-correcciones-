@@ -873,14 +873,13 @@ service cloud.firestore {
       return /databases/$(database)/documents/fotosEntrega/$(fotoId);
     }
 
-    // En la orden: la entrega parcial exige foto; si hay foto, debe ser la que se escribe en esta
-    // misma operación para este evento y esta orden
+    // En la orden: toda entrega (completa o parcial) exige foto, y debe ser la que se escribe en
+    // esta misma operación para este evento y esta orden
     function fotoDeEntregaValida(id, despues, evento) {
       let foto = evento.datos.get('foto', null);
-      return (foto == null && despues.estado == 'entregado')
-        || (foto != null
-            && foto.keys().hasOnly(['id', 'hash', 'bytes'])
-            && fotoCoincide(getAfter(rutaFoto(foto.id)).data, foto, id, evento));
+      return foto != null
+        && foto.keys().hasOnly(['id', 'hash', 'bytes'])
+        && fotoCoincide(getAfter(rutaFoto(foto.id)).data, foto, id, evento);
     }
 
     function fotoCoincide(f, foto, id, evento) {

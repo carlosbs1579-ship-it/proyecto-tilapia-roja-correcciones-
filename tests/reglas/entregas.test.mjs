@@ -130,7 +130,7 @@ const llegar = (uid, id) => accion(uid, id, { llegadaEn: new Date().toISOString(
 // Confirma una entrega: mueve el inventario de cada lote (reservado -> entregado) y actualiza la orden
 let nFoto = 0;
 const DIA = 24 * 60 * 60 * 1000;
-// foto: undefined = automática (solo en parciales) · false = sin foto · objeto = cambios sobre la foto
+// foto: undefined = automática (toda entrega lleva foto) · false = sin foto · objeto = cambios sobre la foto
 async function entregar(uid, id, entregas, { estado, moverInventario = true, delta, foto, fotoEnEvento } = {}) {
   const o = await leer(`ordenes/${id}`);
   const previo = o.entregadoPorLote || {};
@@ -139,10 +139,9 @@ async function entregar(uid, id, entregas, { estado, moverInventario = true, del
   const total = Object.values(nuevo).reduce((s, n) => s + n, 0);
   const db = como(uid);
   const batch = writeBatch(db);
-  const parcial = total !== o.cantidadAutorizada;
   const eventoId = `ev-${uid}-${o.historial.length}-${id}`;
   let datosEvento = { entregas };
-  if (foto !== false && (parcial || foto)) {
+  if (foto !== false) {
     const fotoId = 'foto_' + String(++nFoto).padStart(4, '0') + 'x'.repeat(20);
     const registro = {
       id: fotoId, ordenId: id, granjaId: GRANJA, eventoId, subidaPorUid: uid, tomadaEn: 'x',
@@ -691,11 +690,10 @@ describe('Fotos de entrega (fase 7)', () => {
     await assertSucceeds(entregar('repartidor', 'PED-F1', { 'LT-001': 60 }));
   });
 
-  test('una entrega completa puede ir sin foto o con foto', async () => {
+  test('una entrega completa también exige foto', async () => {
     await enLlegada('PED-F2');
-    await assertSucceeds(entregar('repartidor', 'PED-F2', { 'LT-001': 100 }, { foto: false }));
-    await enLlegada('PED-F3');
-    await assertSucceeds(entregar('repartidor', 'PED-F3', { 'LT-001': 100 }, { foto: {} }));
+    await assertFails(entregar('repartidor', 'PED-F2', { 'LT-001': 100 }, { foto: false }));
+    await assertSucceeds(entregar('repartidor', 'PED-F2', { 'LT-001': 100 }));
   });
 
   test('la foto debe coincidir con el evento (hash, orden) y vencer a los 15 días', async () => {

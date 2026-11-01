@@ -177,8 +177,8 @@ export const DetalleEntregaRepartidor: React.FC<DetalleEntregaRepartidorProps> =
       setErrorMsg('Indica cuánto entregaste.');
       return;
     }
-    if (faltante > 0 && !foto) {
-      setErrorMsg('En una entrega parcial la foto es obligatoria: tómala antes de confirmar.');
+    if (!foto) {
+      setErrorMsg('La foto de la entrega es obligatoria: tómala antes de confirmar.');
       return;
     }
     if (!registrar({
@@ -186,7 +186,7 @@ export const DetalleEntregaRepartidor: React.FC<DetalleEntregaRepartidorProps> =
       tipo: 'Entrega',
       descripcion: obsEntrega,
       datos: { entregas: Object.fromEntries(Object.entries(entregas).map(([c, v]) => [c, Number(v) || 0])) },
-      ...(foto ? { foto } : {})
+      foto
     })) return;
     setFoto(null);
     avisar(
@@ -472,7 +472,7 @@ export const DetalleEntregaRepartidor: React.FC<DetalleEntregaRepartidorProps> =
                   <Camera className="w-5 h-5" />
                   <span>
                     {procesandoFoto ? 'Procesando foto...' : foto ? 'Cambiar foto' : 'Tomar foto de la entrega'}
-                    {faltante > 0 ? ' (obligatoria)' : ' (opcional)'}
+                    {' (obligatoria)'}
                   </span>
                   <input
                     type="file"

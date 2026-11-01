@@ -647,7 +647,7 @@ service cloud.firestore {
       let cambios = despues.diff(antes).affectedKeys();
       return tipo in ['Modificación', 'Cambio de repartidor', 'Asignación y reserva', 'Cambio de estado', 'Cancelación',
                       'Reprogramación de saldo', 'Cierre con saldo liberado', 'Ajuste rechazado', 'Ajuste aplicado',
-                      'Atención de novedad', 'Comprobante emitido']
+                      'Atención de novedad', 'Comprobante emitido', 'Comprobante anulado']
         && despues.historial.size() == n + 1
         && eventoOrdenValido(evento, n)
         && despues.historial[0:n] == antes.historial
@@ -665,7 +665,8 @@ service cloud.firestore {
             || (tipo == 'Ajuste aplicado'
               && ajusteAplicadoValido(id, antes, despues, cambios, evento.datos.ajusteId))
             || (tipo == 'Atención de novedad' && atencionNovedadValida(antes, despues, cambios, evento))
-            || (tipo == 'Comprobante emitido' && emisionComprobanteValida(id, antes, despues, cambios, evento)));
+            || (tipo == 'Comprobante emitido' && emisionComprobanteValida(id, antes, despues, cambios, evento))
+            || (tipo == 'Comprobante anulado' && registroAnulacionValido(id, cambios, evento)));
     }
 
     // ===== Comprobantes de entrega (fase 5) =====
@@ -691,6 +692,43 @@ service cloud.firestore {
         && c.ordenId == id
         && c.tokenConsulta == despues.tokenConsulta
         && c.eventoEntregaId == evento.datos.eventoEntregaId;
+    }
+
+    // Anulación en la orden: solo agrega el evento; el bloque de anulación se escribe en esta misma operación
+    function registroAnulacionValido(id, cambios, evento) {
+      let b = getAfter(rutaComprobante(evento.datos.bloqueId)).data;
+      return cambios.hasOnly(['actualizadoEn', 'historial'])
+        && b.tipoBloque == 'anulacion'
+        && b.ordenId == id
+        && b.anulaA == evento.datos.anulaA;
+    }
+
+    // Bloque de anulación: deja sin validez un comprobante de entrega de la misma orden, sin borrarlo
+    // ni modificarlo. Se encadena como cualquier bloque y cada comprobante se anula una sola vez
+    // (su clave en el índice público es única).
+    function anulacionValida(id) {
+      let c = request.resource.data;
+      let a = get(rutaComprobante(c.anulaA)).data;
+      let versiones = getAfter(rutaConsulta(c.tokenConsulta)).data.versiones;
+      return c.id == id
+        && id.size() >= 20
+        && c.keys().hasOnly(['id', 'version', 'tipoBloque', 'ordenId', 'granjaId', 'tokenConsulta', 'emitidoEn', 'emitidoPorUid',
+                             'empresa', 'anulaA', 'versionAnulada', 'motivo', 'eventoEntregaId', 'hashAnterior', 'hashComprobante'])
+        && c.tipoBloque == 'anulacion'
+        && gestionaPedidosEn(c.granjaId)
+        && c.emitidoPorUid == request.auth.uid
+        && a.get('tipoBloque', 'entrega') == 'entrega'
+        && a.ordenId == c.ordenId
+        && a.granjaId == c.granjaId
+        && a.tokenConsulta == c.tokenConsulta
+        && c.versionAnulada == a.version
+        && c.eventoEntregaId == 'anulacion-' + c.anulaA
+        && c.motivo is string && c.motivo.size() >= 10 && c.motivo.size() <= 500
+        && versiones[c.eventoEntregaId].comprobanteId == id
+        && c.version == versiones.size()
+        && c.hashComprobante is string && c.hashComprobante.size() == 64
+        && c.hashAnterior == hashBloqueAnterior(c.tokenConsulta)
+        && getAfter(rutaOrden(c.ordenId)).data.historial[getAfter(rutaOrden(c.ordenId)).data.historial.size() - 1].datos.bloqueId == id;
     }
 
     // Enlace del bloque: el hash del comprobante anterior de la orden (64 ceros en el primero)
@@ -774,7 +812,9 @@ service cloud.firestore {
       // Lectura pública de UN comprobante conociendo su identificador aleatorio; listar, solo el operador
       allow get: if true;
       allow list: if puedeGestionarPedidos() && granjaPermitida(resource.data.granjaId);
-      allow create: if comprobanteValido(comprobanteId);
+      allow create: if request.resource.data.get('tipoBloque', 'entrega') == 'anulacion'
+                      ? anulacionValida(comprobanteId)
+                      : comprobanteValido(comprobanteId);
       allow update, delete: if false;
     }
 

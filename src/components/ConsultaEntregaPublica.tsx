@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ArrowLeft, Download, FileText, ShieldAlert, ShieldCheck, Truck } from 'lucide-react';
-import { ComprobanteEntrega, ConsultaEntrega } from '../types';
-import { EMPRESA, leerConsultaEntrega, verificarCadena, verificarComprobante } from '../services/comprobantesService';
+import { BloqueAnulacion, ComprobanteEntrega, ConsultaEntrega } from '../types';
+import { EMPRESA, leerConsultaEntrega, separarBloques, verificarCadena, verificarComprobante } from '../services/comprobantesService';
 import { descargarComprobantePdf, verComprobantePdf } from '../services/pdfService';
 import { formatearFechaColombia } from '../utils/constants';
 
@@ -19,7 +19,8 @@ export const ConsultaEntregaPublica: React.FC<{
 }> = ({ token, onAbrirLote, onVolver }) => {
   const [estado, setEstado] = useState<'cargando' | 'no_encontrada' | 'error' | 'ok'>('cargando');
   const [consulta, setConsulta] = useState<ConsultaEntrega | null>(null);
-  const [comprobantes, setComprobantes] = useState<ComprobanteEntrega[]>([]);
+  const [bloques, setBloques] = useState<(ComprobanteEntrega | BloqueAnulacion)[]>([]);
+  const { comprobantes, anulaciones } = separarBloques(bloques);
   const [verificacion, setVerificacion] = useState<Record<string, { ok: boolean; mensaje: string }>>({});
 
   useEffect(() => {
@@ -27,13 +28,13 @@ export const ConsultaEntregaPublica: React.FC<{
     leerConsultaEntrega(token)
       .then(async (r) => {
         if (!activo) return;
-        if (!r || !r.comprobantes.length) return setEstado('no_encontrada');
+        if (!r || !r.bloques.length) return setEstado('no_encontrada');
         setConsulta(r.consulta);
-        setComprobantes(r.comprobantes);
+        setBloques(r.bloques);
         setEstado('ok');
         // Verificación automática de cada versión contra su hash y el índice de consulta
         const resultados: Record<string, { ok: boolean; mensaje: string }> = {};
-        for (const c of r.comprobantes) {
+        for (const c of r.bloques) {
           const v = await verificarComprobante(c, { consulta: r.consulta });
           resultados[c.id] = { ok: v.contenidoIntegro && v.indiceCoincide !== false, mensaje: v.mensaje };
         }
@@ -45,7 +46,8 @@ export const ConsultaEntregaPublica: React.FC<{
     };
   }, [token]);
 
-  const actual = comprobantes[0];
+  // Comprobante vigente: el más reciente que no esté anulado (si todos lo están, se muestra el último)
+  const actual = comprobantes.find((c) => !anulaciones[c.id]) || comprobantes[0];
 
   return (
     <div className="min-h-screen bg-slate-100 text-slate-800">
@@ -103,7 +105,10 @@ export const ConsultaEntregaPublica: React.FC<{
                 <span>Autorizado: <strong>{num(actual.cantidadAutorizada)} {actual.unidad}</strong></span>
                 <span>Entregado: <strong>{num(actual.cantidadEntregada)} {actual.unidad}</strong></span>
                 <span>Última confirmación: <strong>{actual.fechas.confirmacion ? formatearFechaColombia(actual.fechas.confirmacion) : '—'}</strong></span>
-                <span>Comprobante vigente: <strong>versión {actual.version}</strong></span>
+                <span>
+                  Comprobante vigente:{' '}
+                  <strong>{anulaciones[actual.id] ? 'ninguno (todos anulados)' : `versión ${actual.version}`}</strong>
+                </span>
               </div>
             </section>
 
@@ -140,7 +145,7 @@ export const ConsultaEntregaPublica: React.FC<{
             <section className="bg-white rounded-lg border border-slate-200 p-4 space-y-2">
               <span className="font-bold block">Comprobantes emitidos ({comprobantes.length})</span>
               {(() => {
-                const cadena = verificarCadena(comprobantes);
+                const cadena = verificarCadena(bloques);
                 return (
                   <span className={`flex items-start text-xs ${cadena.integra ? 'text-emerald-700' : 'text-red-600'}`}>
                     {cadena.integra ? <ShieldCheck className="w-3 h-3 mr-1 mt-0.5 shrink-0" /> : <ShieldAlert className="w-3 h-3 mr-1 mt-0.5 shrink-0" />}
@@ -152,20 +157,27 @@ export const ConsultaEntregaPublica: React.FC<{
                 <div key={c.id} className="border border-slate-100 rounded p-2 space-y-1 text-xs">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <span>
-                      <strong>Bloque v{c.version}</strong> · {formatearFechaColombia(c.emitidoEn)} ·{' '}
+                      <strong>Bloque v{c.version}</strong>
+                      {anulaciones[c.id] && <strong className="ml-1 px-1 rounded bg-red-100 text-red-700">ANULADO</strong>} · {formatearFechaColombia(c.emitidoEn)} ·{' '}
                       {c.estadoEntrega === 'entregado' ? 'entrega completa' : 'entrega parcial'} · entregado {num(c.cantidadEntregada)} {c.unidad}
                     </span>
                     <span className="flex gap-1">
-                      <button type="button" onClick={() => verComprobantePdf(c, false)} className="flex items-center px-1.5 py-0.5 rounded border border-slate-300 hover:bg-slate-100">
+                      <button type="button" onClick={() => verComprobantePdf(c, false, anulaciones[c.id])} className="flex items-center px-1.5 py-0.5 rounded border border-slate-300 hover:bg-slate-100">
                         <FileText className="w-3 h-3 mr-0.5" />
                         Ver
                       </button>
-                      <button type="button" onClick={() => descargarComprobantePdf(c, false)} className="flex items-center px-1.5 py-0.5 rounded border border-slate-300 hover:bg-slate-100">
+                      <button type="button" onClick={() => descargarComprobantePdf(c, false, anulaciones[c.id])} className="flex items-center px-1.5 py-0.5 rounded border border-slate-300 hover:bg-slate-100">
                         <Download className="w-3 h-3 mr-0.5" />
                         PDF
                       </button>
                     </span>
                   </div>
+                  {anulaciones[c.id] && (
+                    <span className="block text-red-700">
+                      Anulado el {formatearFechaColombia(anulaciones[c.id].emitidoEn)} (bloque v{anulaciones[c.id].version}). Motivo:{' '}
+                      {anulaciones[c.id].motivo}
+                    </span>
+                  )}
                   {verificacion[c.id] ? (
                     <span className={`flex items-start ${verificacion[c.id].ok ? 'text-emerald-700' : 'text-red-600'}`}>
                       {verificacion[c.id].ok ? <ShieldCheck className="w-3 h-3 mr-1 shrink-0" /> : <ShieldAlert className="w-3 h-3 mr-1 shrink-0" />}

@@ -1,4 +1,4 @@
-import { Lote, ConfiguracionGeneral, ComprobanteEntrega } from '../types';
+import { Lote, ConfiguracionGeneral, ComprobanteEntrega, BloqueAnulacion } from '../types';
 import { construirUrlConsultaEntrega, construirUrlPublicaPdf, generarQrDataUrl } from './qrService';
 import { verificarIntegridadCadena } from './hashService';
 import { formatearFechaColombia, getFechaHoyBogota, ocultarCorreo } from '../utils/constants';
@@ -411,7 +411,10 @@ type ContenidoComprobante = Omit<ComprobanteEntrega, 'hashEventos' | 'hashCompro
 
 const cantidadTexto = (n: number, unidad: string) => `${(Number(n) || 0).toLocaleString('es-CO')} ${unidad}`;
 
-export async function generarComprobantePdfBlob(c: ContenidoComprobante, opciones: { preliminar: boolean }): Promise<Blob> {
+export async function generarComprobantePdfBlob(
+  c: ContenidoComprobante,
+  opciones: { preliminar: boolean; anulacion?: BloqueAnulacion }
+): Promise<Blob> {
   const { jsPDF, autoTable } = await cargarPdf();
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -443,13 +446,17 @@ export async function generarComprobantePdfBlob(c: ContenidoComprobante, opcione
   y += 32;
 
   // Estado de la entrega (una parcial nunca se presenta como completa)
-  doc.setFillColor(...((opciones.preliminar ? [100, 116, 139] : parcial ? [217, 119, 6] : [5, 150, 105]) as [number, number, number]));
+  doc.setFillColor(
+    ...((opciones.anulacion ? [185, 28, 28] : opciones.preliminar ? [100, 116, 139] : parcial ? [217, 119, 6] : [5, 150, 105]) as [number, number, number])
+  );
   doc.rect(10, y, pageWidth - 20, 9, 'F');
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10);
   doc.text(
-    opciones.preliminar
+    opciones.anulacion
+      ? `COMPROBANTE ANULADO el ${formatearFechaColombia(opciones.anulacion.emitidoEn)} · sin validez`
+      : opciones.preliminar
       ? 'DOCUMENTO PRELIMINAR · la entrega aún no está confirmada o el comprobante no se ha emitido'
       : parcial
       ? `ENTREGA PARCIAL · pendientes ${cantidadTexto(c.cantidadPendiente, c.unidad)}`
@@ -561,29 +568,45 @@ export async function generarComprobantePdfBlob(c: ContenidoComprobante, opcione
       pageWidth - 20
     );
     doc.text(lineas, 10, y + 4);
+    if (opciones.anulacion) {
+      const a = opciones.anulacion;
+      const lineasAnulacion = doc.splitTextToSize(
+        `ANULADO por el bloque N.º ${a.version} (hash ${a.hashComprobante}). Motivo: ${a.motivo}. ` +
+          'El comprobante original se conserva sin cambios en la cadena; solo queda sin validez.',
+        pageWidth - 20
+      );
+      doc.setTextColor(185, 28, 28);
+      doc.text(lineasAnulacion, 10, y + 4 + lineas.length * 3.4 + 2);
+    }
   }
 
-  if (opciones.preliminar) {
-    // Marca de agua para que nunca se confunda con un comprobante definitivo
-    doc.setTextColor(203, 213, 225);
+  if (opciones.preliminar || opciones.anulacion) {
+    // Marca de agua para que nunca se confunda con un comprobante definitivo vigente
+    // Semitransparente para que no tape el texto de las tablas
+    const anyDoc = doc as any;
+    if (anyDoc.GState) anyDoc.setGState(new anyDoc.GState({ opacity: 0.18 }));
+    doc.setTextColor(...((opciones.anulacion ? [220, 38, 38] : [100, 116, 139]) as [number, number, number]));
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(54);
-    doc.text('PRELIMINAR', pageWidth / 2, 170, { align: 'center', angle: 35 });
+    doc.setFontSize(64);
+    doc.text(opciones.anulacion ? 'ANULADO' : 'PRELIMINAR', pageWidth / 2, 170, { align: 'center', angle: 35 });
+    if (anyDoc.GState) anyDoc.setGState(new anyDoc.GState({ opacity: 1 }));
   }
   return doc.output('blob');
 }
 
-export async function verComprobantePdf(c: ContenidoComprobante, preliminar: boolean): Promise<void> {
-  const blob = await generarComprobantePdfBlob(c, { preliminar });
+export async function verComprobantePdf(c: ContenidoComprobante, preliminar: boolean, anulacion?: BloqueAnulacion): Promise<void> {
+  const blob = await generarComprobantePdfBlob(c, { preliminar, anulacion });
   window.open(URL.createObjectURL(blob), '_blank');
 }
 
-export async function descargarComprobantePdf(c: ContenidoComprobante, preliminar: boolean): Promise<void> {
-  const blob = await generarComprobantePdfBlob(c, { preliminar });
+export async function descargarComprobantePdf(c: ContenidoComprobante, preliminar: boolean, anulacion?: BloqueAnulacion): Promise<void> {
+  const blob = await generarComprobantePdfBlob(c, { preliminar, anulacion });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = preliminar ? `Preliminar_${c.ordenId}.pdf` : `Comprobante_${c.ordenId}_v${c.version}.pdf`;
+  a.download = preliminar
+    ? `Preliminar_${c.ordenId}.pdf`
+    : `Comprobante_${c.ordenId}_v${c.version}${anulacion ? '_ANULADO' : ''}.pdf`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);

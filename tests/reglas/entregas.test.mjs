@@ -685,6 +685,73 @@ describe('Comprobantes de entrega (fase 5)', () => {
     assert.equal((await leer(`comprobantes/${v2}`)).hashAnterior, (await leer(`comprobantes/${v1}`)).hashComprobante);
   });
 
+  // Anula un comprobante como lo hace el servicio: bloque de anulación + índice público + evento en la orden
+  let nAnu = 0;
+  async function anular(uid, compId, { token = TOKEN, motivo = 'Cantidad mal registrada por el repartidor', hashAnterior, alterar = {}, sinEvento } = {}) {
+    const comp = await leer(`comprobantes/${compId}`);
+    const consulta = await leer(`consultasEntrega/${token}`);
+    const previo = await leer(`comprobantes/${consulta.ultimaVersion}`);
+    const id = 'anu_' + String(++nAnu).padStart(4, '0') + 'c'.repeat(24);
+    const clave = `anulacion-${compId}`;
+    const version = Object.keys(consulta.versiones).length + 1;
+    const bloque = {
+      id, version, tipoBloque: 'anulacion', ordenId: comp.ordenId, granjaId: GRANJA, tokenConsulta: token, emitidoEn: 'x',
+      emitidoPorUid: uid, empresa: 'Cultivos Loré', anulaA: compId, versionAnulada: comp.version, motivo, eventoEntregaId: clave,
+      hashAnterior: hashAnterior ?? previo.hashComprobante, hashComprobante: 'a' + String(nAnu).padStart(63, '0'), ...alterar
+    };
+    const o = await leer(`ordenes/${comp.ordenId}`);
+    const db = como(uid);
+    const batch = writeBatch(db);
+    batch.set(doc(db, 'comprobantes', id), bloque);
+    batch.set(doc(db, 'consultasEntrega', token), {
+      ...consulta,
+      versiones: { ...consulta.versiones, [clave]: { comprobanteId: id, version, emitidoEn: 'x', estadoEntrega: 'anulacion', hashComprobante: bloque.hashComprobante } },
+      ultimaVersion: id
+    });
+    if (!sinEvento) {
+      batch.update(doc(db, 'ordenes', comp.ordenId), {
+        actualizadoEn: 'z',
+        historial: [...o.historial, evento(uid, o.historial.length, 'Comprobante anulado', { datos: { bloqueId: id, anulaA: compId, versionAnulada: comp.version } })]
+      });
+    }
+    await batch.commit();
+    return id;
+  }
+
+  test('anulación: agrega un bloque encadenado sin borrar ni cambiar el comprobante; una sola vez', async () => {
+    await entregaParcial('PED-A1');
+    const v1 = await emitir('vendedor', 'PED-A1');
+    const antes = await leer(`comprobantes/${v1}`);
+    await assertFails(anular('repartidor', v1));
+    await assertFails(anular('vendedor', v1, { motivo: 'corto' }));
+    await assertFails(anular('vendedor', v1, { hashAnterior: '0'.repeat(64) }));
+    await assertFails(anular('vendedor', v1, { sinEvento: true }));
+    await assertFails(anular('vendedor', v1, { alterar: { versionAnulada: 7 } }));
+    const anu = await anular('vendedor', v1);
+    assert.deepEqual(await leer(`comprobantes/${v1}`), antes);
+    assert.equal((await leer(`comprobantes/${anu}`)).hashAnterior, antes.hashComprobante);
+    await assertFails(anular('vendedor', v1));
+    await assertFails(anular('vendedor', anu));
+    const { deleteDoc } = await import('firebase/firestore');
+    await assertFails(deleteDoc(doc(como('vendedor'), 'comprobantes', anu)));
+    await assertFails(updateDoc(doc(como('vendedor'), 'comprobantes', anu), { motivo: 'otro motivo distinto' }));
+  });
+
+  test('anulación: el siguiente comprobante se encadena al bloque de anulación', async () => {
+    await entregaParcial('PED-A2');
+    const v1 = await emitir('vendedor', 'PED-A2');
+    const anu = await anular('vendedor', v1);
+    await reprogramar('PED-A2');
+    await iniciarRuta('repartidor', 'PED-A2');
+    await llegar('repartidor', 'PED-A2');
+    await entregar('repartidor', 'PED-A2', { 'LT-001': 50 });
+    await assertFails(emitir('vendedor', 'PED-A2', { hashAnterior: (await leer(`comprobantes/${v1}`)).hashComprobante }));
+    const v3 = await emitir('vendedor', 'PED-A2');
+    const c3 = await leer(`comprobantes/${v3}`);
+    assert.equal(c3.version, 3);
+    assert.equal(c3.hashAnterior, (await leer(`comprobantes/${anu}`)).hashComprobante);
+  });
+
   test('14. los lotes no cambian al emitir comprobantes', async () => {
     const antes = await leer('lotes/LT-001');
     await entregaParcial('PED-C6');

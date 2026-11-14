@@ -21,6 +21,28 @@ export type TipoEvento =
   | 'Observación'
   | 'Corrección';
 
+// Anotaciones posteriores al cierre: cadena propia anclada al sello del lote (no lo modifica)
+export type TipoRegistroAnotacion = 'Propuesta' | 'Aprobación' | 'Rechazo';
+export interface RegistroAnotacion {
+  id: string;
+  indice: number;
+  tipo: TipoRegistroAnotacion;
+  fecha: string;
+  datos: Record<string, any>; // Propuesta: fase, dato, valorRegistrado, valorCorrecto, motivo · Resolución: propuestaIndice, respuesta
+  registradoPor: string;
+  registradoPorUid: string;
+  registradoPorNombre?: string;
+  hashAnterior: string;
+  hash: string;
+}
+export interface AnotacionesLote {
+  codigoLote: string;
+  granjaId: string;
+  hashAnclaje: string; // sello de cierre del lote (hash de su última fase)
+  registros: RegistroAnotacion[];
+  resueltas: Record<string, 'aprobada' | 'rechazada'>; // clave: índice de la propuesta
+}
+
 export interface EventoLote {
   id: string; // UUID v4
   indice: number; // 0, 1, 2...
@@ -428,6 +450,8 @@ export interface PermisosUsuario {
   verAnalitica?: boolean;
   exportarAnalitica?: boolean;
   verConfiguracion?: boolean;
+  proponerAnotaciones?: boolean; // anotaciones posteriores al cierre de un lote
+  aprobarAnotaciones?: boolean;
 }
 
 // admin: gestiona usuarios y configuración; operario: trabaja según sus permisos; consulta: solo lectura

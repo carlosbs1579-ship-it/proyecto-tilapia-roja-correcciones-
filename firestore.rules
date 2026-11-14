@@ -89,7 +89,8 @@ service cloud.firestore {
                 || permisos.get('crearLotes', false) == true || permisos.get('registrarEventos', false) == true
                 || permisos.get('cerrarLotes', false) == true || permisoDe(p, 'corregirSiembra', 'crearLotes')
                 || permisoDe(p, 'buscarLotes', true) || permisoDe(p, 'descargarDocumentosLote', true)
-                || permisoDe(p, 'exportarAnalitica', true)));
+                || permisoDe(p, 'exportarAnalitica', true)
+                || permisos.get('proponerAnotaciones', false) == true || permisos.get('aprobarAnotaciones', false) == true));
     }
 
     function isValidId(id) {
@@ -236,6 +237,78 @@ service cloud.firestore {
     // Cadena por lote en entregas/{codigo}, anclada al hash de cierre del lote. Desde la fase de
     // pedidos queda como historial de solo lectura: las reservas y entregas nuevas pasan por las
     // órdenes de entrega, para no comprometer dos veces el mismo lote.
+    // ---------- Anotaciones posteriores al cierre de un lote ----------
+    // anotacionesLote/{codigo}: cadena propia, anclada al sello de cierre del lote (que no se toca).
+    // Solo crece: propuestas, aprobaciones y rechazos. Quien propone no puede aprobar su propuesta;
+    // cada propuesta se resuelve una sola vez (mapa "resueltas"). No cambia ningún dato del lote.
+    function permisoAnotacion(clave) {
+      let p = get(perfilPath()).data;
+      return isMasterAdmin()
+        || (p.get('estado', '') == 'activo'
+            && (p.get('rol', '') == 'admin'
+                || (p.get('rol', '') != 'consulta' && rolesDe(p).hasAny(['operator'])
+                    && p.get('permisos', {}).get(clave, false) == true)));
+    }
+
+    function registroAnotacionValido(r, n, hashPrevio) {
+      return r.indice == n
+        && r.registradoPorUid == request.auth.uid
+        && r.registradoPor is string && r.registradoPor.lower() == correoSesion()
+        && r.hashAnterior == hashPrevio
+        && r.hash is string && r.hash.size() == 64
+        && r.tipo in ['Propuesta', 'Aprobación', 'Rechazo'];
+    }
+
+    function propuestaValida(r, lote) {
+      let d = r.datos;
+      return permisoAnotacion('proponerAnotaciones')
+        && d.fase is int && d.fase >= 0 && d.fase < lote.eventos.size()
+        && d.motivo is string && d.motivo.size() >= 10 && d.motivo.size() <= 1000
+        && d.get('dato', '') is string && d.get('valorRegistrado', '') is string && d.get('valorCorrecto', '') is string;
+    }
+
+    function resolucionAnotacionValida(r, antes, despues) {
+      let i = r.datos.propuestaIndice;
+      let dif = despues.resueltas.diff(antes.get('resueltas', {}));
+      return permisoAnotacion('aprobarAnotaciones')
+        && i is int && i >= 0 && i < antes.registros.size()
+        && antes.registros[i].tipo == 'Propuesta'
+        && antes.registros[i].registradoPorUid != request.auth.uid
+        && dif.addedKeys().hasOnly([string(i)]) && dif.addedKeys().size() == 1
+        && dif.changedKeys().size() == 0 && dif.removedKeys().size() == 0
+        && despues.resueltas[string(i)] == (r.tipo == 'Aprobación' ? 'aprobada' : 'rechazada');
+    }
+
+    match /anotacionesLote/{codigo} {
+      // Lectura pública de las anotaciones de UN lote (certificado y QR); listar, solo internos
+      allow get: if true;
+      allow list: if esAdminGranja() || tieneRol('operator');
+      allow create: if isSignedIn()
+        && request.resource.data.keys().hasOnly(['codigoLote', 'granjaId', 'hashAnclaje', 'registros', 'resueltas'])
+        && request.resource.data.codigoLote == codigo
+        && get(rutaLote(codigo)).data.estado == 'cerrado'
+        && request.resource.data.granjaId == get(rutaLote(codigo)).data.get('granjaId', 'cultivos-lore')
+        && loteDeMiGranja(get(rutaLote(codigo)).data)
+        && request.resource.data.hashAnclaje == get(rutaLote(codigo)).data.eventos[get(rutaLote(codigo)).data.eventos.size() - 1].hash
+        && request.resource.data.resueltas == {}
+        && request.resource.data.registros.size() == 1
+        && registroAnotacionValido(request.resource.data.registros[0], 0, request.resource.data.hashAnclaje)
+        && request.resource.data.registros[0].tipo == 'Propuesta'
+        && propuestaValida(request.resource.data.registros[0], get(rutaLote(codigo)).data);
+      allow update: if isSignedIn()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['registros', 'resueltas'])
+        && loteDeMiGranja(get(rutaLote(codigo)).data)
+        && request.resource.data.registros.size() == resource.data.registros.size() + 1
+        && request.resource.data.registros[0:resource.data.registros.size()] == resource.data.registros
+        && registroAnotacionValido(request.resource.data.registros[resource.data.registros.size()], resource.data.registros.size(),
+             resource.data.registros[resource.data.registros.size() - 1].hash)
+        && (request.resource.data.registros[resource.data.registros.size()].tipo == 'Propuesta'
+              ? (propuestaValida(request.resource.data.registros[resource.data.registros.size()], get(rutaLote(codigo)).data)
+                  && request.resource.data.get('resueltas', {}) == resource.data.get('resueltas', {}))
+              : resolucionAnotacionValida(request.resource.data.registros[resource.data.registros.size()], resource.data, request.resource.data));
+      allow delete: if false;
+    }
+
     match /entregas/{codigo} {
       // Solo lectura interna (detalle del lote): ya no se muestran en el QR público porque
       // contienen nombres de clientes. Listar, solo administradores.

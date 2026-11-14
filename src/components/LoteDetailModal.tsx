@@ -32,6 +32,9 @@ import { evaluarParametroAgua } from '../services/calculosService';
 import { analizarCadenaLote, DiagnosticoFase } from '../services/hashService';
 import { esAdminMaestro, verificarPermiso, quienRegistro } from '../services/usuariosService';
 import { EntregasPanel } from './EntregasPanel';
+import { AnotacionesLotePanel } from './AnotacionesLotePanel';
+import { anotacionesDe, escucharAnotaciones } from '../services/anotacionesService';
+import { AnotacionesLote } from '../types';
 
 interface LoteDetailModalProps {
   isOpen: boolean;
@@ -59,8 +62,27 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
   const puedeCerrar = esAdmin || verificarPermiso(perfilActual, 'cerrarLotes');
   const puedeModificarSiembra = esAdmin || verificarPermiso(perfilActual, 'corregirSiembra');
   const puedeDocumentos = esAdmin || verificarPermiso(perfilActual, 'descargarDocumentosLote');
+  const puedeProponerAnotacion = esAdmin || verificarPermiso(perfilActual, 'proponerAnotaciones');
+  const puedeAprobarAnotacion = esAdmin || verificarPermiso(perfilActual, 'aprobarAnotaciones');
 
   const [lote, setLote] = useState<Lote>(loteInicial);
+  // Anotaciones posteriores al cierre (solo lotes sellados)
+  const [datosAnotaciones, setDatosAnotaciones] = useState<AnotacionesLote | null>(null);
+  useEffect(() => {
+    if (lote.estado !== 'cerrado') {
+      setDatosAnotaciones(null);
+      return;
+    }
+    return escucharAnotaciones(lote.codigo, setDatosAnotaciones);
+  }, [lote.codigo, lote.estado]);
+  const anotacionesAprobadasPorFase = anotacionesDe(datosAnotaciones)
+    .filter((a) => a.estado === 'aprobada')
+    .reduce<Record<number, number[]>>((m, a) => {
+      const fase = Number(a.propuesta.datos.fase);
+      (m[fase] = m[fase] || []).push(a.numero);
+      return m;
+    }, {});
+
   // Diagnóstico de cada fase de la cadena (se recalcula cuando cambia el lote)
   const [diagnostico, setDiagnostico] = useState<Record<number, DiagnosticoFase>>({});
   useEffect(() => {
@@ -513,6 +535,17 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
               />
             )}
 
+            {/* ANOTACIONES POSTERIORES AL CIERRE (el lote sellado no se modifica) */}
+            {lote.estado === 'cerrado' && (
+              <AnotacionesLotePanel
+                lote={lote}
+                datosAnotaciones={datosAnotaciones}
+                uidActual={perfilActual?.uid}
+                puedeProponer={puedeProponerAnotacion}
+                puedeAprobar={puedeAprobarAnotacion}
+              />
+            )}
+
             {/* SECCIÓN DE HISTORIAL Y LÍNEA DE TIEMPO */}
             <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
               {/* Filtros de la línea de tiempo */}
@@ -616,6 +649,11 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
                             <div>
                               <div className="flex items-center space-x-2">
                                 <span className="font-bold text-sm text-slate-900">{ev.tipo}</span>
+                                {anotacionesAprobadasPorFase[ev.indice] && (
+                                  <span className="text-[10px] bg-sky-100 text-sky-800 px-2 py-0.5 rounded-full font-semibold">
+                                    Ver anotación N.º {anotacionesAprobadasPorFase[ev.indice].join(', ')}
+                                  </span>
+                                )}
                                 <span className="text-xs text-slate-500 font-medium">
                                   {ev.fechaEvento}
                                 </span>

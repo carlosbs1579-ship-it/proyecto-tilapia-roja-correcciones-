@@ -2,6 +2,7 @@
 // Uso: npm install && npm test   (desde tests/reglas; requiere Java y firebase-tools)
 import { readFileSync } from 'node:fs';
 import { after, before, beforeEach, describe, test } from 'node:test';
+import assert from 'node:assert/strict';
 import {
   initializeTestEnvironment,
   assertFails,
@@ -441,5 +442,72 @@ describe('Permisos por pestaña: la pantalla y las reglas coinciden (QA)', () =>
       eventos: [...LOTE_ACTIVO.eventos, eventoNuevo('operador', { tipo: 'Corrección', datos: { ambito: 'siembra', cantidadSembrada: '2000 → 2050' } })],
       cantidadSembrada: 2050
     }));
+  });
+});
+
+describe('Anotaciones posteriores al cierre de un lote', () => {
+  const SELLADO = { ...LOTE_ACTIVO, codigo: 'L-SELLADO', estado: 'cerrado', eventos: [{ indice: 0, tipo: 'Siembra', hash: 'h0' }, { indice: 1, tipo: 'Cosecha', hash: 'h1' }] };
+  const H = (c) => c.repeat(64);
+  const reg = (uid, indice, tipo, datos, hashAnterior, extra = {}) => ({
+    id: `r${indice}`, indice, tipo, fecha: 'x', datos, hashAnterior, hash: H(String(indice)),
+    registradoPor: PERFILES[uid]?.email || `${uid}@prueba.co`, registradoPorUid: uid, ...extra
+  });
+  const propuesta = { fase: 1, dato: 'biomasaCosechadaKg', valorRegistrado: '912', valorCorrecto: '950', motivo: 'Error al digitar la biomasa en la báscula' };
+  const conPermisos = (uid, permisos) =>
+    env.withSecurityRulesDisabled((ctx) =>
+      updateDoc(doc(ctx.firestore(), 'usuarios', uid), Object.fromEntries(Object.entries(permisos).map(([k, v]) => [`permisos.${k}`, v])))
+    );
+  const proponer = (uid, extra = {}, datos = propuesta, codigo = 'L-SELLADO', anclaje = 'h1') =>
+    setDoc(doc(como(uid), 'anotacionesLote', codigo), {
+      codigoLote: codigo, granjaId: 'cultivos-lore', hashAnclaje: anclaje, resueltas: {},
+      registros: [reg(uid, 0, 'Propuesta', datos, anclaje)], ...extra
+    });
+  const resolver = async (uid, propuestaIndice, aprobar = true) => {
+    const d = await leerAnot();
+    return updateDoc(doc(como(uid), 'anotacionesLote', 'L-SELLADO'), {
+      registros: [...d.registros, reg(uid, d.registros.length, aprobar ? 'Aprobación' : 'Rechazo', { propuestaIndice }, d.registros[d.registros.length - 1].hash)],
+      resueltas: { ...d.resueltas, [String(propuestaIndice)]: aprobar ? 'aprobada' : 'rechazada' }
+    });
+  };
+  let leerAnot;
+
+  beforeEach(async () => {
+    await env.withSecurityRulesDisabled((ctx) => setDoc(doc(ctx.firestore(), 'lotes', 'L-SELLADO'), SELLADO));
+    await conPermisos('operador', { proponerAnotaciones: true });
+    await conPermisos('mixto', { aprobarAnotaciones: true });
+    leerAnot = async () => {
+      let d;
+      await env.withSecurityRulesDisabled(async (ctx) => { d = (await getDoc(doc(ctx.firestore(), 'anotacionesLote', 'L-SELLADO'))).data(); });
+      return d;
+    };
+  });
+
+  test('se propone sobre un lote sellado, anclada a su sello, con motivo y permiso', async () => {
+    await assertFails(proponer('legado'));
+    await assertFails(proponer('operador', {}, { ...propuesta, motivo: 'corto' }));
+    await assertFails(proponer('operador', {}, { ...propuesta, fase: 9 }));
+    await assertFails(proponer('operador', {}, propuesta, 'L-SELLADO', 'falso'));
+    await assertFails(proponer('operador', {}, propuesta, 'L-ACTIVO', 'h0'));
+    await assertSucceeds(proponer('operador'));
+    await assertSucceeds(getDoc(doc(env.unauthenticatedContext().firestore(), 'anotacionesLote', 'L-SELLADO')));
+  });
+
+  test('la aprueba otra persona con permiso; nunca quien la propuso; una sola vez', async () => {
+    await proponer('operador');
+    await conPermisos('operador', { aprobarAnotaciones: true });
+    await assertFails(resolver('operador', 0));
+    await assertFails(resolver('legado', 0));
+    await assertSucceeds(resolver('mixto', 0));
+    await assertFails(resolver('subadmin', 0, false));
+    assert.equal((await leerAnot()).resueltas['0'], 'aprobada');
+  });
+
+  test('el historial de anotaciones no se modifica ni se borra, y el lote sellado sigue igual', async () => {
+    await proponer('operador');
+    const d = await leerAnot();
+    await assertFails(updateDoc(doc(como('operador'), 'anotacionesLote', 'L-SELLADO'), { registros: [{ ...d.registros[0], datos: { ...propuesta, valorCorrecto: '2000' } }] }));
+    await assertFails(deleteDoc(doc(como('maestro'), 'anotacionesLote', 'L-SELLADO')));
+    const lote = (await (async () => { let x; await env.withSecurityRulesDisabled(async (ctx) => { x = (await getDoc(doc(ctx.firestore(), 'lotes', 'L-SELLADO'))).data(); }); return x; })());
+    assert.deepEqual(lote, SELLADO);
   });
 });

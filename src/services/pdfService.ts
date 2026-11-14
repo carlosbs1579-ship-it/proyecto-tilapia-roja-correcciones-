@@ -19,8 +19,36 @@ export function textoPdf(valor: unknown): string {
       const c = ch.charCodeAt(0);
       return c === 10 || c === 13 || (c >= 32 && c <= 126) || (c >= 160 && c <= 255) || EXTRA_WINANSI.includes(ch);
     })
-    .join('');
+    .join('')
+    // Lo que se quita (p. ej. un emoji) no deja dobles espacios
+    .replace(/ {2,}/g, ' ');
 }
+
+// Nombres legibles de los datos de los eventos en el certificado del lote (los desconocidos quedan igual)
+const ETIQUETA_DATO: Record<string, string> = {
+  temperatura: 'Temperatura (°C)',
+  oxigenoDisuelto: 'Oxígeno disuelto (mg/L)',
+  ph: 'pH',
+  amonioTotal: 'Amonio total (mg/L)',
+  nitritos: 'Nitritos (mg/L)',
+  transparenciaSecchi: 'Transparencia Secchi (cm)',
+  cantidad: 'Cantidad',
+  cantidadKg: 'Alimento (kg)',
+  tipoAlimento: 'Tipo de alimento',
+  pesoPromedioG: 'Peso promedio (g)',
+  pesoPromedioInicialG: 'Peso inicial promedio (g)',
+  pecesMuestreados: 'Peces muestreados',
+  pecesCosechados: 'Peces cosechados',
+  biomasaCosechadaKg: 'Biomasa cosechada (kg)',
+  proveedor: 'Proveedor',
+  causa: 'Causa',
+  cantidadSembrada: 'Cantidad sembrada',
+  estanque: 'Estanque',
+  pesoInicialPromedioG: 'Peso inicial promedio (g)',
+  proveedorAlevinos: 'Proveedor de alevinos',
+  observacionesIniciales: 'Observaciones iniciales'
+};
+const OMITIR_DATO = new Set(['ambito']);
 
 function depurar(valor: any): any {
   if (typeof valor === 'string') return textoPdf(valor);
@@ -130,11 +158,6 @@ export async function generarLotePdfBlob(
   doc.text(`${lote.estado.toUpperCase()}${lote.fechaCierre ? ` (Cierre: ${lote.fechaCierre})` : ''}`, 28, currentY + 33);
 
   doc.setFont('helvetica', 'bold');
-  doc.text('Versión PDF:', 72, currentY + 33);
-  doc.setFont('helvetica', 'normal');
-  doc.text(`v${lote.versionPdf || 1}`, 93, currentY + 33);
-
-  doc.setFont('helvetica', 'bold');
   doc.text('Proveedor alevinos:', 14, currentY + 39);
   doc.setFont('helvetica', 'normal');
   doc.text(`${lote.proveedorAlevinos || 'No especificado'}`, 48, currentY + 39);
@@ -230,7 +253,7 @@ export async function generarLotePdfBlob(
       theme: 'striped',
       headStyles: { fillColor: [8, 145, 178], fontSize: 8, fontStyle: 'bold' },
       bodyStyles: { fontSize: 7.5 },
-      head: [['Fecha', 'Temp', 'O₂ Dis.', 'pH', 'Amonio', 'Nitritos', 'Secchi', 'Estado', 'Operario']],
+      head: [['Fecha', 'Temp', 'O2 Dis.', 'pH', 'Amonio', 'Nitritos', 'Secchi', 'Estado', 'Operario']],
       body: filasAgua
     });
     currentY = (doc as any).lastAutoTable.finalY + 5;
@@ -298,7 +321,8 @@ export async function generarLotePdfBlob(
     let detalleDatos = '';
     if (ev.datos && Object.keys(ev.datos).length > 0) {
       detalleDatos = Object.entries(ev.datos)
-        .map(([k, v]) => `${k}: ${v}`)
+        .filter(([k]) => !OMITIR_DATO.has(k))
+        .map(([k, v]) => `${ETIQUETA_DATO[k] || k}: ${v}`)
         .join(', ');
     }
     const contenido = [ev.descripcion, detalleDatos].filter(Boolean).join(' — ');
@@ -419,7 +443,7 @@ export async function descargarPdfLoteLocal(lote: Lote, config: ConfiguracionGen
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `CultivosLore_Lote_${lote.codigo}_v${lote.versionPdf || 1}.pdf`;
+  a.download = `CultivosLore_Lote_${lote.codigo}.pdf`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -465,13 +489,12 @@ export async function generarComprobantePdfBlob(
   doc.setFontSize(10);
   doc.text(opciones.preliminar ? 'COMPROBANTE DE ENTREGA — PRELIMINAR' : 'COMPROBANTE DE ENTREGA', 16, y + 16);
   doc.setFontSize(8);
-  doc.text(
-    opciones.preliminar
-      ? `Orden ${c.ordenId} · generado el ${formatearFechaColombia(c.emitidoEn)} · sin validez como comprobante definitivo`
-      : `Comprobante N.º ${c.version} · código ${c.id.slice(0, 15)} · orden ${c.ordenId} · emitido el ${formatearFechaColombia(c.emitidoEn)}`,
-    16,
-    y + 22
-  );
+  // Dos renglones cortos para que el texto no pase por debajo del QR
+  const anchoEncabezado = pageWidth - 16 - 50;
+  const encabezado = opciones.preliminar
+    ? [`Orden ${c.ordenId} · generado el ${formatearFechaColombia(c.emitidoEn)}`, 'Sin validez como comprobante definitivo']
+    : [`Comprobante N.º ${c.version} · orden ${c.ordenId}`, `Código ${c.id.slice(0, 15)} · emitido el ${formatearFechaColombia(c.emitidoEn)}`];
+  doc.text(encabezado.map((l) => doc.splitTextToSize(textoPdf(l), anchoEncabezado)[0]), 16, y + 20.5);
   if (!opciones.preliminar && c.tokenConsulta) {
     const qr = await generarQrDataUrl(construirUrlConsultaEntrega(c.tokenConsulta));
     doc.addImage(qr, 'PNG', pageWidth - 44, y + 1, 24, 24);
@@ -505,6 +528,8 @@ export async function generarComprobantePdfBlob(
     theme: 'grid',
     styles: { fontSize: 8.5, cellPadding: 2 },
     headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42] },
+    // Columnas de igual ancho: un nombre de cliente largo no estrecha la de logística
+    columnStyles: { 0: { cellWidth: (pageWidth - 28) / 2 }, 1: { cellWidth: (pageWidth - 28) / 2 } },
     head: [['Cliente', 'Logística']],
     body: [[
       `${c.cliente.nombre}\n${c.cliente.direccion || 'Dirección no registrada'}`,
@@ -513,7 +538,8 @@ export async function generarComprobantePdfBlob(
         `Programada: ${c.fechas.programada || 'sin fecha'}`,
         `Salida: ${c.fechas.salida ? formatearFechaColombia(c.fechas.salida) : '—'}`,
         `Llegada: ${c.fechas.llegada ? formatearFechaColombia(c.fechas.llegada) : '—'}`,
-        `Confirmación de entrega: ${c.fechas.confirmacion ? formatearFechaColombia(c.fechas.confirmacion) : 'sin confirmar'}`
+        `Confirmación de entrega: ${c.fechas.confirmacion ? formatearFechaColombia(c.fechas.confirmacion) : 'sin confirmar'}`,
+        ...(c.fechas.correccion ? [`Entrega corregida: ${formatearFechaColombia(c.fechas.correccion)}`] : [])
       ].join('\n')
     ]]
   });
@@ -590,47 +616,68 @@ export async function generarComprobantePdfBlob(
     y = (doc as any).lastAutoTable.finalY + 5;
   }
 
-  // Verificación
+  // Verificación: si no cabe completa en la página actual, pasa a una página nueva (nunca se corta)
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const ALTO_LINEA = 3.4;
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7.5);
   doc.setTextColor(71, 85, 105);
   if (opciones.preliminar) {
+    if (y + 6 > pageHeight - 10) {
+      doc.addPage();
+      y = 15;
+    }
     doc.text('Documento preliminar: no tiene hash de verificación ni código de consulta.', 10, y);
   } else {
+    const lineas = doc.splitTextToSize(
+      textoPdf(
+        `Hash del bloque: ${c.hashComprobante} · Hash del bloque anterior: ${c.hashAnterior || 'no registrado (emitido antes del encadenamiento)'} · ` +
+          `Hash de los eventos de entrega: ${c.hashEventos}. ` +
+          'Cada comprobante es un bloque sellado con SHA-256 que contiene el hash del bloque anterior de la misma orden; ' +
+          'alterar cualquier dato cambia su hash y rompe la cadena. Cadena de bloques privada registrada en Firebase. ' +
+          'Escanee el código QR para consultar la entrega y verificar la cadena. La trazabilidad de cada lote se consulta con el QR del lote.'
+      ),
+      pageWidth - 20
+    );
+    const a = opciones.anulacion;
+    const lineasAnulacion = a
+      ? doc.splitTextToSize(
+          textoPdf(
+            `ANULADO por el bloque N.º ${a.version} (hash ${a.hashComprobante}). Motivo: ${a.motivo}. ` +
+              'El comprobante original se conserva sin cambios en la cadena; solo queda sin validez.'
+          ),
+          pageWidth - 20
+        )
+      : [];
+    const alto = 4 + lineas.length * ALTO_LINEA + (lineasAnulacion.length ? 2 + lineasAnulacion.length * ALTO_LINEA : 0);
+    if (y + alto > pageHeight - 10) {
+      doc.addPage();
+      y = 15;
+    }
     doc.setFont('helvetica', 'bold');
     doc.text(`REGISTRO TIPO BLOCKCHAIN · BLOQUE N.º ${c.version}`, 10, y);
     doc.setFont('helvetica', 'normal');
-    const lineas = doc.splitTextToSize(
-      `Hash del bloque: ${c.hashComprobante} · Hash del bloque anterior: ${c.hashAnterior || 'no registrado (emitido antes del encadenamiento)'} · ` +
-        `Hash de los eventos de entrega: ${c.hashEventos}. ` +
-        'Cada comprobante es un bloque sellado con SHA-256 que contiene el hash del bloque anterior de la misma orden; ' +
-        'alterar cualquier dato cambia su hash y rompe la cadena. Cadena de bloques privada registrada en Firebase. ' +
-        'Escanee el código QR para consultar la entrega y verificar la cadena. La trazabilidad de cada lote se consulta con el QR del lote.',
-      pageWidth - 20
-    );
     doc.text(lineas, 10, y + 4);
-    if (opciones.anulacion) {
-      const a = opciones.anulacion;
-      const lineasAnulacion = doc.splitTextToSize(
-        `ANULADO por el bloque N.º ${a.version} (hash ${a.hashComprobante}). Motivo: ${a.motivo}. ` +
-          'El comprobante original se conserva sin cambios en la cadena; solo queda sin validez.',
-        pageWidth - 20
-      );
+    if (lineasAnulacion.length) {
       doc.setTextColor(185, 28, 28);
-      doc.text(lineasAnulacion, 10, y + 4 + lineas.length * 3.4 + 2);
+      doc.text(lineasAnulacion, 10, y + 4 + lineas.length * ALTO_LINEA + 2);
     }
   }
 
   if (opciones.preliminar || opciones.anulacion) {
-    // Marca de agua para que nunca se confunda con un comprobante definitivo vigente
+    // Marca de agua en TODAS las páginas, para que ninguna se confunda con un comprobante vigente.
     // Semitransparente para que no tape el texto de las tablas
     const anyDoc = doc as any;
-    if (anyDoc.GState) anyDoc.setGState(new anyDoc.GState({ opacity: 0.18 }));
-    doc.setTextColor(...((opciones.anulacion ? [220, 38, 38] : [100, 116, 139]) as [number, number, number]));
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(64);
-    doc.text(opciones.anulacion ? 'ANULADO' : 'PRELIMINAR', pageWidth / 2, 170, { align: 'center', angle: 35 });
-    if (anyDoc.GState) anyDoc.setGState(new anyDoc.GState({ opacity: 1 }));
+    const paginas = doc.getNumberOfPages();
+    for (let p = 1; p <= paginas; p++) {
+      doc.setPage(p);
+      if (anyDoc.GState) anyDoc.setGState(new anyDoc.GState({ opacity: 0.18 }));
+      doc.setTextColor(...((opciones.anulacion ? [220, 38, 38] : [100, 116, 139]) as [number, number, number]));
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(64);
+      doc.text(opciones.anulacion ? 'ANULADO' : 'PRELIMINAR', pageWidth / 2, 170, { align: 'center', angle: 35 });
+      if (anyDoc.GState) anyDoc.setGState(new anyDoc.GState({ opacity: 1 }));
+    }
   }
   return doc.output('blob');
 }

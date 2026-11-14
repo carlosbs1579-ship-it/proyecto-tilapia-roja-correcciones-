@@ -23,8 +23,7 @@ import {
   UsuarioPerfil,
   PermisosUsuario,
   RolFuncional,
-  ROLES_FUNCIONALES,
-  ADMIN_MASTER_EMAIL
+  ROLES_FUNCIONALES
 } from '../types';
 import {
   esAdminMaestro,

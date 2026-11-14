@@ -283,7 +283,9 @@ export function construirComprobante(
       programada: orden.fechaProgramada || null,
       salida: orden.rutaIniciadaEn || orden.historial.filter((e) => e.tipo === 'Inicio de ruta').pop()?.fecha || null,
       llegada: orden.llegadaEn || orden.historial.filter((e) => e.tipo === 'Llegada').pop()?.fecha || null,
-      confirmacion: ultima?.evento.fecha || ''
+      // Confirmación = última entrega real; si después se corrigió, la corrección va aparte
+      confirmacion: orden.historial.filter((e) => e.tipo === 'Entrega').pop()?.fecha || '',
+      ...(ultima?.evento.tipo === 'Corrección de entrega' ? { correccion: ultima.evento.fecha } : {})
     },
     unidad: orden.unidad,
     cantidadSolicitada: orden.cantidadSolicitada,

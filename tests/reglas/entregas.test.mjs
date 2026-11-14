@@ -848,6 +848,13 @@ describe('Comprobantes de entrega (fase 5)', () => {
     await assertFails(getDoc(doc(como('vendedor'), 'ordenes', 'PED-P2')));
   });
 
+  test('permisos por pestaña: con solo "Decidir saldos" se ve la orden y se reprograma', async () => {
+    await entregaParcial('PED-P3');
+    await conPermisos('vendedor', { gestionarPedidos: false, verEntregas: false, decidirSaldos: true, gestionarComprobantes: false, atenderNovedades: false });
+    await assertSucceeds(getDoc(doc(como('vendedor'), 'ordenes', 'PED-P3')));
+    await assertSucceeds(reprogramar('PED-P3'));
+  });
+
   test('14. los lotes no cambian al emitir comprobantes', async () => {
     const antes = await leer('lotes/LT-001');
     await entregaParcial('PED-C6');

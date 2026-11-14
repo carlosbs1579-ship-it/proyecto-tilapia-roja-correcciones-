@@ -188,7 +188,7 @@ export interface ComprobanteEntrega {
   estadoEntrega: 'entregado' | 'entrega_parcial';
   cliente: { nombre: string; direccion: string };
   repartidor: string;
-  fechas: { creacion: string; programada: string | null; salida: string | null; llegada: string | null; confirmacion: string };
+  fechas: { creacion: string; programada: string | null; salida: string | null; llegada: string | null; confirmacion: string; correccion?: string };
   unidad: UnidadMedida;
   cantidadSolicitada: number;
   cantidadAutorizada: number;

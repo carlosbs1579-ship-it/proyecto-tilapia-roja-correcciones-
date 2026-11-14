@@ -756,7 +756,7 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
                   <input
                     type="number"
                     min="0.1"
-                    step="0.1"
+                    step="0.01"
                     value={editPesoInicial}
                     onChange={(e) => setEditPesoInicial(e.target.value === '' ? '' : Number(e.target.value))}
                     className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"

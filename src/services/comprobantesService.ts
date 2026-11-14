@@ -212,7 +212,7 @@ export async function anularComprobante(comprobanteId: string, motivo: string): 
         actualizadoEn: emitidoEn,
         historial: [
           ...orden.historial,
-          nuevoEvento(orden.historial.length, 'Comprobante anulado', `Comprobante versión ${anulado.version} anulado: ${motivoLimpio}`, {
+          nuevoEvento(orden.historial.length, 'Comprobante anulado', `Comprobante N.º ${anulado.version} anulado: ${motivoLimpio}`, {
             bloqueId: id,
             anulaA: comprobanteId,
             versionAnulada: anulado.version
@@ -364,7 +364,7 @@ export async function emitirComprobanteDefinitivo(ordenId: string): Promise<Comp
         actualizadoEn: emitidoEn,
         historial: [
           ...orden.historial,
-          nuevoEvento(orden.historial.length, 'Comprobante emitido', `Comprobante definitivo versión ${version}`, {
+          nuevoEvento(orden.historial.length, 'Comprobante emitido', `Comprobante definitivo N.º ${version}`, {
             comprobanteId: id,
             eventoEntregaId,
             version,
@@ -439,7 +439,7 @@ export function verificarCadena(
     }
     const esperado = i === 0 ? HASH_GENESIS_COMPROBANTES : orden[i - 1].hashComprobante;
     if (c.hashAnterior !== esperado) {
-      return { integra: false, sinEnlace, mensaje: `Cadena rota: el bloque v${c.version} no enlaza con el bloque anterior.` };
+      return { integra: false, sinEnlace, mensaje: `Cadena rota: el registro N.º ${c.version} no enlaza con el anterior.` };
     }
   }
   return {

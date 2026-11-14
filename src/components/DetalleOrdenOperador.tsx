@@ -20,6 +20,7 @@ import { ETIQUETA_FUNCION, EstadoOrdenBadge, num } from './entregasUi';
 import { SolicitudAjusteTarjeta } from './SolicitudesPendientes';
 import { NovedadTarjeta } from './NovedadesIncidencias';
 import { DocumentacionEntrega } from './DocumentacionEntrega';
+import { verificarPermiso } from '../services/usuariosService';
 import { FotosEntregaOrden } from './FotosEntregaOrden';
 import { CorreccionEntrega } from './CorreccionEntrega';
 
@@ -46,6 +47,11 @@ export const DetalleOrdenOperador: React.FC<{
   ejecutar: Ejecutar;
   onEditarBorrador: (orden: OrdenEntrega) => void;
 }> = ({ orden: o, lotes, inventario, repartidores, perfilActual, procesando, ejecutar, onEditarBorrador }) => {
+  // Permisos de la pestaña Entregas
+  const puedeGestionar = verificarPermiso(perfilActual, 'gestionarPedidos');
+  const puedeSaldos = verificarPermiso(perfilActual, 'decidirSaldos');
+  const puedeComprobantes = verificarPermiso(perfilActual, 'gestionarComprobantes');
+  const puedeNovedades = verificarPermiso(perfilActual, 'atenderNovedades');
   const [motivo, setMotivo] = useState('');
   const [nuevoRepartidor, setNuevoRepartidor] = useState('');
 
@@ -147,7 +153,7 @@ export const DetalleOrdenOperador: React.FC<{
       </Seccion>
 
       {/* Novedades de la orden */}
-      {novedades.length > 0 && (
+      {novedades.length > 0 && puedeNovedades && (
         <Seccion titulo={`Novedades del repartidor (${novedades.length})`}>
           {novedades.map((n) => (
             <NovedadTarjeta key={n.evento.indice} novedad={n} procesando={procesando} ejecutar={ejecutar} />
@@ -156,7 +162,7 @@ export const DetalleOrdenOperador: React.FC<{
       )}
 
       {/* Solicitudes de ajuste de la orden */}
-      {ajustes.length > 0 && (
+      {ajustes.length > 0 && puedeNovedades && (
         <Seccion titulo={`Solicitudes de ajuste (${ajustes.length})`}>
           {ajustes.map((a) => (
             <SolicitudAjusteTarjeta
@@ -173,9 +179,10 @@ export const DetalleOrdenOperador: React.FC<{
         </Seccion>
       )}
 
-      {/* Acciones del operador */}
+      {/* Acciones del operador (las generales requieren "Crear y asignar órdenes") */}
+      {(puedeGestionar || puedeSaldos) && (
       <Seccion titulo="Acciones">
-        {!cerrada && (
+        {!cerrada && puedeGestionar && (
           <input
             type="text"
             placeholder="Motivo (obligatorio para cancelar, enviar a revisión, cambiar el repartidor o liberar el saldo)"
@@ -184,7 +191,7 @@ export const DetalleOrdenOperador: React.FC<{
             className="w-full px-3 py-1.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
           />
         )}
-        <div className="flex flex-wrap gap-2">
+        <div className={`flex flex-wrap gap-2 ${puedeGestionar ? "" : "hidden"}`}>
           {o.estado === 'borrador' && (
             <>
               <button
@@ -233,7 +240,7 @@ export const DetalleOrdenOperador: React.FC<{
           )}
         </div>
 
-        {puedeCambiarRepartidor && (
+        {puedeCambiarRepartidor && puedeGestionar && (
           <div className="flex flex-wrap items-center gap-2">
             <select value={nuevoRepartidor} onChange={(e) => setNuevoRepartidor(e.target.value)} className="px-2.5 py-1.5 border border-slate-300 rounded-lg bg-white">
               <option value="">Cambiar repartidor...</option>
@@ -254,7 +261,7 @@ export const DetalleOrdenOperador: React.FC<{
           </div>
         )}
 
-        {o.estado === 'entrega_parcial' && (
+        {o.estado === 'entrega_parcial' && puedeSaldos && (
           <div className="space-y-2 border-t border-slate-100 pt-2">
             <p className="text-amber-800">
               Entrega parcial: faltan <strong>{num(cantidadPendiente(o))} {o.unidad}</strong>. Decide cómo continuar:
@@ -298,8 +305,9 @@ export const DetalleOrdenOperador: React.FC<{
             Esta orden está cerrada: no admite cambios de estado ni de repartidor (sus novedades se pueden seguir atendiendo y, si la entrega quedó mal registrada, se puede corregir).
           </p>
         )}
-        <CorreccionEntrega orden={o} procesando={procesando} ejecutar={ejecutar} />
+        {puedeSaldos && <CorreccionEntrega orden={o} procesando={procesando} ejecutar={ejecutar} />}
       </Seccion>
+      )}
 
       {/* Fotos de las entregas (solo operador; se borran a los 15 días) */}
       {o.historial.some((e) => e.tipo === 'Entrega' && e.datos?.foto?.id) && (
@@ -311,7 +319,7 @@ export const DetalleOrdenOperador: React.FC<{
       {/* Comprobantes de entrega (fase 5) */}
       {o.estado !== 'borrador' && (
         <Seccion titulo="Documentación de entrega">
-          <DocumentacionEntrega orden={o} uidActual={perfilActual?.uid} procesando={procesando} ejecutar={ejecutar} />
+          <DocumentacionEntrega orden={o} uidActual={perfilActual?.uid} procesando={procesando} ejecutar={ejecutar} puedeEmitir={puedeComprobantes} />
         </Seccion>
       )}
 

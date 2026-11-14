@@ -7,11 +7,46 @@ import {
   User as UserIcon,
   Crown,
   Truck,
-  Repeat
+  Shield,
+  Factory
 } from 'lucide-react';
 import { User } from 'firebase/auth';
 import { RolFuncional, UsuarioPerfil } from '../types';
-import { esAdminMaestro, nombreFuncion } from '../services/usuariosService';
+import { ETIQUETA_ROL, esAdminMaestro, nombreFuncion, veePestana } from '../services/usuariosService';
+
+const ICONO_FUNCION: Record<RolFuncional, React.ReactNode> = {
+  admin: <Shield className="w-3.5 h-3.5" />,
+  operator: <Factory className="w-3.5 h-3.5" />,
+  courier: <Truck className="w-3.5 h-3.5" />
+};
+
+/**
+ * Cambio de función con un solo clic: muestra las funciones de la cuenta y cambia al instante.
+ */
+const SelectorRapidoFuncion: React.FC<{
+  funciones: RolFuncional[];
+  activa: RolFuncional | null;
+  onElegir: (f: RolFuncional) => void;
+  compacto?: boolean;
+}> = ({ funciones, activa, onElegir, compacto }) => (
+  <div className="flex items-center rounded-lg bg-slate-800 p-0.5" role="group" aria-label="Cambiar de función">
+    {funciones.map((f) => (
+      <button
+        key={f}
+        type="button"
+        onClick={() => f !== activa && onElegir(f)}
+        aria-pressed={f === activa}
+        title={f === activa ? `Trabajando como ${ETIQUETA_ROL[f]}` : `Cambiar a ${ETIQUETA_ROL[f]}`}
+        className={`flex items-center space-x-1 rounded-md font-semibold transition-colors ${compacto ? 'px-2 py-1 text-[11px]' : 'px-2.5 py-1 text-xs'} ${
+          f === activa ? 'bg-sky-600 text-white' : 'text-slate-300 hover:text-white hover:bg-slate-700'
+        }`}
+      >
+        {ICONO_FUNCION[f]}
+        <span>{ETIQUETA_ROL[f]}</span>
+      </button>
+    ))}
+  </div>
+);
 
 export type TabTipo = 'inicio' | 'lotes' | 'pedidos' | 'analitica' | 'configuracion' | 'usuarios' | 'reparto';
 
@@ -48,11 +83,14 @@ const TABS_PRODUCCION: TabTipo[] = ['inicio', 'lotes', 'pedidos', 'analitica', '
  * Pestañas visibles según la función activa. Ocultarlas no da ni quita permisos: los controla
  * Firestore según los roles asignados.
  */
-export function tabsDeFuncion(funcion: RolFuncional | null): TabTipo[] {
+export function tabsDeFuncion(funcion: RolFuncional | null, perfil: UsuarioPerfil | null = null): TabTipo[] {
   if (funcion === 'courier') return ['reparto'];
   // Sin función (visitante, cuenta pendiente o sin roles) no se muestran Configuración ni Personal
   if (!funcion) return ['inicio', 'lotes', 'pedidos', 'analitica'];
-  return TABS_PRODUCCION;
+  if (funcion === 'admin') return TABS_PRODUCCION;
+  // Operador: solo las pestañas en las que tiene algún permiso (las demás no aparecen)
+  const visibles = (['inicio', 'lotes', 'pedidos', 'analitica', 'configuracion'] as const).filter((t) => veePestana(perfil, t));
+  return visibles.length ? [...visibles] : ['inicio'];
 }
 
 interface NavbarProps {
@@ -61,9 +99,9 @@ interface NavbarProps {
   usuario: User | null;
   perfilUsuario: UsuarioPerfil | null;
   funcionActiva: RolFuncional | null;
-  puedeCambiarFuncion: boolean;
+  funciones: RolFuncional[];
   eligiendoFuncion?: boolean;
-  onCambiarFuncion: () => void;
+  onSeleccionarFuncion: (f: RolFuncional) => void;
   onAbrirAuth: () => void;
   onCerrarSesion: () => void;
   onNuevoLote: () => void;
@@ -75,17 +113,17 @@ export const Navbar: React.FC<NavbarProps> = ({
   usuario,
   perfilUsuario,
   funcionActiva,
-  puedeCambiarFuncion,
+  funciones,
   eligiendoFuncion = false,
-  onCambiarFuncion,
+  onSeleccionarFuncion,
   onAbrirAuth,
   onCerrarSesion,
   onNuevoLote
 }) => {
   const esAdmin = esAdminMaestro(usuario?.email);
   // Mientras se elige la función no se muestran pestañas
-  const tabs = eligiendoFuncion ? [] : tabsDeFuncion(funcionActiva).map((id) => TABS[id]);
-  const tabInicial = tabsDeFuncion(funcionActiva)[0];
+  const tabs = eligiendoFuncion ? [] : tabsDeFuncion(funcionActiva, perfilUsuario).map((id) => TABS[id]);
+  const tabInicial = tabsDeFuncion(funcionActiva, perfilUsuario)[0];
 
   return (
     <header className="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-40">
@@ -157,15 +195,10 @@ export const Navbar: React.FC<NavbarProps> = ({
                       )}
                     </p>
                   </div>
-                  {puedeCambiarFuncion && (
-                    <button
-                      onClick={onCambiarFuncion}
-                      title="Cambiar de función"
-                      className="inline-flex items-center space-x-1 px-2 py-1 text-[11px] font-semibold text-sky-300 hover:text-white rounded-md hover:bg-slate-800 transition-colors"
-                    >
-                      <Repeat className="w-3.5 h-3.5" />
-                      <span className="hidden sm:inline">Cambiar función</span>
-                    </button>
+                  {funciones.length > 1 && funcionActiva && !eligiendoFuncion && (
+                    <div className="hidden md:block">
+                      <SelectorRapidoFuncion funciones={funciones} activa={funcionActiva} onElegir={onSeleccionarFuncion} />
+                    </div>
                   )}
                   <button
                     onClick={onCerrarSesion}
@@ -187,6 +220,14 @@ export const Navbar: React.FC<NavbarProps> = ({
             )}
           </div>
         </div>
+
+        {/* Cambio de función en el celular */}
+        {usuario && funciones.length > 1 && funcionActiva && !eligiendoFuncion && (
+          <div className="md:hidden flex items-center justify-between border-t border-slate-800 py-1.5">
+            <span className="text-[11px] text-slate-400">Función:</span>
+            <SelectorRapidoFuncion funciones={funciones} activa={funcionActiva} onElegir={onSeleccionarFuncion} compacto />
+          </div>
+        )}
 
         {/* Navegación móvil */}
         <div className="md:hidden flex border-t border-slate-800 py-2 space-x-1 overflow-x-auto">

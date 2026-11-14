@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase/firebaseConfig';
 import { Lote, ConfiguracionGeneral } from '../types';
-import { verificarIntegridadCadena } from '../services/hashService';
+import { verificarIntegridadLote } from '../services/hashService';
 import { descargarPdfLoteLocal } from '../services/pdfService';
 import { CONFIG_DEFAULT, formatearFechaColombia, ocultarCorreo } from '../utils/constants';
 import {
@@ -111,7 +111,7 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
     if (!lote) return;
     setVerificandoHash(true);
     try {
-      const res = await verificarIntegridadCadena(lote.codigo, lote.eventos || []);
+      const res = await verificarIntegridadLote(lote);
       setResultadoIntegridad({
         valido: res.valido,
         totalEventos: res.totalEventos,

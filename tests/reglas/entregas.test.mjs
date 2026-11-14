@@ -823,6 +823,31 @@ describe('Comprobantes de entrega (fase 5)', () => {
     assert.equal(c3.estadoEntrega, 'entrega_parcial');
   });
 
+  const conPermisos = (uid, permisos) =>
+    env.withSecurityRulesDisabled((ctx) =>
+      updateDoc(doc(ctx.firestore(), 'usuarios', uid), Object.fromEntries(Object.entries(permisos).map(([k, v]) => [`permisos.${k}`, v])))
+    );
+
+  test('permisos por pestaña: sin "Emitir y anular comprobantes" no se emite; sin "Decidir saldos" no se reprograma', async () => {
+    await entregaParcial('PED-P1');
+    await conPermisos('vendedor', { gestionarComprobantes: false, decidirSaldos: false });
+    await assertFails(emitir('vendedor', 'PED-P1'));
+    await assertFails(reprogramar('PED-P1'));
+    await conPermisos('vendedor', { gestionarComprobantes: true, decidirSaldos: true });
+    await assertSucceeds(emitir('vendedor', 'PED-P1'));
+    await assertSucceeds(reprogramar('PED-P1'));
+  });
+
+  test('permisos por pestaña: "Ver pedidos" sin "Crear y asignar" solo consulta', async () => {
+    await entregaParcial('PED-P2');
+    await conPermisos('vendedor', { gestionarPedidos: false, verEntregas: true, decidirSaldos: false, gestionarComprobantes: false, atenderNovedades: false });
+    await assertSucceeds(getDoc(doc(como('vendedor'), 'ordenes', 'PED-P2')));
+    await assertSucceeds(getDocs(query(collection(como('vendedor'), 'ordenes'), where('granjaId', '==', GRANJA))));
+    await assertFails(emitir('vendedor', 'PED-P2'));
+    await conPermisos('vendedor', { verEntregas: false });
+    await assertFails(getDoc(doc(como('vendedor'), 'ordenes', 'PED-P2')));
+  });
+
   test('14. los lotes no cambian al emitir comprobantes', async () => {
     const antes = await leer('lotes/LT-001');
     await entregaParcial('PED-C6');

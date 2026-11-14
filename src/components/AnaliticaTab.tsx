@@ -29,12 +29,14 @@ interface AnaliticaTabProps {
   lotes: Lote[];
   config: ConfiguracionGeneral;
   onSeleccionarLote: (lote: Lote) => void;
+  puedeExportar?: boolean;
 }
 
 export const AnaliticaTab: React.FC<AnaliticaTabProps> = ({
   lotes,
   config,
-  onSeleccionarLote
+  onSeleccionarLote,
+  puedeExportar = true
 }) => {
   const [loteSeleccionadoCodigo, setLoteSeleccionadoCodigo] = useState<string>(
     lotes[0]?.codigo || ''
@@ -210,6 +212,7 @@ export const AnaliticaTab: React.FC<AnaliticaTabProps> = ({
         <button
           onClick={handleExportarCsv}
           disabled={lotes.length === 0}
+          hidden={!puedeExportar}
           className="inline-flex items-center space-x-2 px-4 py-2 bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors disabled:opacity-50"
         >
           <FileSpreadsheet className="w-4 h-4" />
@@ -302,7 +305,7 @@ export const AnaliticaTab: React.FC<AnaliticaTabProps> = ({
                     <td className="px-3 py-3 text-right font-semibold">{l.resumen.biomasaEstimadaKg} kg</td>
                     <td className="px-3 py-3 text-right font-mono">{l.resumen.FCA ?? '-'}</td>
                     <td className="px-4 py-3 text-center">
-                      <span className="text-[10px] bg-slate-100 px-2 py-0.5 rounded text-slate-600">v{l.versionPdf || 1}</span>
+                      <span className="text-[10px] bg-slate-100 px-2 py-0.5 rounded text-slate-600">En cultivo</span>
                     </td>
                     <td className="px-4 py-3 text-right">
                       <button
@@ -366,7 +369,7 @@ export const AnaliticaTab: React.FC<AnaliticaTabProps> = ({
                     <td className="px-3 py-3 text-right font-mono">{l.resumen.FCA ?? '-'}</td>
                     <td className="px-4 py-3 text-center">
                       <span className="text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded font-semibold">
-                        Sincronizado v{l.versionPdf || 1}
+                        Disponible
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right">

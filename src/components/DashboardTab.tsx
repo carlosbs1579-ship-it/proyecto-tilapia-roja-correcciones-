@@ -21,6 +21,10 @@ interface DashboardTabProps {
   onNuevoLote: () => void;
   onSeleccionarLote: (lote: Lote) => void;
   onAbrirQr: (lote: Lote) => void;
+  // Permisos de la pestaña (por defecto, todo visible como antes)
+  puedeCrearLote?: boolean;
+  puedeBuscar?: boolean;
+  puedeDocumentos?: boolean;
 }
 
 export const DashboardTab: React.FC<DashboardTabProps> = ({
@@ -28,7 +32,10 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
   config,
   onNuevoLote,
   onSeleccionarLote,
-  onAbrirQr
+  onAbrirQr,
+  puedeCrearLote = true,
+  puedeBuscar = true,
+  puedeDocumentos = true
 }) => {
   const [busquedaRapida, setBusquedaRapida] = useState('');
 
@@ -80,13 +87,15 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
           </p>
         </div>
 
-        <button
-          onClick={onNuevoLote}
-          className="inline-flex items-center space-x-2 px-5 py-3 bg-sky-500 hover:bg-sky-400 text-white rounded-xl text-sm font-bold shadow-lg shadow-sky-500/20 transition-all shrink-0"
-        >
-          <Plus className="w-5 h-5" />
-          <span>Registrar Nuevo Lote</span>
-        </button>
+        {puedeCrearLote && (
+          <button
+            onClick={onNuevoLote}
+            className="inline-flex items-center space-x-2 px-5 py-3 bg-sky-500 hover:bg-sky-400 text-white rounded-xl text-sm font-bold shadow-lg shadow-sky-500/20 transition-all shrink-0"
+          >
+            <Plus className="w-5 h-5" />
+            <span>Registrar Nuevo Lote</span>
+          </button>
+        )}
       </div>
 
       {/* TARJETAS DE INDICADORES GENERALES */}
@@ -177,7 +186,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
             </p>
           </div>
 
-          <div className="relative max-w-xs w-full">
+          <div className={`relative max-w-xs w-full ${puedeBuscar ? '' : 'hidden'}`}>
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
             <input
               type="text"
@@ -224,9 +233,6 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                         <span className="font-mono font-bold text-slate-900 text-sm">
                           {lote.codigo}
                         </span>
-                        <span className="text-[10px] text-slate-400 font-medium">
-                          v{lote.versionPdf || 1}
-                        </span>
                       </div>
                     </td>
                     <td className="px-4 py-3.5">
@@ -261,13 +267,15 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                       </span>
                     </td>
                     <td className="px-5 py-3.5 text-right space-x-2" onClick={(e) => e.stopPropagation()}>
-                      <button
-                        onClick={() => onAbrirQr(lote)}
-                        title="Ver Código QR"
-                        className="p-1.5 text-slate-500 hover:text-sky-600 hover:bg-slate-100 rounded-md transition-colors inline-flex"
-                      >
-                        <QrCode className="w-4 h-4" />
-                      </button>
+                      {puedeDocumentos && (
+                        <button
+                          onClick={() => onAbrirQr(lote)}
+                          title="Ver Código QR"
+                          className="p-1.5 text-slate-500 hover:text-sky-600 hover:bg-slate-100 rounded-md transition-colors inline-flex"
+                        >
+                          <QrCode className="w-4 h-4" />
+                        </button>
+                      )}
                       <button
                         onClick={() => onSeleccionarLote(lote)}
                         className="px-2.5 py-1 text-xs font-medium text-sky-700 bg-sky-50 hover:bg-sky-100 rounded-md border border-sky-200 transition-colors inline-flex items-center space-x-1"

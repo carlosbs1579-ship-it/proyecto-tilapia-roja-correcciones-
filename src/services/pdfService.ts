@@ -1,6 +1,6 @@
 import { Lote, ConfiguracionGeneral, ComprobanteEntrega, BloqueAnulacion } from '../types';
 import { construirUrlConsultaEntrega, construirUrlPublicaPdf, generarQrDataUrl } from './qrService';
-import { verificarIntegridadCadena } from './hashService';
+import { verificarIntegridadLote } from './hashService';
 import { formatearFechaColombia, getFechaHoyBogota, ocultarCorreo } from '../utils/constants';
 import { evaluarParametroAgua } from './calculosService';
 
@@ -27,7 +27,7 @@ export async function generarLotePdfBlob(
 
   const urlPublica = construirUrlPublicaPdf(lote.codigo);
   const qrDataUrl = await generarQrDataUrl(urlPublica);
-  const resultadoIntegridad = await verificarIntegridadCadena(lote.codigo, lote.eventos || []);
+  const resultadoIntegridad = await verificarIntegridadLote(lote);
 
   const pageWidth = doc.internal.pageSize.getWidth();
   let currentY = 14;
@@ -435,7 +435,7 @@ export async function generarComprobantePdfBlob(
   doc.text(
     opciones.preliminar
       ? `Orden ${c.ordenId} · generado el ${formatearFechaColombia(c.emitidoEn)} · sin validez como comprobante definitivo`
-      : `N.º ${c.id.slice(0, 15)} · versión ${c.version} · orden ${c.ordenId} · emitido el ${formatearFechaColombia(c.emitidoEn)}`,
+      : `Comprobante N.º ${c.version} · código ${c.id.slice(0, 15)} · orden ${c.ordenId} · emitido el ${formatearFechaColombia(c.emitidoEn)}`,
     16,
     y + 22
   );
@@ -606,7 +606,7 @@ export async function descargarComprobantePdf(c: ContenidoComprobante, prelimina
   a.href = url;
   a.download = preliminar
     ? `Preliminar_${c.ordenId}.pdf`
-    : `Comprobante_${c.ordenId}_v${c.version}${anulacion ? '_ANULADO' : ''}.pdf`;
+    : `Comprobante_${c.ordenId}_N${c.version}${anulacion ? '_ANULADO' : ''}.pdf`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);

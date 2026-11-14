@@ -8,7 +8,7 @@ const CONFIG_LOCAL_KEY = 'cultivos_lore_config_local';
 function getConfigLocal(): ConfiguracionGeneral {
   try {
     const raw = localStorage.getItem(CONFIG_LOCAL_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) return completarConfiguracion(JSON.parse(raw));
   } catch {}
   return CONFIG_DEFAULT;
 }
@@ -40,6 +40,20 @@ export function sanitizarEstanques(estanques: EstanqueConfig[]): EstanqueConfig[
 }
 
 /**
+ * Completa los campos que falten con los valores por defecto (una configuración incompleta no debe
+ * romper las pantallas que usan los rangos de agua o la ficha nutricional)
+ */
+function completarConfiguracion(data: Partial<ConfiguracionGeneral>): ConfiguracionGeneral {
+  return {
+    ...CONFIG_DEFAULT,
+    ...data,
+    rangosReferencia: { ...CONFIG_DEFAULT.rangosReferencia, ...(data.rangosReferencia || {}) },
+    fichaNutricional: { ...CONFIG_DEFAULT.fichaNutricional, ...(data.fichaNutricional || {}) },
+    estanques: sanitizarEstanques(data.estanques !== undefined ? data.estanques : CONFIG_DEFAULT.estanques)
+  } as ConfiguracionGeneral;
+}
+
+/**
  * Obtiene la configuración general con fallback local resiliente
  */
 export async function getConfiguracion(): Promise<ConfiguracionGeneral> {
@@ -48,10 +62,7 @@ export async function getConfiguracion(): Promise<ConfiguracionGeneral> {
     const snap = await getDoc(configDocRef);
     if (snap.exists()) {
       const data = snap.data() as ConfiguracionGeneral;
-      const dataSaneada: ConfiguracionGeneral = {
-        ...data,
-        estanques: sanitizarEstanques(data.estanques !== undefined ? data.estanques : CONFIG_DEFAULT.estanques)
-      };
+      const dataSaneada: ConfiguracionGeneral = completarConfiguracion(data);
       guardarConfigLocal(dataSaneada);
       return dataSaneada;
     }
@@ -77,10 +88,7 @@ export function escucharConfiguracion(
     (snap) => {
       if (snap.exists()) {
         const data = snap.data() as ConfiguracionGeneral;
-        const saneada: ConfiguracionGeneral = {
-          ...data,
-          estanques: sanitizarEstanques(data.estanques !== undefined ? data.estanques : CONFIG_DEFAULT.estanques)
-        };
+        const saneada: ConfiguracionGeneral = completarConfiguracion(data);
         guardarConfigLocal(saneada);
         onUpdate(saneada);
       }

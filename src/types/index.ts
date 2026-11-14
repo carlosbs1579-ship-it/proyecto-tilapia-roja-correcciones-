@@ -412,6 +412,19 @@ export interface PermisosUsuario {
   gestionarConfiguracion: boolean; // Modificar rangos de agua y ficha nutricional
   administrarUsuarios: boolean; // Otorgar permisos y modificar cargos
   gestionarPedidos: boolean; // Crear órdenes de entrega, reservar cantidades y asignar repartidor
+  // Permisos por pestaña (los perfiles anteriores no los tienen: heredan del permiso del que salen)
+  verInicio?: boolean;
+  verLotes?: boolean;
+  buscarLotes?: boolean;
+  corregirSiembra?: boolean;
+  descargarDocumentosLote?: boolean;
+  verEntregas?: boolean;
+  decidirSaldos?: boolean;
+  gestionarComprobantes?: boolean;
+  atenderNovedades?: boolean;
+  verAnalitica?: boolean;
+  exportarAnalitica?: boolean;
+  verConfiguracion?: boolean;
 }
 
 // admin: gestiona usuarios y configuración; operario: trabaja según sus permisos; consulta: solo lectura

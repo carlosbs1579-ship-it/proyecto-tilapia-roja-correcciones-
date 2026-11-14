@@ -74,9 +74,13 @@ function sesion(): { email: string; uid: string } {
   return { email: u.email.toLowerCase(), uid: u.uid };
 }
 
-function mensaje(accion: string, err: any): Error {
+function mensaje(accion: string, err: any, resolviendo = false): Error {
   if (err?.code === 'permission-denied') {
-    return new Error(`No fue posible ${accion}: no tienes el permiso o la anotación ya fue resuelta.`);
+    return new Error(
+      resolviendo
+        ? `No fue posible ${accion}: no tienes el permiso o la anotación ya fue resuelta.`
+        : `No fue posible ${accion}: no tienes el permiso para proponer anotaciones.`
+    );
   }
   if (err?.code === 'unavailable' || err?.code === 'deadline-exceeded') return new Error(`No hay conexión. No fue posible ${accion}.`);
   return new Error(err?.message || `No fue posible ${accion}.`);
@@ -96,6 +100,9 @@ async function agregarRegistro(
     const eventos = lote.eventos || [];
     if (lote.estado !== 'cerrado' || !eventos.length) throw new Error('Solo se anotan lotes sellados.');
     const hashAnclaje = actual?.hashAnclaje || eventos[eventos.length - 1].hash;
+    if (actual && !(await verificarAnotaciones(lote, actual)).integra) {
+      throw new Error('La cadena de anotaciones está alterada; no se pueden agregar registros nuevos.');
+    }
     const registros = actual?.registros || [];
     if (resolver) {
       if (actual?.resueltas?.[String(resolver.propuestaIndice)]) throw new Error('Esta anotación ya fue resuelta.');
@@ -151,6 +158,7 @@ export async function proponerAnotacion(
  * Aprueba o rechaza una anotación propuesta por otra persona
  */
 export async function resolverAnotacion(lote: Lote, propuestaIndice: number, aprobar: boolean, respuesta: string): Promise<void> {
+  if (!aprobar && respuesta.trim().length < 5) throw new Error('Para rechazar, escribe el motivo (mínimo 5 caracteres).');
   try {
     await agregarRegistro(
       lote,
@@ -160,26 +168,61 @@ export async function resolverAnotacion(lote: Lote, propuestaIndice: number, apr
     );
   } catch (err) {
     console.error('Error resolviendo anotación:', err);
-    throw mensaje(aprobar ? 'aprobar la anotación' : 'rechazar la anotación', err);
+    throw mensaje(aprobar ? 'aprobar la anotación' : 'rechazar la anotación', err, true);
   }
 }
 
+export interface VerificacionAnotaciones {
+  integra: boolean;
+  mensaje: string;
+  alteradas: number[]; // N.º de las anotaciones afectadas (propuesta o su resolución alterada)
+  selloCambiado: boolean;
+}
+
 /**
- * Verifica la cadena de anotaciones: que parta del sello del lote y que cada registro conserve su hash
+ * Verifica la cadena de anotaciones: que parta del sello del lote y que cada registro conserve su
+ * hash. Dice qué anotación (N.º) quedó afectada para marcarla sin validez.
  */
-export async function verificarAnotaciones(lote: Lote, d: AnotacionesLote | null): Promise<{ integra: boolean; mensaje: string }> {
-  if (!d || !d.registros.length) return { integra: true, mensaje: 'Sin anotaciones.' };
+export async function verificarAnotaciones(lote: Lote, d: AnotacionesLote | null): Promise<VerificacionAnotaciones> {
+  if (!d || !d.registros.length) return { integra: true, mensaje: 'Sin anotaciones.', alteradas: [], selloCambiado: false };
   const eventos = lote.eventos || [];
   const sello = eventos.length ? eventos[eventos.length - 1].hash : '';
-  if (d.hashAnclaje !== sello) return { integra: false, mensaje: 'Las anotaciones no están ancladas al sello de cierre de este lote.' };
+  if (d.hashAnclaje !== sello) {
+    return {
+      integra: false,
+      mensaje: 'El sello del lote cambió después de anotar: las anotaciones ya no corresponden a este registro sellado.',
+      alteradas: anotacionesDe(d).map((a) => a.numero),
+      selloCambiado: true
+    };
+  }
+  // N.º de anotación de cada registro (la propuesta o la resolución que la acompaña)
+  const numeroDe = new Map<number, number>();
+  for (const a of anotacionesDe(d)) {
+    numeroDe.set(a.propuesta.indice, a.numero);
+    if (a.resolucion) numeroDe.set(a.resolucion.indice, a.numero);
+  }
+  const alteradas = new Set<number>();
+  const detalles: string[] = [];
   let previo = d.hashAnclaje;
   for (const r of d.registros) {
     const { hash, ...resto } = r;
-    if (r.hashAnterior !== previo) return { integra: false, mensaje: `Cadena de anotaciones rota en el registro #${r.indice}.` };
-    if ((await hashRegistroAnotacion(lote.codigo, resto)) !== hash) {
-      return { integra: false, mensaje: `El registro #${r.indice} de las anotaciones fue alterado después de guardarse.` };
+    const n = numeroDe.get(r.indice);
+    const quien = n ? `La anotación N.º ${n} (${r.tipo.toLowerCase()})` : `Un registro de anotación (${r.tipo.toLowerCase()})`;
+    if (r.hashAnterior !== previo) {
+      if (n) alteradas.add(n);
+      detalles.push(`${quien} no enlaza con el registro anterior: la cadena se rompió.`);
+    } else if ((await hashRegistroAnotacion(lote.codigo, resto)) !== hash) {
+      if (n) alteradas.add(n);
+      detalles.push(`${quien} fue alterada después de guardarse.`);
     }
     previo = hash;
   }
-  return { integra: true, mensaje: `Cadena de anotaciones íntegra (${d.registros.length} registro(s)), anclada al sello del lote.` };
+  return detalles.length
+    ? { integra: false, mensaje: detalles.join(' '), alteradas: [...alteradas], selloCambiado: false }
+    : {
+        integra: true,
+        mensaje: `Cadena de anotaciones íntegra (${d.registros.length} registro(s)), anclada al sello del lote.`,
+        alteradas: [],
+        selloCambiado: false
+      };
 }

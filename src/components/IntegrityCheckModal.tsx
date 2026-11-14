@@ -127,7 +127,6 @@ export const IntegrityCheckModal: React.FC<IntegrityCheckModalProps> = ({
                       .filter((f) => f.estado !== 'integra')
                       .map((f) => (
                         <li key={f.indice} className="px-3 py-2 bg-white">
-                          <span className="font-mono font-bold text-red-700 mr-1">#{f.indice}</span>
                           <span className="text-slate-800">{f.mensaje}</span>
                           {f.estado === 'alterada' && !f.conRastro && (
                             <span className="block text-[10px] text-slate-500 mt-0.5">

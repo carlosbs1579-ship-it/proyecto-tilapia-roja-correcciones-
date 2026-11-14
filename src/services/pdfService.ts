@@ -52,7 +52,9 @@ const ETIQUETA_DATO: Record<string, string> = {
   estanque: 'Estanque',
   pesoInicialPromedioG: 'Peso inicial promedio (g)',
   proveedorAlevinos: 'Proveedor de alevinos',
-  observacionesIniciales: 'Observaciones iniciales'
+  observacionesIniciales: 'Observaciones iniciales',
+  pctProteina: 'Proteína (%)',
+  numeroRaciones: 'Número de raciones'
 };
 const OMITIR_DATO = new Set(['ambito']);
 
@@ -106,8 +108,12 @@ export async function generarLotePdfBlob(
       datosAnotaciones = null;
     }
   }
-  const anotacionesAprobadas = anotacionesDe(datosAnotaciones).filter((a) => a.estado === 'aprobada');
   const verifAnotaciones = await verificarAnotaciones(lote, datosAnotaciones);
+  // Solo las aprobadas e íntegras tienen validez; las alteradas se listan como "sin validez"
+  const anotacionesAprobadas = anotacionesDe(datosAnotaciones).filter(
+    (a) => a.estado === 'aprobada' && !verifAnotaciones.alteradas.includes(a.numero)
+  );
+  const anotacionesSinValidez = anotacionesDe(datosAnotaciones).filter((a) => verifAnotaciones.alteradas.includes(a.numero));
 
   const pageWidth = doc.internal.pageSize.getWidth();
   let currentY = 14;
@@ -344,7 +350,10 @@ export async function generarLotePdfBlob(
         .map(([k, v]) => `${ETIQUETA_DATO[k] || k}: ${v}`)
         .join(', ');
     }
-    const contenido = [ev.descripcion, detalleDatos].filter(Boolean).join(' — ');
+    // Anotaciones aprobadas (e íntegras) que se refieren a esta fase
+    const notas = anotacionesAprobadas.filter((a) => a.propuesta.datos.fase === ev.indice).map((a) => a.numero);
+    const refNotas = notas.length ? `(ver anotación N.º ${notas.join(', ')})` : '';
+    const contenido = [ev.descripcion, detalleDatos, refNotas].filter(Boolean).join(' — ');
     return [
       `#${ev.indice}`,
       ev.fechaEvento,
@@ -375,7 +384,7 @@ export async function generarLotePdfBlob(
   currentY = (doc as any).lastAutoTable.finalY + 5;
 
   // --- 7b. ANOTACIONES POSTERIORES AL CIERRE (no modifican el lote sellado) ---
-  if (anotacionesAprobadas.length) {
+  if (anotacionesAprobadas.length || anotacionesSinValidez.length) {
     autoTable(doc, {
       startY: currentY,
       margin: { left: 10, right: 10 },
@@ -387,18 +396,22 @@ export async function generarLotePdfBlob(
         [{ content: 'ANOTACIONES POSTERIORES AL CIERRE (aprobadas; el registro sellado no se modificó)', colSpan: 6 }],
         ['N.º', 'Fase', 'Dato: registrado / correcto', 'Motivo', 'Propuso / Aprobó', 'Hash']
       ],
-      body: anotacionesAprobadas.map((a) => {
+      body: [
+        ...anotacionesAprobadas.map((a) => {
         const d = a.propuesta.datos;
         const ev = (lote.eventos || [])[d.fase];
+        const registrado = d.dato && ev ? String(ev.datos?.[d.dato] ?? d.valorRegistrado) : d.valorRegistrado;
         return [
           String(a.numero),
           `#${d.fase} ${ev ? ev.tipo : ''}`,
-          d.dato ? `${nombreDato(d.dato)}: ${d.valorRegistrado} / ${d.valorCorrecto}` : 'Aclaración general',
+          d.dato ? `${nombreDato(d.dato)}: ${registrado} / ${d.valorCorrecto}` : 'Aclaración general',
           d.motivo,
           `${quienRegistro(a.propuesta, true)} / ${a.resolucion ? quienRegistro(a.resolucion, true) : '-'}\n${formatearFechaColombia(a.resolucion?.fecha || a.propuesta.fecha)}`,
           (a.resolucion?.hash || a.propuesta.hash).slice(0, 12) + '...'
         ];
-      })
+        }),
+        ...anotacionesSinValidez.map((a) => [String(a.numero), '', 'ALTERADA después de registrarse: SIN VALIDEZ', '', '', ''])
+      ]
     });
     currentY = (doc as any).lastAutoTable.finalY + 5;
   }
@@ -448,7 +461,7 @@ export async function generarLotePdfBlob(
   doc.text(
     resultadoIntegridad.valido
       ? `ESTADO: ÍNTEGRO (Cadena válida de ${lote.eventos?.length || 0} bloques SHA-256 sin manipulación)`
-      : `ESTADO: ALTERADO (Falla en bloque #${resultadoIntegridad.primerErrorIndex})`,
+      : `ESTADO: ALTERADO (Falla en la fase #${resultadoIntegridad.primerErrorIndex})`,
     13,
     currentY + 10
   );

@@ -606,7 +606,8 @@ let nombreSesionActual = '';
  * La app fija el nombre visible de la cuenta con sesión; los registros nuevos lo guardan junto al correo
  */
 export function establecerNombreSesion(nombre: string | null | undefined): void {
-  nombreSesionActual = (nombre || '').trim().slice(0, 60);
+  // Exacto (sin recortar): las reglas lo comparan con el nombre visible guardado en el perfil
+  nombreSesionActual = nombre || '';
 }
 
 /**

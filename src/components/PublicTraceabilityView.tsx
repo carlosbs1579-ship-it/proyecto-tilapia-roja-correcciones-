@@ -51,7 +51,7 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
   const [diagnostico, setDiagnostico] = useState<Record<number, DiagnosticoFase>>({});
   // Anotaciones posteriores al cierre (solo se muestran las aprobadas)
   const [datosAnotaciones, setDatosAnotaciones] = useState<AnotacionesLote | null>(null);
-  const [verifAnotaciones, setVerifAnotaciones] = useState<{ integra: boolean; mensaje: string } | null>(null);
+  const [verifAnotaciones, setVerifAnotaciones] = useState<{ integra: boolean; mensaje: string; alteradas: number[] } | null>(null);
   const [resultadoIntegridad, setResultadoIntegridad] = useState<{
     valido: boolean;
     totalEventos: number;
@@ -129,7 +129,11 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
       activo = false;
     };
   }, [lote]);
-  const anotacionesAprobadas = anotacionesDe(datosAnotaciones).filter((a) => a.estado === 'aprobada');
+  // Solo las aprobadas e íntegras tienen validez; las alteradas se listan aparte como "sin validez"
+  const anotacionesAprobadas = anotacionesDe(datosAnotaciones).filter(
+    (a) => a.estado === 'aprobada' && !verifAnotaciones?.alteradas.includes(a.numero)
+  );
+  const anotacionesSinValidez = anotacionesDe(datosAnotaciones).filter((a) => verifAnotaciones?.alteradas.includes(a.numero));
 
   // El análisis de la cadena corre solo al abrir el QR: cualquier fase alterada se marca en rojo
   useEffect(() => {
@@ -526,7 +530,7 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
                       <div className="bg-white p-2 rounded-lg border border-slate-200/60 grid grid-cols-2 sm:grid-cols-3 gap-2 text-[11px]">
                         {Object.entries(ev.datos).map(([clave, valor]) => (
                           <div key={clave}>
-                            <span className="text-slate-400 capitalize">{clave}: </span>
+                            <span className="text-slate-400">{nombreDato(clave)}: </span>
                             <span className="font-semibold text-slate-800">{String(valor)}</span>
                           </div>
                         ))}
@@ -545,7 +549,7 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
         </div>
 
         {/* ANOTACIONES POSTERIORES AL CIERRE */}
-        {anotacionesAprobadas.length > 0 && (
+        {(anotacionesAprobadas.length > 0 || anotacionesSinValidez.length > 0) && (
           <div className="bg-white rounded-2xl shadow-xs border border-slate-200 p-6 space-y-3">
             <h3 className="text-sm font-bold text-slate-900">Anotaciones posteriores al cierre</h3>
             <p className="text-xs text-slate-500">
@@ -566,7 +570,8 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
                     <p className="text-slate-700">
                       {d.dato ? (
                         <>
-                          {nombreDato(d.dato)}: registrado <strong>{d.valorRegistrado}</strong> · correcto <strong>{d.valorCorrecto}</strong>
+                          {nombreDato(d.dato)}: registrado <strong>{ev ? String(ev.datos?.[d.dato] ?? d.valorRegistrado) : d.valorRegistrado}</strong> · correcto{' '}
+                          <strong>{d.valorCorrecto}</strong>
                         </>
                       ) : (
                         'Aclaración general de la fase'
@@ -580,6 +585,11 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
                   </li>
                 );
               })}
+              {anotacionesSinValidez.map((a) => (
+                <li key={a.propuesta.id} className="border border-red-200 bg-red-50 rounded-xl p-3 text-xs font-semibold text-red-700">
+                  Anotación N.º {a.numero}: alterada después de registrarse, sin validez.
+                </li>
+              ))}
             </ul>
           </div>
         )}

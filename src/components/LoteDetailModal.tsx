@@ -29,7 +29,7 @@ import { cerrarLote, escucharLoteIndividual, modificarDatosSiembraOPiscina } fro
 import { previsualizarPdfLote, generarYSubirPdfLote, descargarPdfLoteLocal } from '../services/pdfService';
 import { formatearFechaColombia } from '../utils/constants';
 import { evaluarParametroAgua } from '../services/calculosService';
-import { analizarCadenaLote, DiagnosticoFase } from '../services/hashService';
+import { analizarCadenaLote, DiagnosticoFase, nombreDato } from '../services/hashService';
 import { esAdminMaestro, verificarPermiso, quienRegistro } from '../services/usuariosService';
 import { EntregasPanel } from './EntregasPanel';
 import { AnotacionesLotePanel } from './AnotacionesLotePanel';
@@ -677,7 +677,7 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
                                       key={k}
                                       className="text-[11px] bg-slate-100 text-slate-700 px-2 py-0.5 rounded border border-slate-200"
                                     >
-                                      <strong className="text-slate-900">{k}:</strong> {typeof v === 'boolean' ? (v ? 'SÍ' : 'NO') : String(v)}
+                                      <strong className="text-slate-900">{nombreDato(k)}:</strong> {typeof v === 'boolean' ? (v ? 'SÍ' : 'NO') : String(v)}
                                     </span>
                                   ))}
                                 </div>

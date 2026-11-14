@@ -446,7 +446,7 @@ describe('Permisos por pestaña: la pantalla y las reglas coinciden (QA)', () =>
 });
 
 describe('Anotaciones posteriores al cierre de un lote', () => {
-  const SELLADO = { ...LOTE_ACTIVO, codigo: 'L-SELLADO', estado: 'cerrado', eventos: [{ indice: 0, tipo: 'Siembra', hash: 'h0' }, { indice: 1, tipo: 'Cosecha', hash: 'h1' }] };
+  const SELLADO = { ...LOTE_ACTIVO, codigo: 'L-SELLADO', estado: 'cerrado', eventos: [{ indice: 0, tipo: 'Siembra', hash: 'h0' }, { indice: 1, tipo: 'Cosecha', hash: 'h1', datos: { biomasaCosechadaKg: 912 } }] };
   const H = (c) => c.repeat(64);
   const reg = (uid, indice, tipo, datos, hashAnterior, extra = {}) => ({
     id: `r${indice}`, indice, tipo, fecha: 'x', datos, hashAnterior, hash: H(String(indice)),
@@ -500,6 +500,44 @@ describe('Anotaciones posteriores al cierre de un lote', () => {
     await assertSucceeds(resolver('mixto', 0));
     await assertFails(resolver('subadmin', 0, false));
     assert.equal((await leerAnot()).resueltas['0'], 'aprobada');
+  });
+
+  test('nombre falso, valor registrado distinto de lo sellado o claves extra se rechazan', async () => {
+    const conDatos = (datos) => setDoc(doc(como('operador'), 'anotacionesLote', 'L-SELLADO'), {
+      codigoLote: 'L-SELLADO', granjaId: 'cultivos-lore', hashAnclaje: 'h1', resueltas: {},
+      registros: [reg('operador', 0, 'Propuesta', datos, 'h1')]
+    });
+    await env.withSecurityRulesDisabled((ctx) =>
+      updateDoc(doc(ctx.firestore(), 'lotes', 'L-SELLADO'), { eventos: [{ indice: 0, tipo: 'Siembra', hash: 'h0' }, { indice: 1, tipo: 'Cosecha', hash: 'h1', datos: { biomasaCosechadaKg: 912 } }] })
+    );
+    await assertFails(setDoc(doc(como('operador'), 'anotacionesLote', 'L-SELLADO'), {
+      codigoLote: 'L-SELLADO', granjaId: 'cultivos-lore', hashAnclaje: 'h1', resueltas: {},
+      registros: [reg('operador', 0, 'Propuesta', propuesta, 'h1', { registradoPorNombre: 'Gerente General' })]
+    }));
+    await assertFails(conDatos({ ...propuesta, valorRegistrado: '100' }));
+    await assertFails(conDatos({ ...propuesta, valorRegistrado: '912', extra: 'x' }));
+    await assertSucceeds(conDatos({ ...propuesta, valorRegistrado: '912' }));
+  });
+
+  test('rechazar exige un motivo', async () => {
+    await env.withSecurityRulesDisabled((ctx) =>
+      updateDoc(doc(ctx.firestore(), 'lotes', 'L-SELLADO'), { eventos: [{ indice: 0, tipo: 'Siembra', hash: 'h0' }, { indice: 1, tipo: 'Cosecha', hash: 'h1', datos: { biomasaCosechadaKg: 912 } }] })
+    );
+    await proponer('operador', {}, { ...propuesta, valorRegistrado: '912' });
+    const d = await leerAnot();
+    const rechazo = (respuesta) => updateDoc(doc(como('mixto'), 'anotacionesLote', 'L-SELLADO'), {
+      registros: [...d.registros, reg('mixto', 1, 'Rechazo', { propuestaIndice: 0, respuesta }, d.registros[0].hash)],
+      resueltas: { '0': 'rechazada' }
+    });
+    await assertFails(rechazo(''));
+    await assertSucceeds(rechazo('No corresponde: la báscula estaba bien'));
+  });
+
+  test('una fase nueva no se firma con el nombre de otra persona', async () => {
+    await env.withSecurityRulesDisabled((ctx) => updateDoc(doc(ctx.firestore(), 'usuarios', 'operador'), { displayName: 'Ana Gómez' }));
+    const lote = doc(como('operador'), 'lotes', 'L-ACTIVO');
+    await assertFails(updateDoc(lote, { eventos: [...LOTE_ACTIVO.eventos, eventoNuevo('operador', { registradoPorNombre: 'Gerente General' })] }));
+    await assertSucceeds(updateDoc(lote, { eventos: [...LOTE_ACTIVO.eventos, eventoNuevo('operador', { registradoPorNombre: 'Ana Gómez' })] }));
   });
 
   test('el historial de anotaciones no se modifica ni se borra, y el lote sellado sigue igual', async () => {

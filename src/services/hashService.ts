@@ -288,7 +288,12 @@ const NOMBRE_DATO: Record<string, string> = {
   proveedor: 'Proveedor',
   causa: 'Causa',
   cantidadSembrada: 'Cantidad sembrada',
-  estanque: 'Estanque'
+  estanque: 'Estanque',
+  pctProteina: 'Proteína (%)',
+  numeroRaciones: 'Número de raciones',
+  pesoInicialPromedioG: 'Peso inicial promedio',
+  proveedorAlevinos: 'Proveedor de alevinos',
+  observacionesIniciales: 'Observaciones iniciales'
 };
 
 export const nombreDato = (k: string): string => NOMBRE_DATO[k] || k;

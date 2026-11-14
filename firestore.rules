@@ -126,6 +126,7 @@ service cloud.firestore {
         && e.hashAnterior == (antes.size() == 0 ? '0000000000000000000000000000000000000000000000000000000000000000' : antes[antes.size() - 1].hash)
         && e.hash is string && e.hash.size() == 64
         && e.registradoPor is string && e.registradoPor.lower() == correoSesion()
+        && nombrePropio(e)
         && (e.tipo != 'Corrección' || e.get('datos', {}).get('ambito', '') != 'siembra'
             || isMasterAdmin() || esAdminGranja() || permisoDe(perfil(), 'corregirSiembra', 'crearLotes'));
     }
@@ -250,8 +251,16 @@ service cloud.firestore {
                     && p.get('permisos', {}).get(clave, false) == true)));
     }
 
+    // El nombre que se muestra (QR, PDF) debe ser el nombre visible de quien registra
+    function nombrePropio(r) {
+      return !('registradoPorNombre' in r) || r.registradoPorNombre == get(perfilPath()).data.get('displayName', '');
+    }
+
     function registroAnotacionValido(r, n, hashPrevio) {
-      return r.indice == n
+      return r.keys().hasOnly(['id', 'indice', 'tipo', 'fecha', 'datos', 'registradoPor', 'registradoPorUid', 'registradoPorNombre',
+                               'hashAnterior', 'hash'])
+        && nombrePropio(r)
+        && r.indice == n
         && r.registradoPorUid == request.auth.uid
         && r.registradoPor is string && r.registradoPor.lower() == correoSesion()
         && r.hashAnterior == hashPrevio
@@ -262,15 +271,24 @@ service cloud.firestore {
     function propuestaValida(r, lote) {
       let d = r.datos;
       return permisoAnotacion('proponerAnotaciones')
+        && d.keys().hasOnly(['fase', 'dato', 'valorRegistrado', 'valorCorrecto', 'motivo'])
         && d.fase is int && d.fase >= 0 && d.fase < lote.eventos.size()
         && d.motivo is string && d.motivo.size() >= 10 && d.motivo.size() <= 1000
-        && d.get('dato', '') is string && d.get('valorRegistrado', '') is string && d.get('valorCorrecto', '') is string;
+        && d.get('dato', '') is string && d.get('dato', '').size() <= 60
+        && d.get('valorRegistrado', '') is string && d.get('valorRegistrado', '').size() <= 120
+        && d.get('valorCorrecto', '') is string && d.get('valorCorrecto', '').size() <= 120
+        // El "valor registrado" de la anotación es exactamente el que quedó sellado en la fase
+        && (d.get('dato', '') == ''
+            || (d.dato in lote.eventos[d.fase].datos && string(lote.eventos[d.fase].datos[d.dato]) == d.get('valorRegistrado', '')));
     }
 
     function resolucionAnotacionValida(r, antes, despues) {
       let i = r.datos.propuestaIndice;
       let dif = despues.resueltas.diff(antes.get('resueltas', {}));
       return permisoAnotacion('aprobarAnotaciones')
+        && r.datos.keys().hasOnly(['propuestaIndice', 'respuesta'])
+        && r.datos.get('respuesta', '') is string && r.datos.get('respuesta', '').size() <= 300
+        && (r.tipo == 'Aprobación' || r.datos.get('respuesta', '').size() >= 5)
         && i is int && i >= 0 && i < antes.registros.size()
         && antes.registros[i].tipo == 'Propuesta'
         && antes.registros[i].registradoPorUid != request.auth.uid

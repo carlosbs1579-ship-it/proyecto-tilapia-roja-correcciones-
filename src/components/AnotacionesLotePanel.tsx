@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { FilePen, ShieldCheck, ShieldAlert, Check, X } from 'lucide-react';
 import { AnotacionesLote, Lote } from '../types';
-import { anotacionesDe, proponerAnotacion, resolverAnotacion, verificarAnotaciones } from '../services/anotacionesService';
+import { anotacionesDe, proponerAnotacion, resolverAnotacion, verificarAnotaciones, VerificacionAnotaciones } from '../services/anotacionesService';
 import { nombreDato } from '../services/hashService';
 import { quienRegistro } from '../services/usuariosService';
 import { formatearFechaColombia } from '../utils/constants';
@@ -18,7 +18,7 @@ export const AnotacionesLotePanel: React.FC<{
   puedeAprobar: boolean;
 }> = ({ lote, datosAnotaciones, uidActual, puedeProponer, puedeAprobar }) => {
   const anotaciones = useMemo(() => anotacionesDe(datosAnotaciones), [datosAnotaciones]);
-  const [verificacion, setVerificacion] = useState<{ integra: boolean; mensaje: string } | null>(null);
+  const [verificacion, setVerificacion] = useState<VerificacionAnotaciones | null>(null);
   const [abierto, setAbierto] = useState(false);
   const [fase, setFase] = useState<number>(-1);
   const [dato, setDato] = useState('');
@@ -182,8 +182,12 @@ export const AnotacionesLotePanel: React.FC<{
             const d = a.propuesta.datos;
             const ev = eventos[d.fase];
             const propia = a.propuesta.registradoPorUid === uidActual;
+            const alterada = Boolean(verificacion?.alteradas.includes(a.numero));
+            // Valor registrado tomado de la fase sellada (no del texto guardado en la propuesta)
+            const registradoReal = d.dato && ev ? String(ev.datos?.[d.dato] ?? d.valorRegistrado) : d.valorRegistrado;
             return (
-              <li key={a.propuesta.id} className="p-3 space-y-1">
+              <li key={a.propuesta.id} className={`p-3 space-y-1 ${alterada ? 'bg-red-50 border-l-4 border-red-500' : ''}`}>
+                {alterada && <p className="font-semibold text-red-700">Anotación alterada después de registrarse: sin validez.</p>}
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="font-semibold text-slate-800">
                     Anotación N.º {a.numero} · Fase #{d.fase}
@@ -203,7 +207,7 @@ export const AnotacionesLotePanel: React.FC<{
                 </div>
                 {d.dato ? (
                   <p className="text-slate-700">
-                    {nombreDato(d.dato)}: registrado <strong>{d.valorRegistrado}</strong> · correcto <strong>{d.valorCorrecto}</strong>
+                    {nombreDato(d.dato)}: registrado <strong>{registradoReal}</strong> · correcto <strong>{d.valorCorrecto}</strong>
                   </p>
                 ) : (
                   <p className="text-slate-700">Aclaración general de la fase</p>
@@ -215,12 +219,12 @@ export const AnotacionesLotePanel: React.FC<{
                     ` · ${a.estado === 'aprobada' ? 'Aprobada' : 'Rechazada'} por ${quienRegistro(a.resolucion)} · ${formatearFechaColombia(a.resolucion.fecha)}`}
                   {a.resolucion?.datos?.respuesta ? ` · "${a.resolucion.datos.respuesta}"` : ''}
                 </p>
-                {a.estado === 'pendiente' && puedeAprobar && !propia && (
+                {a.estado === 'pendiente' && puedeAprobar && !propia && !alterada && verificacion?.integra !== false && (
                   <div className="flex flex-wrap items-center gap-2 pt-1">
                     <input
                       type="text"
                       maxLength={300}
-                      placeholder="Comentario (opcional)"
+                      placeholder="Comentario (obligatorio para rechazar)"
                       value={respuestas[a.propuesta.indice] || ''}
                       onChange={(e) => setRespuestas((prev) => ({ ...prev, [a.propuesta.indice]: e.target.value }))}
                       className="flex-1 min-w-[10rem] px-2 py-1 border border-slate-300 rounded"

@@ -30,6 +30,7 @@ export interface EventoLote {
   datos: Record<string, any>;
   registradoPor: string; // email del usuario
   registradoPorNombre?: string; // nombre visible de quien registró (eventos nuevos; entra en el hash)
+  huellas?: Record<string, string>; // rastro por dato (SHA-256 de cada dato) para saber cuál se alteró
   registradoEn: string; // ISO string generado por cliente
   hashAnterior: string; // 64 ceros para el índice 0, o hash del evento anterior
   hash: string; // SHA-256 del contenido canónico

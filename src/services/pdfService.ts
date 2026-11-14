@@ -210,7 +210,7 @@ export async function generarLotePdfBlob(
       ],
       [
         'Densidad actual:', r.densidadKgM3 !== null ? `${r.densidadKgM3} kg/m³` : 'N/A',
-        'Alertas calidad de agua:', `${r.alertasAgua} eventos fuera de rango`
+        'Alertas calidad de agua:', `${r.alertasAgua} mediciones fuera de rango`
       ]
     ]
   });
@@ -351,7 +351,7 @@ export async function generarLotePdfBlob(
       4: { cellWidth: 36 },
       5: { cellWidth: 24 }
     },
-    head: [['#', 'Fecha', 'Tipo Evento', 'Detalle / Mediciones', 'Operario', 'Hash SHA-256']],
+    head: [['#', 'Fecha', 'Fase', 'Detalle / Mediciones', 'Operario', 'Hash SHA-256']],
     body: filasEventos
   });
   currentY = (doc as any).lastAutoTable.finalY + 5;

@@ -3,7 +3,7 @@ import { quienRegistro } from '../services/usuariosService';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase/firebaseConfig';
 import { Lote, ConfiguracionGeneral } from '../types';
-import { verificarIntegridadLote } from '../services/hashService';
+import { verificarIntegridadLote, analizarCadenaLote, DiagnosticoFase } from '../services/hashService';
 import { descargarPdfLoteLocal } from '../services/pdfService';
 import { CONFIG_DEFAULT, formatearFechaColombia, ocultarCorreo } from '../utils/constants';
 import {
@@ -46,6 +46,7 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
 
   // Estado de verificación criptográfica
   const [verificandoHash, setVerificandoHash] = useState(false);
+  const [diagnostico, setDiagnostico] = useState<Record<number, DiagnosticoFase>>({});
   const [resultadoIntegridad, setResultadoIntegridad] = useState<{
     valido: boolean;
     totalEventos: number;
@@ -108,11 +109,24 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
     }
   }, [codigoLote, loteInicial, reintentos]);
 
+  // El análisis de la cadena corre solo al abrir el QR: cualquier fase alterada se marca en rojo
+  useEffect(() => {
+    if (!lote) return;
+    let activo = true;
+    analizarCadenaLote(lote)
+      .then((an) => activo && setDiagnostico(Object.fromEntries(an.fases.map((f) => [f.indice, f]))))
+      .catch(() => {});
+    return () => {
+      activo = false;
+    };
+  }, [lote]);
+
   const handleVerificarIntegridad = async () => {
     if (!lote) return;
     setVerificandoHash(true);
     try {
-      const res = await verificarIntegridadLote(lote);
+      const [res, an] = await Promise.all([verificarIntegridadLote(lote), analizarCadenaLote(lote)]);
+      setDiagnostico(Object.fromEntries(an.fases.map((f) => [f.indice, f])));
       setResultadoIntegridad({
         valido: res.valido,
         totalEventos: res.totalEventos,
@@ -329,7 +343,7 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
                   Autenticidad Criptográfica Inalterable
                 </h3>
                 <p className="text-xs text-slate-500">
-                  Cada evento del lote está encadenado mediante hash SHA-256 matemáticamente verificable.
+                  Cada fase del lote está encadenada mediante hash SHA-256 matemáticamente verificable.
                 </p>
               </div>
             </div>
@@ -366,8 +380,8 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
                 </strong>
                 <p className="mt-1 text-xs">
                   {resultadoIntegridad.valido
-                    ? `Se validaron matemáticamente ${resultadoIntegridad.totalEventos} eventos registrados desde la siembra. Ningún dato ha sido alterado desde su origen.`
-                    : `Se detectó una discrepancia a partir del evento #${resultadoIntegridad.primerErrorIndex}.`}
+                    ? `Se validaron matemáticamente ${resultadoIntegridad.totalEventos} fases registradas desde la siembra. Ningún dato ha sido alterado desde su origen.`
+                    : `Se detectó una discrepancia a partir de la fase #${resultadoIntegridad.primerErrorIndex}.`}
                 </p>
               </div>
             </div>
@@ -431,8 +445,13 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
                 Historial Cronológico de Vida del Lote
               </h3>
               <p className="text-xs text-slate-500">
-                {lote.eventos?.length || 0} eventos registrados cronológicamente
+                {lote.eventos?.length || 0} fases registradas cronológicamente
               </p>
+              {Object.values(diagnostico).some((f) => f.estado !== 'integra') && (
+                <p className="mt-1 text-xs font-semibold text-red-700">
+                  ⚠ Se detectaron fases alteradas después de su registro (marcadas en rojo).
+                </p>
+              )}
             </div>
 
             <button
@@ -451,7 +470,16 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
                   <div className="w-6 h-6 rounded-full bg-sky-600 text-white flex items-center justify-center font-bold text-[10px] shrink-0 z-10 shadow-xs">
                     {ev.indice + 1}
                   </div>
-                  <div className="flex-1 bg-slate-50 rounded-xl p-3 border border-slate-200/80 text-xs">
+                  <div
+                    className={`flex-1 rounded-xl p-3 border text-xs ${
+                      diagnostico[ev.indice] && diagnostico[ev.indice].estado !== 'integra'
+                        ? 'bg-red-50 border-red-400'
+                        : 'bg-slate-50 border-slate-200/80'
+                    }`}
+                  >
+                    {diagnostico[ev.indice] && diagnostico[ev.indice].estado !== 'integra' && (
+                      <p className="mb-1.5 font-semibold text-red-700">⚠ {diagnostico[ev.indice].mensaje}</p>
+                    )}
                     <div className="flex flex-wrap items-center justify-between gap-1 mb-1">
                       <strong className="text-slate-900 font-bold">{ev.tipo}</strong>
                       <span className="text-[11px] text-slate-500 font-mono">{ev.fechaEvento}</span>

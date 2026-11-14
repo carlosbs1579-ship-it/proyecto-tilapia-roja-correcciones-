@@ -224,7 +224,7 @@ export const LotesTab: React.FC<LotesTabProps> = ({
                         {lote.codigo}
                       </div>
                       <div className="text-[10px] text-slate-400">
-                        {lote.eventos?.length || 0} eventos
+                        {lote.eventos?.length || 0} fases
                       </div>
                     </td>
                     <td className="px-4 py-3.5">

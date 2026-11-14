@@ -3,6 +3,7 @@ import { FileText, Download, ShieldCheck, ShieldAlert, Link2, Eye } from 'lucide
 import { BloqueAnulacion, ComprobanteEntrega, OrdenEntrega } from '../types';
 import {
   anularComprobante,
+  esAnulacion,
   separarBloques,
   construirComprobante,
   emitirComprobanteDefinitivo,
@@ -35,6 +36,7 @@ export const DocumentacionEntrega: React.FC<{
   const [bloques, setBloques] = useState<(ComprobanteEntrega | BloqueAnulacion)[]>([]);
   const { comprobantes, anulaciones } = separarBloques(bloques);
   const [anulando, setAnulando] = useState<string | null>(null);
+  const [cargado, setCargado] = useState(false);
   // Registros que la orden dice haber emitido o anulado: si existen menos bloques, se borró alguno
   const bloquesEsperados = o.historial.filter((e) => e.tipo === 'Comprobante emitido' || e.tipo === 'Comprobante anulado').length;
   const [motivoAnulacion, setMotivoAnulacion] = useState('');
@@ -45,7 +47,10 @@ export const DocumentacionEntrega: React.FC<{
 
   useEffect(
     () =>
-      escucharComprobantesOrden(o.granjaId, o.id, setBloques, () =>
+      escucharComprobantesOrden(o.granjaId, o.id, (b) => {
+        setBloques(b);
+        setCargado(true);
+      }, () =>
         setErrorLectura('No se pudieron leer los comprobantes de esta orden.')
       ),
     [o.granjaId, o.id]
@@ -137,7 +142,7 @@ export const DocumentacionEntrega: React.FC<{
           </p>
         )}
 
-      {(comprobantes.length > 0 || bloquesEsperados > 0) && (
+      {cargado && !errorLectura && (comprobantes.length > 0 || bloquesEsperados > 0) && (
         <p className={verificarCadena(bloques).integra && bloques.length >= bloquesEsperados ? 'text-emerald-700' : 'text-red-600'}>
           {bloques.length < bloquesEsperados
             ? `Cadena incompleta: el historial de la orden registra ${bloquesEsperados} registro(s), pero solo existen ${bloques.length}. Falta el más reciente o fue borrado.`
@@ -146,7 +151,12 @@ export const DocumentacionEntrega: React.FC<{
       )}
       {comprobantes.length > 0 && (
         <ul className="divide-y divide-slate-100 border border-slate-100 rounded">
-          {comprobantes.map((c) => (
+          {bloques.map((b) =>
+            esAnulacion(b) ? (
+              <li key={b.id} className="p-2 text-red-700 bg-red-50/40">
+                Registro N.º {b.version} · Anulación del comprobante N.º {b.versionAnulada} · {formatearFechaColombia(b.emitidoEn)}
+              </li>
+            ) : ((c: ComprobanteEntrega) => (
             <li key={c.id} className="p-2 space-y-1">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="text-slate-700">
@@ -225,7 +235,8 @@ export const DocumentacionEntrega: React.FC<{
                 </span>
               )}
             </li>
-          ))}
+            ))(b)
+          )}
         </ul>
       )}
 

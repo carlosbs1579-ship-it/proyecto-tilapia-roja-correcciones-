@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ArrowLeft, Download, FileText, ShieldAlert, ShieldCheck, Truck } from 'lucide-react';
 import { BloqueAnulacion, ComprobanteEntrega, ConsultaEntrega } from '../types';
-import { EMPRESA, leerConsultaEntrega, separarBloques, verificarCadena, verificarComprobante } from '../services/comprobantesService';
+import { EMPRESA, esAnulacion, leerConsultaEntrega, separarBloques, verificarCadena, verificarComprobante } from '../services/comprobantesService';
 import { descargarComprobantePdf, verComprobantePdf } from '../services/pdfService';
 import { formatearFechaColombia } from '../utils/constants';
 
@@ -104,7 +104,10 @@ export const ConsultaEntregaPublica: React.FC<{
                 <span>Repartidor: <strong>{actual.repartidor || '—'}</strong></span>
                 <span>Autorizado: <strong>{num(actual.cantidadAutorizada)} {actual.unidad}</strong></span>
                 <span>Entregado: <strong>{num(actual.cantidadEntregada)} {actual.unidad}</strong></span>
-                <span>Última confirmación: <strong>{actual.fechas.confirmacion ? formatearFechaColombia(actual.fechas.confirmacion) : '—'}</strong></span>
+                <span>Entrega confirmada: <strong>{actual.fechas.confirmacion ? formatearFechaColombia(actual.fechas.confirmacion) : '—'}</strong></span>
+                {actual.fechas.correccion && (
+                  <span>Entrega corregida: <strong>{formatearFechaColombia(actual.fechas.correccion)}</strong></span>
+                )}
                 <span>
                   Comprobante vigente:{' '}
                   <strong>{anulaciones[actual.id] ? 'ninguno (todos anulados)' : `N.º ${actual.version}`}</strong>
@@ -153,7 +156,12 @@ export const ConsultaEntregaPublica: React.FC<{
                   </span>
                 );
               })()}
-              {comprobantes.map((c) => (
+              {bloques.map((b) =>
+                esAnulacion(b) ? (
+                  <li key={b.id} className="border border-red-100 bg-red-50/40 rounded p-2 text-xs text-red-700">
+                    Registro N.º {b.version} · Anulación del comprobante N.º {b.versionAnulada} · {formatearFechaColombia(b.emitidoEn)}
+                  </li>
+                ) : ((c: ComprobanteEntrega) => (
                 <div key={c.id} className="border border-slate-100 rounded p-2 space-y-1 text-xs">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <span>
@@ -187,7 +195,8 @@ export const ConsultaEntregaPublica: React.FC<{
                     <span className="text-slate-400">Verificando…</span>
                   )}
                 </div>
-              ))}
+                ))(b)
+              )}
               <p className="text-[10px] text-slate-400">
                 Registro tipo blockchain: cada comprobante es un bloque sellado con SHA-256 que contiene el hash del bloque anterior; se guarda una
                 sola vez y aquí se recalcula para verificarlo. Cadena de bloques privada sobre Firebase.

@@ -384,7 +384,7 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
                       onClick={() => setConfirmarCierre(true)}
                       hidden={!puedeCerrar}
                       disabled={procesandoAccion || !puedeCerrar}
-                      title={puedeCerrar ? 'Cerrar lote y publicar PDF' : 'Requiere autorización de Carlos para cerrar lotes'}
+                      title={puedeCerrar ? 'Cerrar lote y publicar PDF' : 'Requiere autorización del administrador para cerrar lotes'}
                       className={`inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold shadow-xs transition-colors ${
                         puedeCerrar
                           ? 'bg-amber-600 hover:bg-amber-500 text-white'
@@ -756,7 +756,7 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
                   <input
                     type="number"
                     min="0.1"
-                    step="0.1"
+                    step="0.01"
                     value={editPesoInicial}
                     onChange={(e) => setEditPesoInicial(e.target.value === '' ? '' : Number(e.target.value))}
                     className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"

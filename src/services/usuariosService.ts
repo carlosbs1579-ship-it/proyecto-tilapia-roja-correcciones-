@@ -192,7 +192,7 @@ function rolesDesdeDatos(data: Partial<UsuarioPerfil>, esAdmin: boolean): RolFun
 export function normalizarPerfil(data: Partial<UsuarioPerfil>, uid: string): UsuarioPerfil {
   const email = (data.email || '').trim().toLowerCase();
   const esAdmin = esAdminMaestro(email);
-  const cargo = data.cargo || (esAdmin ? 'Administrador Maestro' : 'Operario en espera de asignación');
+  const cargo = data.cargo || (esAdmin ? 'Administrador' : 'Operario en espera de asignación');
   const roles = rolesDesdeDatos(data, esAdmin);
   // Sin nombres por función guardados, el cargo único anterior queda como nombre de su rol principal
   const cargos = data.cargos && typeof data.cargos === 'object'
@@ -202,7 +202,7 @@ export function normalizarPerfil(data: Partial<UsuarioPerfil>, uid: string): Usu
     ...data,
     uid,
     email,
-    displayName: data.displayName || email.split('@')[0] || (esAdmin ? 'Carlos' : 'Operario'),
+    displayName: data.displayName || email.split('@')[0] || (esAdmin ? 'Administrador' : 'Operario'),
     rol: data.rol || (esAdmin ? 'admin' : 'operario'),
     roles,
     cargos,
@@ -360,13 +360,13 @@ export async function sincronizarPerfilUsuario(user: User): Promise<UsuarioPerfi
     const nuevoPerfil: UsuarioPerfil = {
       uid: user.uid,
       email: (user.email || '').trim().toLowerCase(),
-      displayName: user.displayName || user.email?.split('@')[0] || (esAdmin ? 'Carlos' : 'Operario'),
+      displayName: user.displayName || user.email?.split('@')[0] || (esAdmin ? 'Administrador' : 'Operario'),
       rol: esAdmin ? 'admin' : 'operario',
       // Un usuario nuevo no tiene funciones hasta que un administrador se las asigne
       roles: esAdmin ? ['admin'] : [],
-      cargos: esAdmin ? { admin: 'Administrador Principal / Propietario' } : {},
+      cargos: esAdmin ? { admin: 'Administrador' } : {},
       granjaId: GRANJA_ID_PREDETERMINADA,
-      cargo: esAdmin ? 'Administrador Principal / Propietario' : 'Operario en espera de asignación',
+      cargo: esAdmin ? 'Administrador' : 'Operario en espera de asignación',
       estado: esAdmin ? 'activo' : 'pendiente',
       permisos: esAdmin ? PERMISOS_DEFAULT_ADMIN : PERMISOS_DEFAULT_OPERARIO,
       creadoEn: fechaIso,
@@ -385,12 +385,12 @@ export async function sincronizarPerfilUsuario(user: User): Promise<UsuarioPerfi
       return {
         uid: user.uid,
         email: user.email || ADMIN_MASTER_EMAIL,
-        displayName: 'Carlos',
+        displayName: 'Administrador',
         rol: 'admin',
         roles: ['admin'],
-        cargos: { admin: 'Administrador Maestro' },
+        cargos: { admin: 'Administrador' },
         granjaId: GRANJA_ID_PREDETERMINADA,
-        cargo: 'Administrador Maestro',
+        cargo: 'Administrador',
         estado: 'activo',
         permisos: PERMISOS_DEFAULT_ADMIN,
         creadoEn: fechaIso,

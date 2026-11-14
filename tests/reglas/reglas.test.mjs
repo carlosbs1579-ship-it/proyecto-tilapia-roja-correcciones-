@@ -410,9 +410,36 @@ describe('Lote activo: cosecha y siembra coherentes (revisión de hashes)', () =
     await env.withSecurityRulesDisabled((ctx) =>
       setDoc(doc(ctx.firestore(), 'usuarios', 'operador'), {
         ...PERFILES.operador,
-        permisos: { ...PERFILES.operador.permisos, verInicio: false, verLotes: false, verAnalitica: false, verEntregas: false }
+        permisos: { ...SIN_PERMISOS, verInicio: false, verLotes: false, verAnalitica: false, verEntregas: false,
+          buscarLotes: false, descargarDocumentosLote: false, exportarAnalitica: false, corregirSiembra: false }
       })
     );
     await assertFails(getDocs(collection(como('operador'), 'lotes')));
+  });
+});
+
+describe('Permisos por pestaña: la pantalla y las reglas coinciden (QA)', () => {
+  const soloPermisos = (permisos) =>
+    env.withSecurityRulesDisabled((ctx) =>
+      setDoc(doc(ctx.firestore(), 'usuarios', 'operador'), {
+        ...PERFILES.operador,
+        permisos: { ...SIN_PERMISOS, verInicio: false, verLotes: false, verAnalitica: false, verEntregas: false,
+          buscarLotes: false, descargarDocumentosLote: false, exportarAnalitica: false, corregirSiembra: false, ...permisos }
+      })
+    );
+
+  test('con solo "registrar eventos" (sin permisos de ver) sí lista los lotes', async () => {
+    await soloPermisos({ registrarEventos: true });
+    await assertSucceeds(getDocs(collection(como('operador'), 'lotes')));
+  });
+
+  test('con solo "corregir siembra" agrega una Corrección de siembra, pero no otros eventos', async () => {
+    await soloPermisos({ corregirSiembra: true });
+    const lote = doc(como('operador'), 'lotes', 'L-ACTIVO');
+    await assertFails(updateDoc(lote, { eventos: [...LOTE_ACTIVO.eventos, eventoNuevo('operador')] }));
+    await assertSucceeds(updateDoc(lote, {
+      eventos: [...LOTE_ACTIVO.eventos, eventoNuevo('operador', { tipo: 'Corrección', datos: { ambito: 'siembra', cantidadSembrada: '2000 → 2050' } })],
+      cantidadSembrada: 2050
+    }));
   });
 });

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Crown, Fish, Truck, ChevronRight, LogOut } from 'lucide-react';
+import { Shield, Fish, Truck, ChevronRight, LogOut } from 'lucide-react';
 import { RolFuncional, UsuarioPerfil } from '../types';
 import { ETIQUETA_ROL, nombreFuncion } from '../services/usuariosService';
 
@@ -11,7 +11,7 @@ interface SelectorFuncionProps {
 }
 
 const ICONO_FUNCION: Record<RolFuncional, React.ReactNode> = {
-  admin: <Crown className="w-5 h-5" />,
+  admin: <Shield className="w-5 h-5" />,
   operator: <Fish className="w-5 h-5" />,
   courier: <Truck className="w-5 h-5" />
 };

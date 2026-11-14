@@ -200,13 +200,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                 <label className="block text-xs font-medium text-slate-700">
                   Correo del operario
                 </label>
-                <button
-                  type="button"
-                  onClick={() => setEmail('carlosbs1579@gmail.com')}
-                  className="text-[10px] text-amber-700 hover:text-amber-900 bg-amber-50 hover:bg-amber-100 px-1.5 py-0.5 rounded border border-amber-200 font-semibold"
-                >
-                  👑 carlosbs1579@gmail.com
-                </button>
               </div>
               <div className="relative">
                 <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />

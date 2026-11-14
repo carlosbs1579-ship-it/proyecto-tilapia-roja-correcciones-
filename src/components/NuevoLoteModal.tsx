@@ -50,7 +50,7 @@ export const NuevoLoteModal: React.FC<NuevoLoteModalProps> = ({
     setErrorMsg(null);
 
     if (!puedeCrear) {
-      setErrorMsg('Tu cuenta no tiene autorización para crear nuevos lotes. Solo el administrador maestro Carlos (carlosbs1579@gmail.com) puede concederte este permiso.');
+      setErrorMsg('Tu cuenta no tiene autorización para crear nuevos lotes. Solo el administrador puede concederte este permiso.');
       return;
     }
 
@@ -140,7 +140,7 @@ export const NuevoLoteModal: React.FC<NuevoLoteModalProps> = ({
             <div className="p-3 bg-amber-50 border border-amber-300 rounded-lg flex items-start space-x-2 text-amber-900 text-xs">
               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-amber-600" />
               <span>
-                <strong>Acceso restringido:</strong> Tu usuario ({userEmail}) no tiene autorización para crear lotes. Solicita a <strong>carlosbs1579@gmail.com</strong> habilitar el permiso "Añadir nuevos lotes".
+                <strong>Acceso restringido:</strong> Tu usuario ({userEmail}) no tiene autorización para crear lotes. Solicita al administrador habilitar el permiso "Registrar nuevo lote".
               </span>
             </div>
           )}

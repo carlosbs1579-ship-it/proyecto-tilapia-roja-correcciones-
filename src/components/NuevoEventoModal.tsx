@@ -157,7 +157,7 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
       }
       datos.tipoAlimento = tipoAlimento.trim();
       datos.pctProteina = Number(pctProteina) || 0;
-      datos.cantidadKg = Number(cantAlimentoKg);
+      datos.cantidadKg = Math.round(Number(cantAlimentoKg) * 100) / 100;
       datos.numeroRaciones = Number(numRaciones) || 1;
     } else if (tipo === 'Muestreo de crecimiento (biometría)') {
       if (!pesoPromedioG || Number(pesoPromedioG) <= 0) {
@@ -191,7 +191,8 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
         return;
       }
       datos.pecesCosechados = Number(pecesCosechados);
-      datos.biomasaCosechadaKg = Number(biomasaCosechadaKg) || 0;
+      // Redondeada a 2 decimales, igual que el resumen del lote (las reglas exigen que coincidan)
+      datos.biomasaCosechadaKg = Math.round((Number(biomasaCosechadaKg) || 0) * 100) / 100;
       datos.pesoPromedioG = Number(pesoPromCosechaG) || 0;
     } else if (tipo === 'Proceso') {
       datos.escamadoEviscerado = escamadoEviscerado;
@@ -358,7 +359,7 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                   </div>
                   <input
                     type="number"
-                    step="0.1"
+                    step="0.01"
                     required
                     value={tempAgua}
                     onChange={(e) => setTempAgua(e.target.value === '' ? '' : Number(e.target.value))}
@@ -379,7 +380,7 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                   </div>
                   <input
                     type="number"
-                    step="0.1"
+                    step="0.01"
                     required
                     value={oxigeno}
                     onChange={(e) => setOxigeno(e.target.value === '' ? '' : Number(e.target.value))}
@@ -502,7 +503,7 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                 <label className="block text-xs font-medium text-slate-700 mb-1">Cantidad Alimento (kg) *</label>
                 <input
                   type="number"
-                  step="0.1"
+                  step="0.01"
                   required
                   min="0.1"
                   value={cantAlimentoKg}
@@ -541,7 +542,7 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                 <label className="block text-xs font-medium text-slate-700 mb-1">Peso Promedio (g) *</label>
                 <input
                   type="number"
-                  step="0.1"
+                  step="0.01"
                   required
                   min="0.1"
                   value={pesoPromedioG}
@@ -553,7 +554,7 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                 <label className="block text-xs font-medium text-slate-700 mb-1">Talla Promedio (cm)</label>
                 <input
                   type="number"
-                  step="0.1"
+                  step="0.01"
                   value={tallaPromedioCm}
                   onChange={(e) => setTallaPromedioCm(e.target.value === '' ? '' : Number(e.target.value))}
                   className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-md"
@@ -621,7 +622,7 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                   <label className="block text-xs font-medium text-slate-700 mb-1">Dosis</label>
                   <input
                     type="number"
-                    step="0.1"
+                    step="0.01"
                     value={dosisProbiotico}
                     onChange={(e) => setDosisProbiotico(e.target.value === '' ? '' : Number(e.target.value))}
                     className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-md"
@@ -716,7 +717,7 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                 <label className="block text-xs font-medium text-slate-700 mb-1">Biomasa Cosechada (kg) *</label>
                 <input
                   type="number"
-                  step="0.1"
+                  step="0.01"
                   min="0.1"
                   required
                   value={biomasaCosechadaKg}
@@ -728,7 +729,7 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                 <label className="block text-xs font-medium text-slate-700 mb-1">Peso Promedio (g)</label>
                 <input
                   type="number"
-                  step="0.1"
+                  step="0.01"
                   value={pesoPromCosechaG}
                   onChange={(e) => setPesoPromCosechaG(e.target.value === '' ? '' : Number(e.target.value))}
                   className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-md"
@@ -767,7 +768,7 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                   <label className="block text-xs font-medium text-slate-700 mb-1">Peso Promedio Final (g)</label>
                   <input
                     type="number"
-                    step="0.1"
+                    step="0.01"
                     value={pesoPromFinalG}
                     onChange={(e) => setPesoPromFinalG(e.target.value === '' ? '' : Number(e.target.value))}
                     className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-md"

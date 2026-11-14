@@ -81,10 +81,15 @@ service cloud.firestore {
     // Puede leer la lista de lotes quien ve alguna pestaña que los usa (Inicio, Lotes, Analítica o Entregas)
     function leeLotes() {
       let p = get(perfilPath()).data;
+      let permisos = p.get('permisos', {});
       return esAdminGranja()
         || (p.get('estado', '') == 'activo' && rolesDe(p).hasAny(['operator'])
             && (permisoDe(p, 'verInicio', true) || permisoDe(p, 'verLotes', true)
-                || permisoDe(p, 'verAnalitica', true) || permisoDe(p, 'verEntregas', 'gestionarPedidos')));
+                || permisoDe(p, 'verAnalitica', true) || permisoDe(p, 'verEntregas', 'gestionarPedidos')
+                || permisos.get('crearLotes', false) == true || permisos.get('registrarEventos', false) == true
+                || permisos.get('cerrarLotes', false) == true || permisoDe(p, 'corregirSiembra', 'crearLotes')
+                || permisoDe(p, 'buscarLotes', true) || permisoDe(p, 'descargarDocumentosLote', true)
+                || permisoDe(p, 'exportarAnalitica', true)));
     }
 
     function isValidId(id) {
@@ -167,6 +172,30 @@ service cloud.firestore {
         && cosechaCoherente(a, n, ev);
     }
 
+    function esCorreccionSiembraNueva() {
+      let a = resource.data.get('eventos', []);
+      let n = request.resource.data.get('eventos', []);
+      return n.size() == a.size() + 1
+        && n[n.size() - 1].tipo == 'Corrección'
+        && n[n.size() - 1].get('datos', {}).get('ambito', '') == 'siembra';
+    }
+
+    // Registrar en un lote activo: administrador, u operador con "registrar eventos" o "crear lotes";
+    // con solo "corregir siembra", únicamente una Corrección de siembra. Una sola lectura del perfil
+    // (el límite de 1000 expresiones de las reglas obliga a evitar las funciones generales aquí).
+    function puedeEscribirLoteActivo() {
+      return isMasterAdmin() || escribeLote(get(perfilPath()).data);
+    }
+
+    function escribeLote(p) {
+      let permisos = p.get('permisos', {});
+      return p.get('estado', '') == 'activo'
+        && (p.get('rol', '') == 'admin'
+            || (p.get('rol', '') != 'consulta' && rolesDe(p).hasAny(['operator'])
+                && (permisos.get('registrarEventos', false) == true || permisos.get('crearLotes', false) == true
+                    || (permisos.get('corregirSiembra', permisos.get('crearLotes', false)) == true && esCorreccionSiembraNueva()))));
+    }
+
     match /lotes/{codigo} {
       allow get: if true;
       allow list: if leeLotes();
@@ -189,7 +218,7 @@ service cloud.firestore {
                     && (
                       // Caso A: Incorporar eventos o corregir alevinos/piscina mientras el lote está activo
                       (request.resource.data.estado == 'activo'
-                        && (isMasterAdmin() || (isSignedIn() && (tienePermiso('registrarEventos') || tienePermiso('crearLotes'))))
+                        && puedeEscribirLoteActivo()
                         && eventosSoloCrecen()
                         && loteActivoCoherente())
                       // Caso B: Cerrar o sellar el lote activo, sin tocar sus eventos
@@ -261,7 +290,9 @@ service cloud.firestore {
 
     function vePedidos() {
       let p = get(perfilPath()).data;
-      return permisoPedidos(p, 'verEntregas') || gestionaPedidos(p);
+      return permisoPedidos(p, 'verEntregas') || gestionaPedidos(p)
+        || permisoPedidos(p, 'decidirSaldos') || permisoPedidos(p, 'gestionarComprobantes')
+        || permisoPedidos(p, 'atenderNovedades');
     }
 
     // Permiso que exige cada acción del operador sobre una orden
@@ -1102,14 +1133,14 @@ service cloud.firestore {
         && f.datos is string && f.datos.size() > 100 && f.datos.size() <= 700000
         && f.hash is string && f.hash.size() == 64
         && f.expiraEn is timestamp
-        && f.expiraEn > request.time + duration.value(14, 'd')
-        && f.expiraEn < request.time + duration.value(16, 'd');
+        && f.expiraEn > request.time + duration.value(13, 'd')
+        && f.expiraEn < request.time + duration.value(17, 'd');
     }
 
     match /fotosEntrega/{fotoId} {
       // La ven el operador de la granja y el repartidor que la tomó; no hay lectura pública
-      allow get: if isSignedIn() && (resource.data.subidaPorUid == request.auth.uid || permisoPedidosEn(resource.data.granjaId, 'verEntregas'));
-      allow list: if isSignedIn() && permisoPedidosEn(resource.data.granjaId, 'verEntregas');
+      allow get: if isSignedIn() && (resource.data.subidaPorUid == request.auth.uid || (vePedidos() && granjaPermitida(resource.data.granjaId)));
+      allow list: if isSignedIn() && vePedidos() && granjaPermitida(resource.data.granjaId);
       allow create: if isSignedIn() && fotoValida(fotoId);
       // Nadie la modifica ni la borra desde la app: la borra Firestore al vencer (TTL)
       allow update, delete: if false;

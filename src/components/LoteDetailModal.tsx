@@ -29,8 +29,12 @@ import { cerrarLote, escucharLoteIndividual, modificarDatosSiembraOPiscina } fro
 import { previsualizarPdfLote, generarYSubirPdfLote, descargarPdfLoteLocal } from '../services/pdfService';
 import { formatearFechaColombia } from '../utils/constants';
 import { evaluarParametroAgua } from '../services/calculosService';
+import { analizarCadenaLote, DiagnosticoFase, nombreDato } from '../services/hashService';
 import { esAdminMaestro, verificarPermiso, quienRegistro } from '../services/usuariosService';
 import { EntregasPanel } from './EntregasPanel';
+import { AnotacionesLotePanel } from './AnotacionesLotePanel';
+import { anotacionesDe, escucharAnotaciones } from '../services/anotacionesService';
+import { AnotacionesLote } from '../types';
 
 interface LoteDetailModalProps {
   isOpen: boolean;
@@ -58,8 +62,38 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
   const puedeCerrar = esAdmin || verificarPermiso(perfilActual, 'cerrarLotes');
   const puedeModificarSiembra = esAdmin || verificarPermiso(perfilActual, 'corregirSiembra');
   const puedeDocumentos = esAdmin || verificarPermiso(perfilActual, 'descargarDocumentosLote');
+  const puedeProponerAnotacion = esAdmin || verificarPermiso(perfilActual, 'proponerAnotaciones');
+  const puedeAprobarAnotacion = esAdmin || verificarPermiso(perfilActual, 'aprobarAnotaciones');
 
   const [lote, setLote] = useState<Lote>(loteInicial);
+  // Anotaciones posteriores al cierre (solo lotes sellados)
+  const [datosAnotaciones, setDatosAnotaciones] = useState<AnotacionesLote | null>(null);
+  useEffect(() => {
+    if (lote.estado !== 'cerrado') {
+      setDatosAnotaciones(null);
+      return;
+    }
+    return escucharAnotaciones(lote.codigo, setDatosAnotaciones);
+  }, [lote.codigo, lote.estado]);
+  const anotacionesAprobadasPorFase = anotacionesDe(datosAnotaciones)
+    .filter((a) => a.estado === 'aprobada')
+    .reduce<Record<number, number[]>>((m, a) => {
+      const fase = Number(a.propuesta.datos.fase);
+      (m[fase] = m[fase] || []).push(a.numero);
+      return m;
+    }, {});
+
+  // Diagnóstico de cada fase de la cadena (se recalcula cuando cambia el lote)
+  const [diagnostico, setDiagnostico] = useState<Record<number, DiagnosticoFase>>({});
+  useEffect(() => {
+    let activo = true;
+    analizarCadenaLote(lote)
+      .then((a) => activo && setDiagnostico(Object.fromEntries(a.fases.map((f) => [f.indice, f]))))
+      .catch(() => activo && setDiagnostico({}));
+    return () => {
+      activo = false;
+    };
+  }, [lote]);
   const [modalEventoOpen, setModalEventoOpen] = useState(false);
   const [modalIntegridadOpen, setModalIntegridadOpen] = useState(false);
   const [modalQrOpen, setModalQrOpen] = useState(false);
@@ -338,7 +372,7 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
                       onClick={() => setModalEventoOpen(true)}
                       hidden={!puedeRegistrar}
                       disabled={procesandoAccion || !puedeRegistrar}
-                      title={puedeRegistrar ? 'Registrar nuevo evento' : 'Requiere autorización para registrar eventos'}
+                      title={puedeRegistrar ? 'Registrar nueva fase' : 'Requiere autorización para registrar fases'}
                       className={`inline-flex items-center space-x-1.5 px-4 py-2 rounded-lg text-xs font-semibold shadow-xs transition-colors ${
                         puedeRegistrar
                           ? 'bg-sky-600 hover:bg-sky-500 text-white'
@@ -346,7 +380,7 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
                       }`}
                     >
                       <Plus className="w-4 h-4" />
-                      <span>Registrar Evento</span>
+                      <span>Registrar Fase</span>
                     </button>
 
                     {puedeModificarSiembra && (
@@ -501,6 +535,17 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
               />
             )}
 
+            {/* ANOTACIONES POSTERIORES AL CIERRE (el lote sellado no se modifica) */}
+            {lote.estado === 'cerrado' && (
+              <AnotacionesLotePanel
+                lote={lote}
+                datosAnotaciones={datosAnotaciones}
+                uidActual={perfilActual?.uid}
+                puedeProponer={puedeProponerAnotacion}
+                puedeAprobar={puedeAprobarAnotacion}
+              />
+            )}
+
             {/* SECCIÓN DE HISTORIAL Y LÍNEA DE TIEMPO */}
             <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
               {/* Filtros de la línea de tiempo */}
@@ -508,7 +553,7 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
                 <div className="flex items-center space-x-2">
                   <h3 className="font-bold text-slate-900 text-sm">Línea de Tiempo Inalterable</h3>
                   <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-semibold">
-                    {lote.eventos?.length || 0} eventos
+                    {lote.eventos?.length || 0} fases
                   </span>
                 </div>
 
@@ -560,7 +605,7 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
               <div className="divide-y divide-slate-100">
                 {eventosFiltrados.length === 0 ? (
                   <div className="py-12 text-center text-xs text-slate-400">
-                    No hay eventos registrados en este filtro.
+                    No hay fases registradas en este filtro.
                   </div>
                 ) : (
                   eventosFiltrados.map((ev) => {
@@ -582,7 +627,20 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
                     }
 
                     return (
-                      <div key={ev.id} className="p-4 hover:bg-slate-50/80 transition-colors">
+                      <div
+                        key={ev.id}
+                        className={`p-4 transition-colors ${
+                          diagnostico[ev.indice] && diagnostico[ev.indice].estado !== 'integra'
+                            ? 'bg-red-50 border-l-4 border-red-500'
+                            : 'hover:bg-slate-50/80'
+                        }`}
+                      >
+                        {diagnostico[ev.indice] && diagnostico[ev.indice].estado !== 'integra' && (
+                          <p className="mb-2 text-xs font-semibold text-red-700 flex items-center">
+                            <AlertTriangle className="w-3.5 h-3.5 mr-1 shrink-0" />
+                            {diagnostico[ev.indice].mensaje}
+                          </p>
+                        )}
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex items-start space-x-3">
                             <span className="font-mono text-xs font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
@@ -591,6 +649,11 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
                             <div>
                               <div className="flex items-center space-x-2">
                                 <span className="font-bold text-sm text-slate-900">{ev.tipo}</span>
+                                {anotacionesAprobadasPorFase[ev.indice] && (
+                                  <span className="text-[10px] bg-sky-100 text-sky-800 px-2 py-0.5 rounded-full font-semibold">
+                                    Ver anotación N.º {anotacionesAprobadasPorFase[ev.indice].join(', ')}
+                                  </span>
+                                )}
                                 <span className="text-xs text-slate-500 font-medium">
                                   {ev.fechaEvento}
                                 </span>
@@ -614,7 +677,7 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
                                       key={k}
                                       className="text-[11px] bg-slate-100 text-slate-700 px-2 py-0.5 rounded border border-slate-200"
                                     >
-                                      <strong className="text-slate-900">{k}:</strong> {typeof v === 'boolean' ? (v ? 'SÍ' : 'NO') : String(v)}
+                                      <strong className="text-slate-900">{nombreDato(k)}:</strong> {typeof v === 'boolean' ? (v ? 'SÍ' : 'NO') : String(v)}
                                     </span>
                                   ))}
                                 </div>
@@ -659,7 +722,7 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
           userEmail={userEmail}
           onEventoRegistrado={(loteActualizado) => {
             setLote(loteActualizado);
-            setMensajeExito('Evento agregado y verificado con éxito en la cadena de hashes.');
+            setMensajeExito('Fase agregada y verificada con éxito en la cadena de hashes.');
             setTimeout(() => setMensajeExito(null), 3000);
           }}
         />
@@ -704,7 +767,7 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
 
             <form onSubmit={handleGuardarEditarSiembra} className="p-6 space-y-4">
               <div className="bg-sky-50 border border-sky-200 rounded-lg p-3 text-xs text-sky-900">
-                Los cambios se registran como un evento «Corrección» con los valores anteriores y los nuevos. Los eventos ya registrados y sus hashes no se modifican.
+                Los cambios se registran como una fase «Corrección» con los valores anteriores y los nuevos. Las fases ya registradas y sus hashes no se modifican.
               </div>
 
               {errorEdicion && (

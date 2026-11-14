@@ -16,7 +16,7 @@ import {
   compactarFecha,
   getFechaHoyBogota
 } from '../utils/constants';
-import { calcularHashEvento, HASH_GENESIS } from './hashService';
+import { calcularHashEvento, HASH_GENESIS, huellasFase } from './hashService';
 import { nombreRegistro } from './usuariosService';
 import { recalcularResumenLote } from './calculosService';
 import { generarYSubirPdfLote } from './pdfService';
@@ -147,7 +147,8 @@ export async function crearNuevoLote(params: ParamsNuevoLote): Promise<Lote> {
         ...nombreRegistro(),
       registradoEn: fechaIsoAhora,
       hashAnterior: HASH_GENESIS,
-      hash: hashSiembra
+      hash: hashSiembra,
+      huellas: await huellasFase({ fechaEvento: fechaSiembra, descripcion: descripcionSiembra, datos: datosSiembra })
     };
 
     const estanqueInfo = config.estanques.find((e) => e.codigo === estanque);
@@ -281,7 +282,8 @@ export async function registrarEventoEnLote(params: ParamsAgregarEvento): Promis
         ...nombreRegistro(),
         registradoEn: fechaIsoAhora,
         hashAnterior,
-        hash
+        hash,
+        huellas: await huellasFase({ fechaEvento, descripcion: descripcion || '', datos: datos || {} })
       };
 
       const listaEventosActualizada = [...eventosActuales, nuevoEvento];
@@ -414,6 +416,7 @@ export async function modificarDatosSiembraOPiscina(params: ParamsModificarSiemb
           fechaEvento,
           descripcion,
           datos,
+          huellas: await huellasFase({ fechaEvento, descripcion, datos }),
           registradoPor: userEmail,
         ...nombreRegistro(),
           registradoEn: fechaIsoAhora,

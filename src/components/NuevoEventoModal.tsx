@@ -132,11 +132,11 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
     }
 
     if (!fechaEvento) {
-      setErrorMsg('Selecciona la fecha del evento.');
+      setErrorMsg('Selecciona la fecha de la fase.');
       return;
     }
     if (fechaEvento > hoy) {
-      setErrorMsg('La fecha del evento no puede ser posterior a hoy.');
+      setErrorMsg('La fecha de la fase no puede ser posterior a hoy.');
       return;
     }
 
@@ -211,7 +211,7 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
       datos.responsable = responsableDespacho.trim();
     } else if (tipo === 'Corrección') {
       if (!eventoCorregidoId) {
-        setErrorMsg('Debes seleccionar el evento previo a corregir.');
+        setErrorMsg('Debes seleccionar la fase previa a corregir.');
         return;
       }
       if (!descripcion.trim()) {
@@ -240,7 +240,7 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
       }
     } catch (err: any) {
       console.error('Error registrando evento:', err);
-      setErrorMsg(err.message || 'No se pudo guardar el evento.');
+      setErrorMsg(err.message || 'No se pudo guardar la fase.');
     } finally {
       setCargando(false);
     }
@@ -252,7 +252,7 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
         {/* Cabecera */}
         <div className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between">
           <div>
-            <h3 className="font-semibold text-base">Registrar Evento de Trazabilidad</h3>
+            <h3 className="font-semibold text-base">Registrar Fase de Trazabilidad</h3>
             <p className="text-xs text-slate-400">
               Lote: <strong className="text-sky-400">{lote.codigo}</strong> • Evento #{lote.eventos?.length || 0}
             </p>
@@ -301,7 +301,7 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Tipo de Evento *
+                Tipo de Fase *
               </label>
               <select
                 value={tipo}
@@ -319,7 +319,7 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
 
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Fecha del Evento (Bogotá) *
+                Fecha de la Fase (Bogotá) *
               </label>
               <div className="relative">
                 <Calendar className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
@@ -915,7 +915,7 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
           {/* Campo común: Descripción / Notas */}
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Descripción / Notas del Evento {tipo === 'Corrección' || tipo === 'Observación' ? '*' : '(opcional)'}
+              Descripción / Notas de la Fase {tipo === 'Corrección' || tipo === 'Observación' ? '*' : '(opcional)'}
             </label>
             <textarea
               rows={2}
@@ -950,7 +950,7 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
               ) : (
                 <>
                   <CheckCircle2 className="w-4 h-4" />
-                  <span>Guardar evento en la cadena</span>
+                  <span>Guardar fase en la cadena</span>
                 </>
               )}
             </button>

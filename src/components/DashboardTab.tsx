@@ -182,7 +182,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
           <div>
             <h2 className="text-base font-bold text-slate-900">Últimos Lotes Modificados</h2>
             <p className="text-xs text-slate-500">
-              Accede directamente al historial o continúa registrando eventos
+              Accede directamente al historial o continúa registrando fases
             </p>
           </div>
 

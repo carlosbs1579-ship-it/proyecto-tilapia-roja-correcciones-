@@ -2,6 +2,11 @@ import { Lote, ConfiguracionGeneral, ComprobanteEntrega, BloqueAnulacion } from 
 import { construirUrlConsultaEntrega, construirUrlPublicaPdf, generarQrDataUrl } from './qrService';
 import { verificarIntegridadLote } from './hashService';
 import { quienRegistro } from './usuariosService';
+import { doc as docFirestore, getDoc } from 'firebase/firestore';
+import { db } from '../firebase/firebaseConfig';
+import { AnotacionesLote } from '../types';
+import { anotacionesDe, verificarAnotaciones } from './anotacionesService';
+import { nombreDato } from './hashService';
 import { formatearFechaColombia, getFechaHoyBogota, ocultarCorreo } from '../utils/constants';
 import { evaluarParametroAgua } from './calculosService';
 
@@ -47,7 +52,9 @@ const ETIQUETA_DATO: Record<string, string> = {
   estanque: 'Estanque',
   pesoInicialPromedioG: 'Peso inicial promedio (g)',
   proveedorAlevinos: 'Proveedor de alevinos',
-  observacionesIniciales: 'Observaciones iniciales'
+  observacionesIniciales: 'Observaciones iniciales',
+  pctProteina: 'Proteína (%)',
+  numeroRaciones: 'Número de raciones'
 };
 const OMITIR_DATO = new Set(['ambito']);
 
@@ -90,6 +97,23 @@ export async function generarLotePdfBlob(
   const urlPublica = construirUrlPublicaPdf(lote.codigo);
   const qrDataUrl = await generarQrDataUrl(urlPublica);
   const resultadoIntegridad = await verificarIntegridadLote(lote);
+
+  // Anotaciones posteriores al cierre (solo las aprobadas aparecen en el certificado)
+  let datosAnotaciones: AnotacionesLote | null = null;
+  if (lote.estado === 'cerrado') {
+    try {
+      const snap = await getDoc(docFirestore(db, 'anotacionesLote', lote.codigo));
+      datosAnotaciones = snap.exists() ? (snap.data() as AnotacionesLote) : null;
+    } catch {
+      datosAnotaciones = null;
+    }
+  }
+  const verifAnotaciones = await verificarAnotaciones(lote, datosAnotaciones);
+  // Solo las aprobadas e íntegras tienen validez; las alteradas se listan como "sin validez"
+  const anotacionesAprobadas = anotacionesDe(datosAnotaciones).filter(
+    (a) => a.estado === 'aprobada' && !verifAnotaciones.alteradas.includes(a.numero)
+  );
+  const anotacionesSinValidez = anotacionesDe(datosAnotaciones).filter((a) => verifAnotaciones.alteradas.includes(a.numero));
 
   const pageWidth = doc.internal.pageSize.getWidth();
   let currentY = 14;
@@ -210,7 +234,7 @@ export async function generarLotePdfBlob(
       ],
       [
         'Densidad actual:', r.densidadKgM3 !== null ? `${r.densidadKgM3} kg/m³` : 'N/A',
-        'Alertas calidad de agua:', `${r.alertasAgua} eventos fuera de rango`
+        'Alertas calidad de agua:', `${r.alertasAgua} mediciones fuera de rango`
       ]
     ]
   });
@@ -326,7 +350,10 @@ export async function generarLotePdfBlob(
         .map(([k, v]) => `${ETIQUETA_DATO[k] || k}: ${v}`)
         .join(', ');
     }
-    const contenido = [ev.descripcion, detalleDatos].filter(Boolean).join(' — ');
+    // Anotaciones aprobadas (e íntegras) que se refieren a esta fase
+    const notas = anotacionesAprobadas.filter((a) => a.propuesta.datos.fase === ev.indice).map((a) => a.numero);
+    const refNotas = notas.length ? `(ver anotación N.º ${notas.join(', ')})` : '';
+    const contenido = [ev.descripcion, detalleDatos, refNotas].filter(Boolean).join(' — ');
     return [
       `#${ev.indice}`,
       ev.fechaEvento,
@@ -351,10 +378,43 @@ export async function generarLotePdfBlob(
       4: { cellWidth: 36 },
       5: { cellWidth: 24 }
     },
-    head: [['#', 'Fecha', 'Tipo Evento', 'Detalle / Mediciones', 'Operario', 'Hash SHA-256']],
+    head: [['#', 'Fecha', 'Fase', 'Detalle / Mediciones', 'Operario', 'Hash SHA-256']],
     body: filasEventos
   });
   currentY = (doc as any).lastAutoTable.finalY + 5;
+
+  // --- 7b. ANOTACIONES POSTERIORES AL CIERRE (no modifican el lote sellado) ---
+  if (anotacionesAprobadas.length || anotacionesSinValidez.length) {
+    autoTable(doc, {
+      startY: currentY,
+      margin: { left: 10, right: 10 },
+      theme: 'grid',
+      styles: { fontSize: 7, cellPadding: 1.5 },
+      headStyles: { fillColor: [2, 132, 199], textColor: [255, 255, 255], fontStyle: 'bold' },
+      columnStyles: { 0: { cellWidth: 12 }, 1: { cellWidth: 22 }, 2: { cellWidth: 46 }, 3: { cellWidth: 52 }, 4: { cellWidth: 36 } },
+      head: [
+        [{ content: 'ANOTACIONES POSTERIORES AL CIERRE (aprobadas; el registro sellado no se modificó)', colSpan: 6 }],
+        ['N.º', 'Fase', 'Dato: registrado / correcto', 'Motivo', 'Propuso / Aprobó', 'Hash']
+      ],
+      body: [
+        ...anotacionesAprobadas.map((a) => {
+        const d = a.propuesta.datos;
+        const ev = (lote.eventos || [])[d.fase];
+        const registrado = d.dato && ev ? String(ev.datos?.[d.dato] ?? d.valorRegistrado) : d.valorRegistrado;
+        return [
+          String(a.numero),
+          `#${d.fase} ${ev ? ev.tipo : ''}`,
+          d.dato ? `${nombreDato(d.dato)}: ${registrado} / ${d.valorCorrecto}` : 'Aclaración general',
+          d.motivo,
+          `${quienRegistro(a.propuesta, true)} / ${a.resolucion ? quienRegistro(a.resolucion, true) : '-'}\n${formatearFechaColombia(a.resolucion?.fecha || a.propuesta.fecha)}`,
+          (a.resolucion?.hash || a.propuesta.hash).slice(0, 12) + '...'
+        ];
+        }),
+        ...anotacionesSinValidez.map((a) => [String(a.numero), '', 'ALTERADA después de registrarse: SIN VALIDEZ', '', '', ''])
+      ]
+    });
+    currentY = (doc as any).lastAutoTable.finalY + 5;
+  }
 
   // Si estamos muy cerca del pie de página, agregar nueva página
   if (currentY > doc.internal.pageSize.getHeight() - 48) {
@@ -401,7 +461,7 @@ export async function generarLotePdfBlob(
   doc.text(
     resultadoIntegridad.valido
       ? `ESTADO: ÍNTEGRO (Cadena válida de ${lote.eventos?.length || 0} bloques SHA-256 sin manipulación)`
-      : `ESTADO: ALTERADO (Falla en bloque #${resultadoIntegridad.primerErrorIndex})`,
+      : `ESTADO: ALTERADO (Falla en la fase #${resultadoIntegridad.primerErrorIndex})`,
     13,
     currentY + 10
   );
@@ -409,6 +469,11 @@ export async function generarLotePdfBlob(
   doc.setTextColor(71, 85, 105);
   doc.setFont('helvetica', 'normal');
   doc.text(`Hash final: ${lote.resumen.hashFinal || 'N/A'}`, 13, currentY + 14);
+  if (datosAnotaciones?.registros?.length) {
+    doc.setTextColor(verifAnotaciones.integra ? 22 : 185, verifAnotaciones.integra ? 101 : 28, verifAnotaciones.integra ? 52 : 28);
+    doc.text(textoPdf(`Anotaciones: ${verifAnotaciones.mensaje}`), 13, currentY + 17);
+    doc.setTextColor(71, 85, 105);
+  }
 
   // NOTA OBLIGATORIA
   doc.setFont('helvetica', 'italic');

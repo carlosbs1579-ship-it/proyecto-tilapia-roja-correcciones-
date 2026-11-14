@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, ShieldCheck, ShieldAlert, CheckCircle, Hash, RefreshCw } from 'lucide-react';
 import { Lote } from '../types';
-import { verificarIntegridadLote, ResultadoVerificacion } from '../services/hashService';
+import { verificarIntegridadLote, ResultadoVerificacion, analizarCadenaLote, AnalisisCadena } from '../services/hashService';
 
 interface IntegrityCheckModalProps {
   isOpen: boolean;
@@ -16,14 +16,16 @@ export const IntegrityCheckModal: React.FC<IntegrityCheckModalProps> = ({
 }) => {
   const [verificando, setVerificando] = useState(true);
   const [resultado, setResultado] = useState<ResultadoVerificacion | null>(null);
+  const [analisis, setAnalisis] = useState<AnalisisCadena | null>(null);
 
   const ejecutarVerificacion = async () => {
     setVerificando(true);
     try {
       // Pequeña pausa para visualización de recálculo criptográfico
       await new Promise(r => setTimeout(r, 300));
-      const res = await verificarIntegridadLote(lote);
+      const [res, an] = await Promise.all([verificarIntegridadLote(lote), analizarCadenaLote(lote)]);
       setResultado(res);
+      setAnalisis(an);
     } catch (err: any) {
       setResultado({
         valido: false,
@@ -62,14 +64,14 @@ export const IntegrityCheckModal: React.FC<IntegrityCheckModalProps> = ({
 
         <div className="p-6">
           <div className="text-xs text-slate-500 mb-4">
-            Cada evento en <strong>Cultivos Loré</strong> se encadena con un hash SHA-256 derivado de su predecesor. Esta auditoría recalcula matemáticamente cada eslabón para detectar cualquier manipulación o inserción no autorizada.
+            Cada fase en <strong>Cultivos Loré</strong> se encadena con un hash SHA-256 derivado de su predecesor. Esta auditoría recalcula matemáticamente cada eslabón para detectar cualquier manipulación o inserción no autorizada.
           </div>
 
           {verificando ? (
             <div className="py-12 flex flex-col items-center justify-center space-y-3">
               <div className="w-10 h-10 border-3 border-sky-600 border-t-transparent rounded-full animate-spin" />
               <p className="text-sm font-medium text-slate-700">Auditando cadena de bloques SHA-256...</p>
-              <p className="text-xs text-slate-400">Verificando {lote.eventos?.length || 0} eventos registrados</p>
+              <p className="text-xs text-slate-400">Verificando {lote.eventos?.length || 0} fases registradas</p>
             </div>
           ) : resultado?.valido ? (
             <div className="space-y-4">
@@ -88,7 +90,7 @@ export const IntegrityCheckModal: React.FC<IntegrityCheckModalProps> = ({
                 </div>
                 <div className="flex justify-between items-center py-1 border-b border-slate-200/60">
                   <span className="text-slate-500 font-medium">Bloques verificados:</span>
-                  <span className="font-semibold text-slate-800">{resultado.totalEventos} eventos</span>
+                  <span className="font-semibold text-slate-800">{resultado.totalEventos} fases</span>
                 </div>
                 <div className="flex justify-between items-center py-1 border-b border-slate-200/60">
                   <span className="text-slate-500 font-medium">Hash Génesis (#0):</span>
@@ -117,11 +119,34 @@ export const IntegrityCheckModal: React.FC<IntegrityCheckModalProps> = ({
                 </div>
               </div>
 
+              {analisis && analisis.fases.some((f) => f.estado !== 'integra') && (
+                <div className="border border-red-200 rounded-lg overflow-hidden text-xs">
+                  <p className="font-semibold text-red-800 bg-red-50 px-3 py-2">Fases con problemas (rastro de la cadena):</p>
+                  <ul className="divide-y divide-red-100">
+                    {analisis.fases
+                      .filter((f) => f.estado !== 'integra')
+                      .map((f) => (
+                        <li key={f.indice} className="px-3 py-2 bg-white">
+                          <span className="text-slate-800">{f.mensaje}</span>
+                          {f.estado === 'alterada' && !f.conRastro && (
+                            <span className="block text-[10px] text-slate-500 mt-0.5">
+                              Fase registrada antes del rastro por dato: se sabe que fue alterada, pero no qué dato cambió.
+                            </span>
+                          )}
+                        </li>
+                      ))}
+                  </ul>
+                  {analisis.selloCoincide === false && (
+                    <p className="px-3 py-2 bg-white border-t border-red-100 text-red-700">El sello de cierre no coincide con la última fase.</p>
+                  )}
+                </div>
+              )}
+
               {resultado?.detalles && (
                 <div className="bg-slate-50 border border-red-200 rounded-lg p-3 text-xs space-y-2">
                   <p className="font-semibold text-red-800">Detalles de la discrepancia criptográfica:</p>
                   <div>
-                    <span className="text-slate-500 block">Índice del evento alterado:</span>
+                    <span className="text-slate-500 block">Índice de la fase alterada:</span>
                     <span className="font-bold font-mono text-slate-900">#{resultado.detalles.indice}</span>
                   </div>
                   <div>

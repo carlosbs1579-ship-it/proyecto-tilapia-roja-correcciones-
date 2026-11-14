@@ -3,7 +3,9 @@ import { quienRegistro } from '../services/usuariosService';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase/firebaseConfig';
 import { Lote, ConfiguracionGeneral } from '../types';
-import { verificarIntegridadLote } from '../services/hashService';
+import { verificarIntegridadLote, analizarCadenaLote, DiagnosticoFase, nombreDato } from '../services/hashService';
+import { anotacionesDe, verificarAnotaciones } from '../services/anotacionesService';
+import { AnotacionesLote } from '../types';
 import { descargarPdfLoteLocal } from '../services/pdfService';
 import { CONFIG_DEFAULT, formatearFechaColombia, ocultarCorreo } from '../utils/constants';
 import {
@@ -46,6 +48,10 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
 
   // Estado de verificación criptográfica
   const [verificandoHash, setVerificandoHash] = useState(false);
+  const [diagnostico, setDiagnostico] = useState<Record<number, DiagnosticoFase>>({});
+  // Anotaciones posteriores al cierre (solo se muestran las aprobadas)
+  const [datosAnotaciones, setDatosAnotaciones] = useState<AnotacionesLote | null>(null);
+  const [verifAnotaciones, setVerifAnotaciones] = useState<{ integra: boolean; mensaje: string; alteradas: number[] } | null>(null);
   const [resultadoIntegridad, setResultadoIntegridad] = useState<{
     valido: boolean;
     totalEventos: number;
@@ -108,11 +114,45 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
     }
   }, [codigoLote, loteInicial, reintentos]);
 
+  useEffect(() => {
+    if (!lote || lote.estado !== 'cerrado') return;
+    let activo = true;
+    getDoc(doc(db, 'anotacionesLote', lote.codigo))
+      .then(async (snap) => {
+        const d = snap.exists() ? (snap.data() as AnotacionesLote) : null;
+        if (!activo) return;
+        setDatosAnotaciones(d);
+        setVerifAnotaciones(await verificarAnotaciones(lote, d));
+      })
+      .catch(() => {});
+    return () => {
+      activo = false;
+    };
+  }, [lote]);
+  // Solo las aprobadas e íntegras tienen validez; las alteradas se listan aparte como "sin validez"
+  const anotacionesAprobadas = anotacionesDe(datosAnotaciones).filter(
+    (a) => a.estado === 'aprobada' && !verifAnotaciones?.alteradas.includes(a.numero)
+  );
+  const anotacionesSinValidez = anotacionesDe(datosAnotaciones).filter((a) => verifAnotaciones?.alteradas.includes(a.numero));
+
+  // El análisis de la cadena corre solo al abrir el QR: cualquier fase alterada se marca en rojo
+  useEffect(() => {
+    if (!lote) return;
+    let activo = true;
+    analizarCadenaLote(lote)
+      .then((an) => activo && setDiagnostico(Object.fromEntries(an.fases.map((f) => [f.indice, f]))))
+      .catch(() => {});
+    return () => {
+      activo = false;
+    };
+  }, [lote]);
+
   const handleVerificarIntegridad = async () => {
     if (!lote) return;
     setVerificandoHash(true);
     try {
-      const res = await verificarIntegridadLote(lote);
+      const [res, an] = await Promise.all([verificarIntegridadLote(lote), analizarCadenaLote(lote)]);
+      setDiagnostico(Object.fromEntries(an.fases.map((f) => [f.indice, f])));
       setResultadoIntegridad({
         valido: res.valido,
         totalEventos: res.totalEventos,
@@ -329,7 +369,7 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
                   Autenticidad Criptográfica Inalterable
                 </h3>
                 <p className="text-xs text-slate-500">
-                  Cada evento del lote está encadenado mediante hash SHA-256 matemáticamente verificable.
+                  Cada fase del lote está encadenada mediante hash SHA-256 matemáticamente verificable.
                 </p>
               </div>
             </div>
@@ -366,8 +406,8 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
                 </strong>
                 <p className="mt-1 text-xs">
                   {resultadoIntegridad.valido
-                    ? `Se validaron matemáticamente ${resultadoIntegridad.totalEventos} eventos registrados desde la siembra. Ningún dato ha sido alterado desde su origen.`
-                    : `Se detectó una discrepancia a partir del evento #${resultadoIntegridad.primerErrorIndex}.`}
+                    ? `Se validaron matemáticamente ${resultadoIntegridad.totalEventos} fases registradas desde la siembra. Ningún dato ha sido alterado desde su origen.`
+                    : `Se detectó una discrepancia a partir de la fase #${resultadoIntegridad.primerErrorIndex}.`}
                 </p>
               </div>
             </div>
@@ -431,8 +471,13 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
                 Historial Cronológico de Vida del Lote
               </h3>
               <p className="text-xs text-slate-500">
-                {lote.eventos?.length || 0} eventos registrados cronológicamente
+                {lote.eventos?.length || 0} fases registradas cronológicamente
               </p>
+              {Object.values(diagnostico).some((f) => f.estado !== 'integra') && (
+                <p className="mt-1 text-xs font-semibold text-red-700">
+                  ⚠ Se detectaron fases alteradas después de su registro (marcadas en rojo).
+                </p>
+              )}
             </div>
 
             <button
@@ -451,9 +496,29 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
                   <div className="w-6 h-6 rounded-full bg-sky-600 text-white flex items-center justify-center font-bold text-[10px] shrink-0 z-10 shadow-xs">
                     {ev.indice + 1}
                   </div>
-                  <div className="flex-1 bg-slate-50 rounded-xl p-3 border border-slate-200/80 text-xs">
+                  <div
+                    className={`flex-1 rounded-xl p-3 border text-xs ${
+                      diagnostico[ev.indice] && diagnostico[ev.indice].estado !== 'integra'
+                        ? 'bg-red-50 border-red-400'
+                        : 'bg-slate-50 border-slate-200/80'
+                    }`}
+                  >
+                    {diagnostico[ev.indice] && diagnostico[ev.indice].estado !== 'integra' && (
+                      <p className="mb-1.5 font-semibold text-red-700">⚠ {diagnostico[ev.indice].mensaje}</p>
+                    )}
                     <div className="flex flex-wrap items-center justify-between gap-1 mb-1">
-                      <strong className="text-slate-900 font-bold">{ev.tipo}</strong>
+                      <strong className="text-slate-900 font-bold">
+                        {ev.tipo}
+                        {anotacionesAprobadas.some((a) => Number(a.propuesta.datos.fase) === ev.indice) && (
+                          <span className="ml-2 text-[10px] bg-sky-100 text-sky-800 px-2 py-0.5 rounded-full font-semibold">
+                            Ver anotación N.º{' '}
+                            {anotacionesAprobadas
+                              .filter((a) => Number(a.propuesta.datos.fase) === ev.indice)
+                              .map((a) => a.numero)
+                              .join(', ')}
+                          </span>
+                        )}
+                      </strong>
                       <span className="text-[11px] text-slate-500 font-mono">{ev.fechaEvento}</span>
                     </div>
                     {ev.descripcion && (
@@ -465,7 +530,7 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
                       <div className="bg-white p-2 rounded-lg border border-slate-200/60 grid grid-cols-2 sm:grid-cols-3 gap-2 text-[11px]">
                         {Object.entries(ev.datos).map(([clave, valor]) => (
                           <div key={clave}>
-                            <span className="text-slate-400 capitalize">{clave}: </span>
+                            <span className="text-slate-400">{nombreDato(clave)}: </span>
                             <span className="font-semibold text-slate-800">{String(valor)}</span>
                           </div>
                         ))}
@@ -482,6 +547,52 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
             </div>
           )}
         </div>
+
+        {/* ANOTACIONES POSTERIORES AL CIERRE */}
+        {(anotacionesAprobadas.length > 0 || anotacionesSinValidez.length > 0) && (
+          <div className="bg-white rounded-2xl shadow-xs border border-slate-200 p-6 space-y-3">
+            <h3 className="text-sm font-bold text-slate-900">Anotaciones posteriores al cierre</h3>
+            <p className="text-xs text-slate-500">
+              El registro sellado no se modificó. Estas aclaraciones fueron propuestas y aprobadas por personas distintas, con su motivo.
+            </p>
+            {verifAnotaciones && (
+              <p className={`text-xs font-semibold ${verifAnotaciones.integra ? 'text-emerald-700' : 'text-red-600'}`}>{verifAnotaciones.mensaje}</p>
+            )}
+            <ul className="space-y-2">
+              {anotacionesAprobadas.map((a) => {
+                const d = a.propuesta.datos;
+                const ev = (lote.eventos || [])[d.fase];
+                return (
+                  <li key={a.propuesta.id} className="border border-sky-100 bg-sky-50/40 rounded-xl p-3 text-xs space-y-1">
+                    <p className="font-semibold text-slate-800">
+                      Anotación N.º {a.numero} · Fase #{d.fase} {ev ? `(${ev.tipo})` : ''}
+                    </p>
+                    <p className="text-slate-700">
+                      {d.dato ? (
+                        <>
+                          {nombreDato(d.dato)}: registrado <strong>{ev ? String(ev.datos?.[d.dato] ?? d.valorRegistrado) : d.valorRegistrado}</strong> · correcto{' '}
+                          <strong>{d.valorCorrecto}</strong>
+                        </>
+                      ) : (
+                        'Aclaración general de la fase'
+                      )}
+                    </p>
+                    <p className="text-slate-600">Motivo: {d.motivo}</p>
+                    <p className="text-[10px] text-slate-400">
+                      Propuesta por {quienRegistro(a.propuesta, true)} · aprobada por {a.resolucion ? quienRegistro(a.resolucion, true) : '—'} ·{' '}
+                      {formatearFechaColombia(a.resolucion?.fecha || a.propuesta.fecha)}
+                    </p>
+                  </li>
+                );
+              })}
+              {anotacionesSinValidez.map((a) => (
+                <li key={a.propuesta.id} className="border border-red-200 bg-red-50 rounded-xl p-3 text-xs font-semibold text-red-700">
+                  Anotación N.º {a.numero}: alterada después de registrarse, sin validez.
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         {/* FICHA NUTRICIONAL */}
         <div className="bg-white rounded-2xl shadow-xs border border-slate-200 p-6 space-y-4">

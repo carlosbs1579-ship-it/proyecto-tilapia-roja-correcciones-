@@ -33,7 +33,9 @@ export const PERMISOS_DEFAULT_ADMIN: PermisosUsuario = {
   atenderNovedades: true,
   verAnalitica: true,
   exportarAnalitica: true,
-  verConfiguracion: true
+  verConfiguracion: true,
+  proponerAnotaciones: true,
+  aprobarAnotaciones: true
 };
 
 export const PERMISOS_DEFAULT_OPERARIO: PermisosUsuario = {
@@ -55,7 +57,9 @@ export const PERMISOS_DEFAULT_OPERARIO: PermisosUsuario = {
   atenderNovedades: false,
   verAnalitica: false,
   exportarAnalitica: false,
-  verConfiguracion: false
+  verConfiguracion: false,
+  proponerAnotaciones: false,
+  aprobarAnotaciones: false
 };
 
 // Permisos que existían antes de los permisos por pestaña
@@ -110,7 +114,9 @@ export const GRUPOS_PERMISOS: GrupoPermisos[] = [
       { clave: 'registrarEventos', etiqueta: 'Registrar eventos', detalle: 'Agua, alimentación, biometría, cosecha...' },
       { clave: 'corregirSiembra', etiqueta: 'Corregir siembra / piscina', detalle: 'Queda como evento de corrección' },
       { clave: 'cerrarLotes', etiqueta: 'Cerrar y sellar', detalle: 'Cosecha final y sellado del lote' },
-      { clave: 'descargarDocumentosLote', etiqueta: 'Descargar PDF y QR', detalle: 'Certificado, etiqueta QR y vista pública' }
+      { clave: 'descargarDocumentosLote', etiqueta: 'Descargar PDF y QR', detalle: 'Certificado, etiqueta QR y vista pública' },
+      { clave: 'proponerAnotaciones', etiqueta: 'Proponer anotaciones', detalle: 'Correcciones a un lote sellado, con motivo' },
+      { clave: 'aprobarAnotaciones', etiqueta: 'Aprobar anotaciones', detalle: 'Aprueba o rechaza propuestas de otra persona' }
     ]
   },
   {
@@ -600,7 +606,8 @@ let nombreSesionActual = '';
  * La app fija el nombre visible de la cuenta con sesión; los registros nuevos lo guardan junto al correo
  */
 export function establecerNombreSesion(nombre: string | null | undefined): void {
-  nombreSesionActual = (nombre || '').trim().slice(0, 60);
+  // Exacto (sin recortar): las reglas lo comparan con el nombre visible guardado en el perfil
+  nombreSesionActual = nombre || '';
 }
 
 /**

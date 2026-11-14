@@ -353,16 +353,17 @@ export const UsuariosTab: React.FC<UsuariosTabProps> = ({
     setMensajeExito(null);
 
     try {
+      // Guarda todos los perfiles editables que cambiaron (incluido el propio del administrador
+      // principal, igual que con el botón individual)
       let guardados = 0;
       for (const u of usuarios) {
-        if (esAdminMaestro(u.email) || !puedeEditarPerfil(u)) continue;
+        if (!puedeEditarPerfil(u)) continue;
         const edit = edicionUsuarios[u.uid];
-        if (edit) {
-          await actualizarPerfilOperario(u.uid, edit, userEmail);
-          guardados++;
-        }
+        if (!edit || JSON.stringify(edit) === JSON.stringify(edicionDesdePerfil(u))) continue;
+        await actualizarPerfilOperario(u.uid, edit, userEmail);
+        guardados++;
       }
-      setMensajeExito(`Se guardaron ${guardados} perfiles.`);
+      setMensajeExito(guardados ? `Se guardaron ${guardados} perfil(es) con cambios.` : 'No había cambios por guardar.');
       setTimeout(() => setMensajeExito(null), 4000);
     } catch (err: any) {
       console.error('Error guardando perfiles:', err);

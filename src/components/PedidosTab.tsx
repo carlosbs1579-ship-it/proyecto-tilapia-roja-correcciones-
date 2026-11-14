@@ -75,6 +75,14 @@ const ESTILO_ALERTA: Record<TipoAlerta, string> = {
  */
 export const PedidosTab: React.FC<PedidosTabProps> = ({ lotes, perfilActual }) => {
   const puedeGestionar = verificarPermiso(perfilActual, 'gestionarPedidos');
+  // Ver la pestaña: permiso "Ver pedidos" o cualquier acción de Entregas
+  const puedeVer =
+    puedeGestionar ||
+    verificarPermiso(perfilActual, 'verEntregas') ||
+    verificarPermiso(perfilActual, 'decidirSaldos') ||
+    verificarPermiso(perfilActual, 'gestionarComprobantes') ||
+    verificarPermiso(perfilActual, 'atenderNovedades');
+  const puedeNovedades = verificarPermiso(perfilActual, 'atenderNovedades');
   const granjaId = perfilActual?.granjaId || 'cultivos-lore';
 
   const [vista, setVista] = useState<Vista>('pedidos');
@@ -104,7 +112,7 @@ export const PedidosTab: React.FC<PedidosTabProps> = ({ lotes, perfilActual }) =
 
   // Una sola suscripción por colección mientras la pestaña está abierta; se cancelan al salir
   useEffect(() => {
-    if (!puedeGestionar) return;
+    if (!puedeVer) return;
     setCargando(true);
     const fallo = (err: any) => {
       setErrorCarga(
@@ -125,7 +133,7 @@ export const PedidosTab: React.FC<PedidosTabProps> = ({ lotes, perfilActual }) =
       escucharRepartidores(granjaId, setRepartidores, fallo)
     ];
     return () => cancelar.forEach((c) => c());
-  }, [puedeGestionar, granjaId]);
+  }, [puedeVer, granjaId]);
 
   // El mensaje de éxito se oculta solo; un mensaje nuevo reinicia el tiempo
   useEffect(() => {
@@ -170,13 +178,13 @@ export const PedidosTab: React.FC<PedidosTabProps> = ({ lotes, perfilActual }) =
     return mapa;
   }, [ordenes]);
 
-  if (!puedeGestionar) {
+  if (!puedeVer) {
     return (
       <div className="max-w-2xl mx-auto bg-white rounded-xl border border-slate-200 shadow-xs p-6 flex items-start space-x-3 text-xs text-slate-700">
         <Lock className="w-5 h-5 text-slate-400 shrink-0" />
         <div>
           <p className="font-bold text-sm text-slate-900">Gestión de entregas restringida</p>
-          <p className="mt-1">Tu cuenta no tiene el permiso "Gestionar pedidos". Solicítalo al administrador en "Personal & Permisos".</p>
+          <p className="mt-1">Tu cuenta no tiene permisos en la pestaña Entregas. Solicítalos al administrador en "Personal & Permisos".</p>
         </div>
       </div>
     );
@@ -215,8 +223,12 @@ export const PedidosTab: React.FC<PedidosTabProps> = ({ lotes, perfilActual }) =
   const pestañas: { id: Vista; etiqueta: string; icono: React.ReactNode; contador?: number }[] = [
     { id: 'pedidos', etiqueta: 'Pedidos', icono: <ListChecks className="w-3.5 h-3.5" />, contador: ordenes.length },
     { id: 'repartidores', etiqueta: 'Repartidores', icono: <Truck className="w-3.5 h-3.5" /> },
-    { id: 'solicitudes', etiqueta: 'Solicitudes', icono: <Repeat className="w-3.5 h-3.5" />, contador: solicitudesPendientes },
-    { id: 'novedades', etiqueta: 'Novedades', icono: <AlertTriangle className="w-3.5 h-3.5" />, contador: novedadesAbiertas },
+    ...(puedeNovedades
+      ? ([
+          { id: 'solicitudes', etiqueta: 'Solicitudes', icono: <Repeat className="w-3.5 h-3.5" />, contador: solicitudesPendientes },
+          { id: 'novedades', etiqueta: 'Novedades', icono: <AlertTriangle className="w-3.5 h-3.5" />, contador: novedadesAbiertas }
+        ] as { id: Vista; etiqueta: string; icono: React.ReactNode; contador?: number }[])
+      : []),
     { id: 'historial', etiqueta: 'Historial', icono: <History className="w-3.5 h-3.5" /> },
     { id: 'lotes', etiqueta: 'Disponibilidad por lote', icono: <Layers className="w-3.5 h-3.5" /> }
   ];
@@ -234,16 +246,18 @@ export const PedidosTab: React.FC<PedidosTabProps> = ({ lotes, perfilActual }) =
             Órdenes de entrega de la granja, avance de los repartidores, solicitudes, novedades e historial (en tiempo real)
           </p>
         </div>
-        <button
-          onClick={() => {
-            setOrdenEditar(null);
-            setModalAbierto(true);
-          }}
-          className="inline-flex items-center space-x-2 px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-xs font-bold shadow-xs transition-colors shrink-0"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Nueva orden</span>
-        </button>
+        {puedeGestionar && (
+          <button
+            onClick={() => {
+              setOrdenEditar(null);
+              setModalAbierto(true);
+            }}
+            className="inline-flex items-center space-x-2 px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-xs font-bold shadow-xs transition-colors shrink-0"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Nueva orden</span>
+          </button>
+        )}
       </div>
 
       {mensaje && (
@@ -453,7 +467,7 @@ export const PedidosTab: React.FC<PedidosTabProps> = ({ lotes, perfilActual }) =
         <SupervisionRepartidores ordenes={ordenes} repartidores={repartidores} onAbrirOrden={abrirOrden} />
       )}
 
-      {vista === 'solicitudes' && (
+      {vista === 'solicitudes' && puedeNovedades && (
         <SolicitudesPendientes
           ordenes={ordenes}
           lotes={lotes}
@@ -465,7 +479,7 @@ export const PedidosTab: React.FC<PedidosTabProps> = ({ lotes, perfilActual }) =
         />
       )}
 
-      {vista === 'novedades' && (
+      {vista === 'novedades' && puedeNovedades && (
         <NovedadesIncidencias ordenes={ordenes} procesando={procesando} ejecutar={ejecutarSeguro} onAbrirOrden={abrirOrden} />
       )}
 

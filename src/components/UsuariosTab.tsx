@@ -39,7 +39,9 @@ import {
   funcionesDisponibles,
   ETIQUETA_ROL,
   PERMISOS_DEFAULT_ADMIN,
-  PERMISOS_DEFAULT_OPERARIO
+  PERMISOS_DEFAULT_OPERARIO,
+  GRUPOS_PERMISOS,
+  valorPermiso
 } from '../services/usuariosService';
 
 type EdicionUsuario = {
@@ -70,12 +72,17 @@ const DESCRIPCION_ROL: Record<RolFuncional, string> = {
 };
 
 function edicionDesdePerfil(u: UsuarioPerfil): EdicionUsuario {
+  // Los perfiles anteriores no tienen los permisos por pestaña: se muestran con su valor heredado
+  const permisos = { ...u.permisos } as PermisosUsuario;
+  for (const clave of Object.keys(PERMISOS_DEFAULT_ADMIN) as (keyof PermisosUsuario)[]) {
+    permisos[clave] = valorPermiso(u.permisos, clave);
+  }
   return {
     roles: [...u.roles],
     cargos: { ...u.cargos },
     cargo: u.cargo || '',
     estado: u.estado,
-    permisos: { ...u.permisos }
+    permisos
   };
 }
 
@@ -220,13 +227,32 @@ export const UsuariosTab: React.FC<UsuariosTabProps> = ({
     });
   };
 
+  // Casilla general de una pestaña: marca o desmarca todos sus permisos
+  const handleGrupoPermisos = (uid: string, claves: (keyof PermisosUsuario)[], valor: boolean) => {
+    setEdicionUsuarios((prev) => {
+      const actual = prev[uid]?.permisos || PERMISOS_DEFAULT_OPERARIO;
+      return {
+        ...prev,
+        [uid]: { ...prev[uid], permisos: { ...actual, ...Object.fromEntries(claves.map((c) => [c, valor])) } }
+      };
+    });
+  };
+
   // Las plantillas de producción dejan al usuario como operador (sin tocar su función de repartidor);
   // "Total" lo convierte en administrador y solo la ve el Administrador Maestro
   const aplicarPreset = (uid: string, preset: 'siembra' | 'cosecha' | 'total' | 'lectura') => {
     let nuevosPermisos: PermisosUsuario;
     const rolesActuales = edicionUsuarios[uid]?.roles || [];
-    // Las plantillas de producción no tocan el permiso de pedidos que ya tenga
-    const gestionarPedidos = Boolean(edicionUsuarios[uid]?.permisos?.gestionarPedidos);
+    // Las plantillas de producción no tocan los permisos de la pestaña Entregas que ya tenga
+    const p0 = edicionUsuarios[uid]?.permisos || PERMISOS_DEFAULT_OPERARIO;
+    const entregas = {
+      gestionarPedidos: Boolean(p0.gestionarPedidos),
+      verEntregas: Boolean(p0.verEntregas),
+      decidirSaldos: Boolean(p0.decidirSaldos),
+      gestionarComprobantes: Boolean(p0.gestionarComprobantes),
+      atenderNovedades: Boolean(p0.atenderNovedades)
+    };
+    const base = { ...PERMISOS_DEFAULT_OPERARIO, ...entregas };
     let roles: RolFuncional[] = ordenarRoles([...rolesActuales.filter((r) => r !== 'admin'), 'operator']);
 
     switch (preset) {
@@ -236,28 +262,37 @@ export const UsuariosTab: React.FC<UsuariosTabProps> = ({
         break;
       case 'siembra':
         nuevosPermisos = {
+          ...base,
+          verInicio: true,
           crearLotes: true,
+          verLotes: true,
+          buscarLotes: true,
           registrarEventos: true,
-          cerrarLotes: false,
-          gestionarEstanques: false,
-          gestionarConfiguracion: false,
-          administrarUsuarios: false,
-          gestionarPedidos
+          corregirSiembra: true,
+          descargarDocumentosLote: true
         };
         break;
       case 'cosecha':
         nuevosPermisos = {
-          crearLotes: false,
+          ...base,
+          verInicio: true,
+          verLotes: true,
+          buscarLotes: true,
           registrarEventos: true,
           cerrarLotes: true,
-          gestionarEstanques: false,
-          gestionarConfiguracion: false,
-          administrarUsuarios: false,
-          gestionarPedidos
+          descargarDocumentosLote: true
         };
         break;
       case 'lectura':
-        nuevosPermisos = { ...PERMISOS_DEFAULT_OPERARIO };
+        // Solo lectura: ve las pestañas de producción sin poder modificar nada
+        nuevosPermisos = {
+          ...PERMISOS_DEFAULT_OPERARIO,
+          verInicio: true,
+          verLotes: true,
+          buscarLotes: true,
+          verAnalitica: true,
+          verConfiguracion: true
+        };
         break;
     }
 
@@ -703,7 +738,7 @@ export const UsuariosTab: React.FC<UsuariosTabProps> = ({
                     <div className="mt-4 pt-3 border-t border-slate-100">
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
                         <span className="text-xs font-bold text-slate-700">
-                          Permisos de producción (función de operador):
+                          Permisos por pestaña (función de operador):
                         </span>
 
                         {!esElAdmin && editable && (
@@ -751,155 +786,65 @@ export const UsuariosTab: React.FC<UsuariosTabProps> = ({
                         </p>
                       ) : null}
 
-                      <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 ${
-                        bloqueoPermisos && !esElAdmin && !ed.roles.includes('admin') ? 'opacity-60' : ''
-                      }`}>
-                        {/* 1. Crear lotes */}
-                        <label
-                          className={`flex items-start space-x-2 p-2 rounded-lg border text-xs cursor-pointer transition-colors ${
-                            ed.permisos.crearLotes
-                              ? 'bg-sky-50 border-sky-300 text-sky-950 font-semibold'
-                              : 'bg-slate-50 border-slate-200 text-slate-600'
-                          }`}
-                        >
-                          <input
-                            type="checkbox"
-                            disabled={bloqueoPermisos}
-                            checked={ed.permisos.crearLotes}
-                            onChange={() => handleTogglePermiso(u.uid, 'crearLotes')}
-                            className="mt-0.5 rounded text-sky-600 focus:ring-sky-500"
-                          />
-                          <div>
-                            <span>Añadir nuevos lotes</span>
-                            <p className="text-[10px] text-slate-400 font-normal">Crear lote y registrar siembra inicial</p>
-                          </div>
-                        </label>
-
-                        {/* 2. Cargar eventos */}
-                        <label
-                          className={`flex items-start space-x-2 p-2 rounded-lg border text-xs cursor-pointer transition-colors ${
-                            ed.permisos.registrarEventos
-                              ? 'bg-sky-50 border-sky-300 text-sky-950 font-semibold'
-                              : 'bg-slate-50 border-slate-200 text-slate-600'
-                          }`}
-                        >
-                          <input
-                            type="checkbox"
-                            disabled={bloqueoPermisos}
-                            checked={ed.permisos.registrarEventos}
-                            onChange={() => handleTogglePermiso(u.uid, 'registrarEventos')}
-                            className="mt-0.5 rounded text-sky-600 focus:ring-sky-500"
-                          />
-                          <div>
-                            <span>Cargar / Registrar eventos</span>
-                            <p className="text-[10px] text-slate-400 font-normal">Alimentación, calidad de agua, biometría</p>
-                          </div>
-                        </label>
-
-                        {/* 3. Cerrar lotes */}
-                        <label
-                          className={`flex items-start space-x-2 p-2 rounded-lg border text-xs cursor-pointer transition-colors ${
-                            ed.permisos.cerrarLotes
-                              ? 'bg-sky-50 border-sky-300 text-sky-950 font-semibold'
-                              : 'bg-slate-50 border-slate-200 text-slate-600'
-                          }`}
-                        >
-                          <input
-                            type="checkbox"
-                            disabled={bloqueoPermisos}
-                            checked={ed.permisos.cerrarLotes}
-                            onChange={() => handleTogglePermiso(u.uid, 'cerrarLotes')}
-                            className="mt-0.5 rounded text-sky-600 focus:ring-sky-500"
-                          />
-                          <div>
-                            <span>Cerrar lotes y PDF oficial</span>
-                            <p className="text-[10px] text-slate-400 font-normal">Cosechar, finalizar ciclo y firmar certificado</p>
-                          </div>
-                        </label>
-
-                        {/* 4. Gestionar estanques */}
-                        <label
-                          className={`flex items-start space-x-2 p-2 rounded-lg border text-xs cursor-pointer transition-colors ${
-                            ed.permisos.gestionarEstanques
-                              ? 'bg-sky-50 border-sky-300 text-sky-950 font-semibold'
-                              : 'bg-slate-50 border-slate-200 text-slate-600'
-                          }`}
-                        >
-                          <input
-                            type="checkbox"
-                            disabled={bloqueoPermisos}
-                            checked={ed.permisos.gestionarEstanques}
-                            onChange={() => handleTogglePermiso(u.uid, 'gestionarEstanques')}
-                            className="mt-0.5 rounded text-sky-600 focus:ring-sky-500"
-                          />
-                          <div>
-                            <span>Crear piscinas y estanques</span>
-                            <p className="text-[10px] text-slate-400 font-normal">Agregar E3, E4 y volúmenes en m³</p>
-                          </div>
-                        </label>
-
-                        {/* 5. Gestionar configuración */}
-                        <label
-                          className={`flex items-start space-x-2 p-2 rounded-lg border text-xs cursor-pointer transition-colors ${
-                            ed.permisos.gestionarConfiguracion
-                              ? 'bg-sky-50 border-sky-300 text-sky-950 font-semibold'
-                              : 'bg-slate-50 border-slate-200 text-slate-600'
-                          }`}
-                        >
-                          <input
-                            type="checkbox"
-                            disabled={bloqueoPermisos}
-                            checked={ed.permisos.gestionarConfiguracion}
-                            onChange={() => handleTogglePermiso(u.uid, 'gestionarConfiguracion')}
-                            className="mt-0.5 rounded text-sky-600 focus:ring-sky-500"
-                          />
-                          <div>
-                            <span>Modificar rangos y nutrición</span>
-                            <p className="text-[10px] text-slate-400 font-normal">Límites fisicoquímicos y ficha nutricional</p>
-                          </div>
-                        </label>
-
-                        {/* 6. Administrar usuarios */}
-                        <label
-                          className={`flex items-start space-x-2 p-2 rounded-lg border text-xs cursor-pointer transition-colors ${
-                            ed.permisos.administrarUsuarios
-                              ? 'bg-sky-50 border-sky-300 text-sky-950 font-semibold'
-                              : 'bg-slate-50 border-slate-200 text-slate-600'
-                          }`}
-                        >
-                          <input
-                            type="checkbox"
-                            disabled={bloqueoPermisos}
-                            checked={ed.permisos.administrarUsuarios}
-                            onChange={() => handleTogglePermiso(u.uid, 'administrarUsuarios')}
-                            className="mt-0.5 rounded text-sky-600 focus:ring-sky-500"
-                          />
-                          <div>
-                            <span>Administrar operarios</span>
-                            <p className="text-[10px] text-slate-400 font-normal">Autorizar a otros operarios y otorgar permisos</p>
-                          </div>
-                        </label>
-
-                        {/* 7. Gestionar pedidos */}
-                        <label
-                          className={`flex items-start space-x-2 p-2 rounded-lg border text-xs cursor-pointer transition-colors ${
-                            ed.permisos.gestionarPedidos
-                              ? 'bg-sky-50 border-sky-300 text-sky-950 font-semibold'
-                              : 'bg-slate-50 border-slate-200 text-slate-600'
-                          }`}
-                        >
-                          <input
-                            type="checkbox"
-                            disabled={bloqueoPermisos}
-                            checked={Boolean(ed.permisos.gestionarPedidos)}
-                            onChange={() => handleTogglePermiso(u.uid, 'gestionarPedidos')}
-                            className="mt-0.5 rounded text-sky-600 focus:ring-sky-500"
-                          />
-                          <div>
-                            <span>Gestionar pedidos</span>
-                            <p className="text-[10px] text-slate-400 font-normal">Crear órdenes de entrega, reservar cantidades y asignar repartidor</p>
-                          </div>
-                        </label>
+                      <div className={`space-y-2 ${bloqueoPermisos && !esElAdmin && !ed.roles.includes('admin') ? 'opacity-60' : ''}`}>
+                        {GRUPOS_PERMISOS.map((g) => {
+                          const claves = [...(g.ver ? [g.ver] : []), ...g.acciones.map((a) => a.clave)];
+                          const marcadas = claves.filter((c) => Boolean(ed.permisos[c])).length;
+                          const todas = marcadas === claves.length;
+                          return (
+                            <div key={g.pestana} className="rounded-lg border border-slate-200 bg-slate-50/60">
+                              {/* Casilla general de la pestaña: marca o desmarca todo el grupo */}
+                              <label className="flex items-center justify-between gap-2 px-2.5 py-2 cursor-pointer border-b border-slate-200">
+                                <span className="flex items-center space-x-2">
+                                  <input
+                                    type="checkbox"
+                                    disabled={bloqueoPermisos}
+                                    checked={todas}
+                                    ref={(el) => {
+                                      if (el) el.indeterminate = marcadas > 0 && !todas;
+                                    }}
+                                    onChange={() => handleGrupoPermisos(u.uid, claves, !todas)}
+                                    className="rounded text-sky-600 focus:ring-sky-500"
+                                  />
+                                  <span className="text-xs font-bold text-slate-800">Pestaña {g.titulo}</span>
+                                </span>
+                                <span className="text-[10px] text-slate-400">
+                                  {marcadas === 0 ? 'oculta' : `${marcadas} de ${claves.length}`}
+                                </span>
+                              </label>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5 p-2">
+                                {[
+                                  ...(g.ver ? [{ clave: g.ver, etiqueta: 'Ver la pestaña', detalle: 'Consultar la información, sin modificarla' }] : []),
+                                  ...g.acciones
+                                ].map((a) => (
+                                  <label
+                                    key={a.clave}
+                                    className={`flex items-start space-x-2 p-2 rounded-lg border text-xs cursor-pointer transition-colors ${
+                                      ed.permisos[a.clave]
+                                        ? 'bg-sky-50 border-sky-300 text-sky-950 font-semibold'
+                                        : 'bg-white border-slate-200 text-slate-600'
+                                    }`}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      disabled={bloqueoPermisos}
+                                      checked={Boolean(ed.permisos[a.clave])}
+                                      onChange={() => handleTogglePermiso(u.uid, a.clave)}
+                                      className="mt-0.5 rounded text-sky-600 focus:ring-sky-500"
+                                    />
+                                    <div>
+                                      <span>{a.etiqueta}</span>
+                                      <p className="text-[10px] text-slate-400 font-normal">{a.detalle}</p>
+                                    </div>
+                                  </label>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })}
+                        <p className="text-[10px] text-slate-400">
+                          La persona solo ve las pestañas en las que tiene al menos un permiso. La pestaña Personal & Permisos es solo para administradores.
+                        </p>
                       </div>
                     </div>
 

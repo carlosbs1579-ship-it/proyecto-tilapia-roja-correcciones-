@@ -11,7 +11,8 @@ import {
   escucharPerfilPropio,
   borrarCopiaPerfil,
   esAdminMaestro,
-  funcionesDisponibles
+  funcionesDisponibles,
+  verificarPermiso
 } from './services/usuariosService';
 
 import { Navbar, TabTipo, tabsDeFuncion } from './components/Navbar';
@@ -137,26 +138,36 @@ export default function App() {
   // Mantener la pestaña dentro de las de la función activa
   useEffect(() => {
     establecerFuncionActiva(funcionActiva);
-    const permitidas = tabsDeFuncion(funcionActiva);
+    const permitidas = tabsDeFuncion(funcionActiva, perfilUsuario);
     if (!permitidas.includes(tabActiva)) setTabActiva(permitidas[0]);
     if (funcionActiva !== 'admin' && funcionActiva !== 'operator') {
       setLoteDetalle(null);
       setLoteQr(null);
       setNuevoLoteModalOpen(false);
     }
-  }, [funcionActiva]);
+  }, [funcionActiva, perfilUsuario]);
 
   const handleSeleccionarFuncion = (funcion: RolFuncional) => {
     if (!usuario || !funciones.includes(funcion)) return;
     guardarFuncion(usuario.uid, funcion);
     setFuncionActiva(funcion);
-    setTabActiva(tabsDeFuncion(funcion)[0]);
+    setTabActiva(tabsDeFuncion(funcion, perfilUsuario)[0]);
   };
 
-  const handleCambiarFuncion = () => {
-    if (usuario) guardarFuncion(usuario.uid, null);
-    setFuncionActiva(null);
-  };
+  // Aviso breve de la función con la que se está trabajando (en lugar de una barra fija)
+  const [avisoFuncion, setAvisoFuncion] = useState<string | null>(null);
+  useEffect(() => {
+    if (!funcionActiva) return;
+    setAvisoFuncion(
+      funcionActiva === 'admin'
+        ? esAdmin
+          ? 'Ingresaste como Administrador Maestro.'
+          : 'Ingresaste como Administrador.'
+        : `Trabajando como ${funcionActiva === 'operator' ? 'Operador' : 'Repartidor'}.`
+    );
+    const t = setTimeout(() => setAvisoFuncion(null), 4000);
+    return () => clearTimeout(t);
+  }, [funcionActiva, esAdmin]);
 
 
   // 2. Escuchar cambios de autenticación de Firebase
@@ -274,8 +285,8 @@ export default function App() {
   }, [puedeVerProduccion]);
 
   const handleCerrarSesion = async () => {
-    // Al volver a ingresar, una cuenta con varias funciones elige de nuevo
-    if (usuario) guardarFuncion(usuario.uid, null);
+    // Se recuerda la última función usada: al volver a ingresar se entra directo a ella (se cambia
+    // con un clic desde la barra superior)
     // Las copias locales (lotes, perfil, entregas) no quedan en el navegador para la siguiente
     // persona. La bandeja de acciones del repartidor sin enviar se conserva para no perderlas.
     try {
@@ -308,6 +319,10 @@ export default function App() {
       </div>
     </div>
   );
+
+  // Permiso efectivo en la función activa (el administrador trabaja con todos)
+  const puede = (clave: Parameters<typeof verificarPermiso>[1]) => funcionActiva === 'admin' || verificarPermiso(perfilUsuario, clave);
+  const tabsPermitidas = tabsDeFuncion(funcionActiva, perfilUsuario);
 
   const handleAbrirNuevoLote = () => {
     if (!usuario) {
@@ -370,9 +385,9 @@ export default function App() {
         usuario={usuario as User}
         perfilUsuario={perfilUsuario}
         funcionActiva={funcionActiva}
-        puedeCambiarFuncion={funciones.length > 1 && Boolean(funcionActiva)}
+        funciones={funciones}
         eligiendoFuncion={mostrarSelectorFuncion}
-        onCambiarFuncion={handleCambiarFuncion}
+        onSeleccionarFuncion={handleSeleccionarFuncion}
         onAbrirAuth={() => setAuthModalOpen(true)}
         onCerrarSesion={handleCerrarSesion}
         onNuevoLote={handleAbrirNuevoLote}
@@ -398,24 +413,14 @@ export default function App() {
         </div>
       )}
 
-      {/* BANNER 2: SESIÓN DE ADMINISTRADOR MAESTRO (CARLOS), TRABAJANDO COMO ADMINISTRADOR */}
-      {usuario && esAdmin && funcionActiva === 'admin' && (
-        <div className="bg-amber-500/10 border-b border-amber-400/30 px-4 py-2 text-xs text-amber-900">
-          <div className="max-w-7xl mx-auto flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <Crown className="w-4 h-4 text-amber-600 shrink-0" />
-              <span>
-                <strong>Sesión Administrador Maestro (Carlos):</strong> Tienes control total en Cultivos Loré. Puedes otorgar cargos y autorizaciones en la pestaña <strong>"Personal & Permisos"</strong>.
-              </span>
-            </div>
-            <button
-              onClick={() => setTabActiva('usuarios')}
-              className="text-amber-800 hover:text-amber-950 underline font-semibold text-[11px] shrink-0 ml-2 flex items-center space-x-1"
-            >
-              <Users className="w-3.5 h-3.5" />
-              <span>Gestionar Personal</span>
-            </button>
-          </div>
+      {/* AVISO DISCRETO AL ENTRAR COMO ADMINISTRADOR: aparece unos segundos abajo a la izquierda */}
+      {avisoFuncion && (
+        <div
+          role="status"
+          className="fixed bottom-4 left-4 z-50 max-w-xs flex items-center space-x-2 rounded-lg bg-slate-900 text-white shadow-lg px-3 py-2 text-xs"
+        >
+          <Crown className="w-4 h-4 text-amber-400 shrink-0" />
+          <span>{avisoFuncion}</span>
         </div>
       )}
 
@@ -497,45 +502,56 @@ export default function App() {
         {puedeVerProduccion && (
         <>
         {/* 1. INICIO */}
-        {tabActiva === 'inicio' && (
+        {tabActiva === 'inicio' && tabsPermitidas.includes('inicio') && (funcionActiva === 'admin' || puede('verInicio') || puede('crearLotes')) && (
           <DashboardTab
             lotes={lotes}
             config={config}
             onNuevoLote={handleAbrirNuevoLote}
             onSeleccionarLote={(lote) => setLoteDetalle(lote)}
             onAbrirQr={(lote) => setLoteQr(lote)}
+            puedeCrearLote={puede('crearLotes')}
+            puedeBuscar={puede('buscarLotes')}
+            puedeDocumentos={puede('descargarDocumentosLote')}
           />
+        )}
+        {tabActiva === 'inicio' && funcionActiva === 'operator' && !puede('verInicio') && !puede('crearLotes') && tabsPermitidas.length === 1 && (
+          <div className="bg-white border border-slate-200 rounded-xl p-6 text-sm text-slate-600">
+            Tu cuenta todavía no tiene pestañas asignadas. Pide al administrador que te otorgue los permisos de tu trabajo.
+          </div>
         )}
 
         {/* 2. LOTES */}
-        {tabActiva === 'lotes' && (
+        {tabActiva === 'lotes' && tabsPermitidas.includes('lotes') && (
           <LotesTab
             lotes={lotes}
             config={config}
             onNuevoLote={handleAbrirNuevoLote}
             onSeleccionarLote={(lote) => setLoteDetalle(lote)}
             onAbrirQr={(lote) => setLoteQr(lote)}
+            puedeBuscar={puede('buscarLotes')}
+            puedeDocumentos={puede('descargarDocumentosLote')}
           />
         )}
 
         {/* PEDIDOS: ÓRDENES DE ENTREGA VINCULADAS A LOS LOTES */}
-        {tabActiva === 'pedidos' && (
+        {tabActiva === 'pedidos' && tabsPermitidas.includes('pedidos') && (
           <PedidosTab lotes={lotes} perfilActual={perfilUsuario} />
         )}
 
         {/* 3. ANALÍTICA */}
-        {tabActiva === 'analitica' && (
+        {tabActiva === 'analitica' && tabsPermitidas.includes('analitica') && (
           <AnaliticaTab
             lotes={lotes}
             config={config}
             onSeleccionarLote={(lote) => setLoteDetalle(lote)}
+            puedeExportar={puede('exportarAnalitica')}
           />
         )}
         </>
         )}
 
         {/* 4. CONFIGURACIÓN DE GRANJA Y ESTANQUES */}
-        {tabActiva === 'configuracion' && (
+        {tabActiva === 'configuracion' && tabsPermitidas.includes('configuracion') && (
           <ConfiguracionTab
             config={config}
             userEmail={usuario?.email || ''}
@@ -545,7 +561,7 @@ export default function App() {
         )}
 
         {/* 5. GESTIÓN DE PERSONAL Y PERMISOS (NUEVA PESTAÑA DEDICADA) */}
-        {tabActiva === 'usuarios' && (
+        {tabActiva === 'usuarios' && tabsPermitidas.includes('usuarios') && (
           <UsuariosTab
             userEmail={usuario?.email || ''}
             perfilActual={perfilUsuario}

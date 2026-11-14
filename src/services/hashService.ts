@@ -205,3 +205,29 @@ export async function verificarIntegridadCadena(
     mensaje: `Cadena de trazabilidad 100% íntegra. Se verificaron ${eventos.length} eventos sin alteración.`
   };
 }
+
+/**
+ * Verificación completa de un lote: la cadena de eventos y, además, que el último hash coincida con
+ * el sello guardado en el resumen (hashFinal, el "Sello hash de cierre" que se muestra y se imprime).
+ * Así una cadena reescrita desde fuera de la app, sin actualizar el sello, se detecta.
+ */
+export async function verificarIntegridadLote(lote: {
+  codigo: string;
+  eventos?: EventoLote[];
+  resumen?: { hashFinal?: string };
+}): Promise<ResultadoVerificacion> {
+  const eventos = lote.eventos || [];
+  const res = await verificarIntegridadCadena(lote.codigo, eventos);
+  if (!res.valido || !eventos.length) return res;
+  const sello = lote.resumen?.hashFinal;
+  const ultimo = eventos[eventos.length - 1].hash;
+  if (sello && sello !== ultimo) {
+    return {
+      valido: false,
+      totalEventos: eventos.length,
+      primerErrorIndex: eventos.length - 1,
+      mensaje: `El sello de cierre registrado (${sello.slice(0, 12)}…) no coincide con el último hash de la cadena (${ultimo.slice(0, 12)}…): la cadena fue reescrita.`
+    };
+  }
+  return res;
+}

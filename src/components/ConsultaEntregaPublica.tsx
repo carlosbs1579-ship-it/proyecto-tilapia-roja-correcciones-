@@ -107,7 +107,7 @@ export const ConsultaEntregaPublica: React.FC<{
                 <span>Última confirmación: <strong>{actual.fechas.confirmacion ? formatearFechaColombia(actual.fechas.confirmacion) : '—'}</strong></span>
                 <span>
                   Comprobante vigente:{' '}
-                  <strong>{anulaciones[actual.id] ? 'ninguno (todos anulados)' : `versión ${actual.version}`}</strong>
+                  <strong>{anulaciones[actual.id] ? 'ninguno (todos anulados)' : `N.º ${actual.version}`}</strong>
                 </span>
               </div>
             </section>
@@ -157,7 +157,7 @@ export const ConsultaEntregaPublica: React.FC<{
                 <div key={c.id} className="border border-slate-100 rounded p-2 space-y-1 text-xs">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <span>
-                      <strong>Bloque v{c.version}</strong>
+                      <strong>Comprobante N.º {c.version}</strong>
                       {anulaciones[c.id] && <strong className="ml-1 px-1 rounded bg-red-100 text-red-700">ANULADO</strong>} · {formatearFechaColombia(c.emitidoEn)} ·{' '}
                       {c.estadoEntrega === 'entregado' ? 'entrega completa' : 'entrega parcial'} · entregado {num(c.cantidadEntregada)} {c.unidad}
                     </span>
@@ -174,7 +174,7 @@ export const ConsultaEntregaPublica: React.FC<{
                   </div>
                   {anulaciones[c.id] && (
                     <span className="block text-red-700">
-                      Anulado el {formatearFechaColombia(anulaciones[c.id].emitidoEn)} (bloque v{anulaciones[c.id].version}). Motivo:{' '}
+                      Anulado el {formatearFechaColombia(anulaciones[c.id].emitidoEn)} (registro N.º {anulaciones[c.id].version} de la cadena). Motivo:{' '}
                       {anulaciones[c.id].motivo}
                     </span>
                   )}

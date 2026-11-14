@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, ShieldCheck, ShieldAlert, CheckCircle, Hash, RefreshCw } from 'lucide-react';
 import { Lote } from '../types';
-import { verificarIntegridadCadena, ResultadoVerificacion } from '../services/hashService';
+import { verificarIntegridadLote, ResultadoVerificacion } from '../services/hashService';
 
 interface IntegrityCheckModalProps {
   isOpen: boolean;
@@ -22,7 +22,7 @@ export const IntegrityCheckModal: React.FC<IntegrityCheckModalProps> = ({
     try {
       // Pequeña pausa para visualización de recálculo criptográfico
       await new Promise(r => setTimeout(r, 300));
-      const res = await verificarIntegridadCadena(lote.codigo, lote.eventos || []);
+      const res = await verificarIntegridadLote(lote);
       setResultado(res);
     } catch (err: any) {
       setResultado({

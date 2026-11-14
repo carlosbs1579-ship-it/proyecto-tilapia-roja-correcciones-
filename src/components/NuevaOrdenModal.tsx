@@ -44,7 +44,9 @@ export const NuevaOrdenModal: React.FC<NuevaOrdenModalProps> = ({
   const [nombreCliente, setNombreCliente] = useState('');
   const [contactoCliente, setContactoCliente] = useState('');
   const [direccionCliente, setDireccionCliente] = useState('');
-  const [unidad, setUnidad] = useState<UnidadMedida>('peces');
+  // Las órdenes nuevas se manejan solo en kilogramos (como compran los clientes); las anteriores
+  // en peces conservan su unidad al editarse
+  const [unidad, setUnidad] = useState<UnidadMedida>('kg');
   const [cantidadSolicitada, setCantidadSolicitada] = useState<number | ''>('');
   const [fechaProgramada, setFechaProgramada] = useState('');
   const [cantidades, setCantidades] = useState<Record<string, number | ''>>({});
@@ -70,7 +72,7 @@ export const NuevaOrdenModal: React.FC<NuevaOrdenModalProps> = ({
       setObservaciones(ordenEditar.observaciones || '');
     } else {
       setClienteId('');
-      setUnidad('peces');
+      setUnidad('kg');
       setCantidadSolicitada('');
       setFechaProgramada('');
       setCantidades({});
@@ -244,25 +246,11 @@ export const NuevaOrdenModal: React.FC<NuevaOrdenModalProps> = ({
           {/* 2. Cantidad y unidad */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
-              <label className="font-bold text-slate-700 block mb-1">2. Unidad de medida *</label>
-              <div className="flex rounded-lg border border-slate-300 p-0.5 bg-slate-50">
-                {(['peces', 'kg'] as UnidadMedida[]).map((u) => (
-                  <button
-                    key={u}
-                    type="button"
-                    onClick={() => {
-                      setUnidad(u);
-                      setCantidades({});
-                    }}
-                    className={`flex-1 px-3 py-1.5 rounded-md font-semibold transition-colors ${
-                      unidad === u ? 'bg-white shadow-xs text-sky-700' : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    {u === 'peces' ? 'Peces (unidades)' : 'Kilogramos'}
-                  </button>
-                ))}
+              <label className="font-bold text-slate-700 block mb-1">2. Unidad de medida</label>
+              <div className="px-3 py-1.5 rounded-lg border border-slate-300 bg-slate-50 font-semibold text-sky-700">
+                {unidad === 'kg' ? 'Kilogramos (kg)' : 'Peces (orden anterior)'}
               </div>
-              <p className="text-[10px] text-slate-400 mt-1">No se convierte entre peces y kg.</p>
+              <p className="text-[10px] text-slate-400 mt-1">Los pedidos se registran y reparten en kilogramos.</p>
             </div>
             <div>
               <label className="font-bold text-slate-700 block mb-1">Cantidad solicitada ({unidad}) *</label>

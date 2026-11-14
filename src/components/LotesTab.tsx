@@ -18,6 +18,8 @@ interface LotesTabProps {
   onNuevoLote: () => void;
   onSeleccionarLote: (lote: Lote) => void;
   onAbrirQr: (lote: Lote) => void;
+  puedeBuscar?: boolean;
+  puedeDocumentos?: boolean;
 }
 
 export const LotesTab: React.FC<LotesTabProps> = ({
@@ -25,7 +27,9 @@ export const LotesTab: React.FC<LotesTabProps> = ({
   config,
   onNuevoLote,
   onSeleccionarLote,
-  onAbrirQr
+  onAbrirQr,
+  puedeBuscar = true,
+  puedeDocumentos = true
 }) => {
   const [busqueda, setBusqueda] = useState('');
   const [filtroEstanque, setFiltroEstanque] = useState('todos');
@@ -82,8 +86,8 @@ export const LotesTab: React.FC<LotesTabProps> = ({
         </div>
       </div>
 
-      {/* PANEL DE BÚSQUEDA Y FILTROS */}
-      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs space-y-3">
+      {/* PANEL DE BÚSQUEDA Y FILTROS (solo con el permiso "Buscar y filtrar") */}
+      <div className={`bg-white p-4 rounded-xl border border-slate-200 shadow-xs space-y-3 ${puedeBuscar ? '' : 'hidden'}`}>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
           {/* Buscador parcial */}
           <div className="lg:col-span-2">
@@ -220,7 +224,7 @@ export const LotesTab: React.FC<LotesTabProps> = ({
                         {lote.codigo}
                       </div>
                       <div className="text-[10px] text-slate-400">
-                        {lote.eventos?.length || 0} eventos • v{lote.versionPdf || 1}
+                        {lote.eventos?.length || 0} eventos
                       </div>
                     </td>
                     <td className="px-4 py-3.5">
@@ -263,13 +267,15 @@ export const LotesTab: React.FC<LotesTabProps> = ({
                       </span>
                     </td>
                     <td className="px-5 py-3.5 text-right space-x-1.5" onClick={(e) => e.stopPropagation()}>
-                      <button
-                        onClick={() => onAbrirQr(lote)}
-                        title="Ver Código QR"
-                        className="p-1.5 text-slate-500 hover:text-sky-600 hover:bg-slate-100 rounded-md transition-colors inline-flex"
-                      >
-                        <QrCode className="w-4 h-4" />
-                      </button>
+                      {puedeDocumentos && (
+                        <button
+                          onClick={() => onAbrirQr(lote)}
+                          title="Ver Código QR"
+                          className="p-1.5 text-slate-500 hover:text-sky-600 hover:bg-slate-100 rounded-md transition-colors inline-flex"
+                        >
+                          <QrCode className="w-4 h-4" />
+                        </button>
+                      )}
                       <button
                         onClick={() => onSeleccionarLote(lote)}
                         className="px-2.5 py-1 text-xs font-semibold text-sky-700 bg-sky-50 hover:bg-sky-100 rounded-md border border-sky-200 transition-colors inline-flex items-center space-x-1"

@@ -56,7 +56,8 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
   const esAdmin = esAdminMaestro(userEmail);
   const puedeRegistrar = esAdmin || verificarPermiso(perfilActual, 'registrarEventos');
   const puedeCerrar = esAdmin || verificarPermiso(perfilActual, 'cerrarLotes');
-  const puedeModificarSiembra = esAdmin || verificarPermiso(perfilActual, 'crearLotes') || verificarPermiso(perfilActual, 'gestionarEstanques');
+  const puedeModificarSiembra = esAdmin || verificarPermiso(perfilActual, 'corregirSiembra');
+  const puedeDocumentos = esAdmin || verificarPermiso(perfilActual, 'descargarDocumentosLote');
 
   const [lote, setLote] = useState<Lote>(loteInicial);
   const [modalEventoOpen, setModalEventoOpen] = useState(false);
@@ -237,6 +238,8 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
             </div>
 
             <div className="flex items-center space-x-2">
+              {puedeDocumentos && (
+              <>
               <button
                 onClick={() => {
                   if (onAbrirVistaPublica) {
@@ -275,6 +278,8 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
                 <FileText className="w-4 h-4 text-emerald-400" />
                 <span>Vista Previa</span>
               </button>
+              </>
+              )}
 
               <button
                 onClick={onClose}
@@ -331,6 +336,7 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
                   <>
                     <button
                       onClick={() => setModalEventoOpen(true)}
+                      hidden={!puedeRegistrar}
                       disabled={procesandoAccion || !puedeRegistrar}
                       title={puedeRegistrar ? 'Registrar nuevo evento' : 'Requiere autorización para registrar eventos'}
                       className={`inline-flex items-center space-x-1.5 px-4 py-2 rounded-lg text-xs font-semibold shadow-xs transition-colors ${
@@ -376,6 +382,7 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
                   !confirmarCierre ? (
                     <button
                       onClick={() => setConfirmarCierre(true)}
+                      hidden={!puedeCerrar}
                       disabled={procesandoAccion || !puedeCerrar}
                       title={puedeCerrar ? 'Cerrar lote y publicar PDF' : 'Requiere autorización de Carlos para cerrar lotes'}
                       className={`inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold shadow-xs transition-colors ${

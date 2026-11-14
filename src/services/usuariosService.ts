@@ -22,6 +22,18 @@ export const PERMISOS_DEFAULT_ADMIN: PermisosUsuario = {
   gestionarConfiguracion: true,
   administrarUsuarios: true,
   gestionarPedidos: true,
+  verInicio: true,
+  verLotes: true,
+  buscarLotes: true,
+  corregirSiembra: true,
+  descargarDocumentosLote: true,
+  verEntregas: true,
+  decidirSaldos: true,
+  gestionarComprobantes: true,
+  atenderNovedades: true,
+  verAnalitica: true,
+  exportarAnalitica: true,
+  verConfiguracion: true
 };
 
 export const PERMISOS_DEFAULT_OPERARIO: PermisosUsuario = {
@@ -32,7 +44,114 @@ export const PERMISOS_DEFAULT_OPERARIO: PermisosUsuario = {
   gestionarConfiguracion: false,
   administrarUsuarios: false,
   gestionarPedidos: false,
+  verInicio: false,
+  verLotes: false,
+  buscarLotes: false,
+  corregirSiembra: false,
+  descargarDocumentosLote: false,
+  verEntregas: false,
+  decidirSaldos: false,
+  gestionarComprobantes: false,
+  atenderNovedades: false,
+  verAnalitica: false,
+  exportarAnalitica: false,
+  verConfiguracion: false
 };
+
+// Permisos que existían antes de los permisos por pestaña
+const PERMISOS_BASE_ANTERIORES: PermisosUsuario = {
+  crearLotes: false,
+  registrarEventos: false,
+  cerrarLotes: false,
+  gestionarEstanques: false,
+  gestionarConfiguracion: false,
+  administrarUsuarios: false,
+  gestionarPedidos: false
+};
+
+// Si un perfil anterior no tiene un permiso por pestaña, toma este valor (true = visible como hasta
+// ahora; un nombre = el permiso del que se desprende). Igual que en las reglas de Firestore.
+export const HERENCIA_PERMISOS: Partial<Record<keyof PermisosUsuario, true | keyof PermisosUsuario>> = {
+  verInicio: true,
+  verLotes: true,
+  buscarLotes: true,
+  descargarDocumentosLote: true,
+  corregirSiembra: 'crearLotes',
+  verEntregas: 'gestionarPedidos',
+  decidirSaldos: 'gestionarPedidos',
+  gestionarComprobantes: 'gestionarPedidos',
+  atenderNovedades: 'gestionarPedidos',
+  verAnalitica: true,
+  exportarAnalitica: true,
+  verConfiguracion: true
+};
+
+// Permisos agrupados por pestaña (para la pantalla de Personal & Permisos y la visibilidad de pestañas)
+export interface GrupoPermisos {
+  pestana: 'inicio' | 'lotes' | 'pedidos' | 'analitica' | 'configuracion';
+  titulo: string;
+  ver: keyof PermisosUsuario | null; // permiso de ver la pestaña (casilla general)
+  acciones: { clave: keyof PermisosUsuario; etiqueta: string; detalle: string }[];
+}
+
+export const GRUPOS_PERMISOS: GrupoPermisos[] = [
+  {
+    pestana: 'inicio',
+    titulo: 'Inicio',
+    ver: 'verInicio',
+    acciones: [{ clave: 'crearLotes', etiqueta: 'Registrar nuevo lote', detalle: 'Crear lotes y registrar la siembra' }]
+  },
+  {
+    pestana: 'lotes',
+    titulo: 'Lotes',
+    ver: 'verLotes',
+    acciones: [
+      { clave: 'buscarLotes', etiqueta: 'Buscar y filtrar', detalle: 'Buscador y filtros de la lista de lotes' },
+      { clave: 'registrarEventos', etiqueta: 'Registrar eventos', detalle: 'Agua, alimentación, biometría, cosecha...' },
+      { clave: 'corregirSiembra', etiqueta: 'Corregir siembra / piscina', detalle: 'Queda como evento de corrección' },
+      { clave: 'cerrarLotes', etiqueta: 'Cerrar y sellar', detalle: 'Cosecha final y sellado del lote' },
+      { clave: 'descargarDocumentosLote', etiqueta: 'Descargar PDF y QR', detalle: 'Certificado, etiqueta QR y vista pública' }
+    ]
+  },
+  {
+    pestana: 'pedidos',
+    titulo: 'Entregas',
+    ver: 'verEntregas',
+    acciones: [
+      { clave: 'gestionarPedidos', etiqueta: 'Crear y asignar órdenes', detalle: 'Clientes, reservas, repartidor y estados' },
+      { clave: 'decidirSaldos', etiqueta: 'Decidir saldos y corregir entregas', detalle: 'Reprogramar, liberar saldo, corregir cantidades' },
+      { clave: 'gestionarComprobantes', etiqueta: 'Emitir y anular comprobantes', detalle: 'Documentación de entrega' },
+      { clave: 'atenderNovedades', etiqueta: 'Atender novedades y ajustes', detalle: 'Novedades del repartidor y solicitudes de ajuste' }
+    ]
+  },
+  {
+    pestana: 'analitica',
+    titulo: 'Analítica',
+    ver: 'verAnalitica',
+    acciones: [{ clave: 'exportarAnalitica', etiqueta: 'Exportar datos', detalle: 'Descargar los datos en CSV' }]
+  },
+  {
+    pestana: 'configuracion',
+    titulo: 'Configuración',
+    ver: 'verConfiguracion',
+    acciones: [
+      { clave: 'gestionarEstanques', etiqueta: 'Estanques', detalle: 'Crear y modificar piscinas' },
+      { clave: 'gestionarConfiguracion', etiqueta: 'Rangos de agua y ficha nutricional', detalle: 'Límites y ficha del producto' }
+    ]
+  }
+];
+
+/**
+ * Valor efectivo de un permiso guardado (con la herencia de los perfiles anteriores)
+ */
+export function valorPermiso(permisos: Partial<PermisosUsuario> | undefined, clave: keyof PermisosUsuario): boolean {
+  const p = permisos || {};
+  if (typeof p[clave] === 'boolean') return p[clave] as boolean;
+  const h = HERENCIA_PERMISOS[clave];
+  if (h === true) return true;
+  if (h) return Boolean(p[h]);
+  return false;
+}
 
 /**
  * Indica si un ID de documento corresponde a un perfil creado por las sesiones simuladas de
@@ -90,7 +209,9 @@ export function normalizarPerfil(data: Partial<UsuarioPerfil>, uid: string): Usu
     granjaId: data.granjaId || GRANJA_ID_PREDETERMINADA,
     cargo,
     estado: esAdmin ? 'activo' : (data.estado || 'pendiente'),
-    permisos: esAdmin ? PERMISOS_DEFAULT_ADMIN : { ...PERMISOS_DEFAULT_OPERARIO, ...(data.permisos || {}) },
+    // Solo se completan los permisos originales: los permisos por pestaña que falten se resuelven por
+    // herencia (valorPermiso), igual que en las reglas
+    permisos: esAdmin ? PERMISOS_DEFAULT_ADMIN : { ...PERMISOS_BASE_ANTERIORES, ...(data.permisos || {}) },
     creadoEn: data.creadoEn || new Date().toISOString(),
     actualizadoEn: data.actualizadoEn || new Date().toISOString()
   };
@@ -160,7 +281,16 @@ export function verificarPermiso(
   if (esAdministrador(perfil)) return true;
   if (perfil.estado !== 'activo' || perfil.rol === 'consulta') return false;
   if (!tieneRol(perfil, 'operator')) return false;
-  return Boolean(perfil.permisos && perfil.permisos[permiso]);
+  return valorPermiso(perfil.permisos, permiso);
+}
+
+/**
+ * La persona ve la pestaña si tiene su permiso de ver o alguna de sus acciones
+ */
+export function veePestana(perfil: UsuarioPerfil | null, pestana: GrupoPermisos['pestana']): boolean {
+  const g = GRUPOS_PERMISOS.find((x) => x.pestana === pestana);
+  if (!g) return false;
+  return (g.ver ? verificarPermiso(perfil, g.ver) : false) || g.acciones.some((a) => verificarPermiso(perfil, a.clave));
 }
 
 const clavePerfil = (uid: string) => `cultivos_lore_perfil_${uid}`;

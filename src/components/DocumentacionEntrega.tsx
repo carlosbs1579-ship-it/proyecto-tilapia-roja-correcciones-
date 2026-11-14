@@ -30,10 +30,13 @@ export const DocumentacionEntrega: React.FC<{
   uidActual?: string;
   procesando: boolean;
   ejecutar: Ejecutar;
-}> = ({ orden: o, uidActual, procesando, ejecutar }) => {
+  puedeEmitir?: boolean; // permiso "Emitir y anular comprobantes"
+}> = ({ orden: o, uidActual, procesando, ejecutar, puedeEmitir = true }) => {
   const [bloques, setBloques] = useState<(ComprobanteEntrega | BloqueAnulacion)[]>([]);
   const { comprobantes, anulaciones } = separarBloques(bloques);
   const [anulando, setAnulando] = useState<string | null>(null);
+  // Registros que la orden dice haber emitido o anulado: si existen menos bloques, se borró alguno
+  const bloquesEsperados = o.historial.filter((e) => e.tipo === 'Comprobante emitido' || e.tipo === 'Comprobante anulado').length;
   const [motivoAnulacion, setMotivoAnulacion] = useState('');
   const [errorLectura, setErrorLectura] = useState('');
   const [verificacion, setVerificacion] = useState<Record<string, { ok: boolean; mensaje: string }>>({});
@@ -69,7 +72,7 @@ export const DocumentacionEntrega: React.FC<{
       await anularComprobante(c.id, motivoAnulacion);
       setAnulando(null);
       setMotivoAnulacion('');
-    }, `Comprobante v${c.version} anulado. Se conserva en la cadena marcado como anulado.`);
+    }, `Comprobante N.º ${c.version} anulado. Se conserva en la cadena marcado como anulado.`);
 
   const verificar = async (c: ComprobanteEntrega) => {
     const r = await verificarComprobante(c, { orden: o });
@@ -99,6 +102,7 @@ export const DocumentacionEntrega: React.FC<{
         </button>
         <button
           type="button"
+          hidden={!puedeEmitir}
           disabled={procesando || problemas.length > 0}
           onClick={() => ejecutar(async () => void (await emitirComprobanteDefinitivo(o.id)), 'Comprobante definitivo emitido.')}
           className="flex items-center space-x-1 px-2.5 py-1.5 rounded bg-sky-700 text-white hover:bg-sky-800 disabled:opacity-40 font-semibold"
@@ -133,8 +137,12 @@ export const DocumentacionEntrega: React.FC<{
           </p>
         )}
 
-      {comprobantes.length > 0 && (
-        <p className={verificarCadena(bloques).integra ? 'text-emerald-700' : 'text-red-600'}>{verificarCadena(bloques).mensaje}</p>
+      {(comprobantes.length > 0 || bloquesEsperados > 0) && (
+        <p className={verificarCadena(bloques).integra && bloques.length >= bloquesEsperados ? 'text-emerald-700' : 'text-red-600'}>
+          {bloques.length < bloquesEsperados
+            ? `Cadena incompleta: el historial de la orden registra ${bloquesEsperados} registro(s), pero solo existen ${bloques.length}. Falta el más reciente o fue borrado.`
+            : verificarCadena(bloques).mensaje}
+        </p>
       )}
       {comprobantes.length > 0 && (
         <ul className="divide-y divide-slate-100 border border-slate-100 rounded">
@@ -142,7 +150,7 @@ export const DocumentacionEntrega: React.FC<{
             <li key={c.id} className="p-2 space-y-1">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="text-slate-700">
-                  <strong>v{c.version}</strong>
+                  <strong>Comprobante N.º {c.version}</strong>
                   {anulaciones[c.id] && <strong className="ml-1 px-1 rounded bg-red-100 text-red-700">ANULADO</strong>} · {formatearFechaColombia(c.emitidoEn)} ·{' '}
                   {c.estadoEntrega === 'entregado' ? 'Entrega completa' : 'Entrega parcial'} · entregado {num(c.cantidadEntregada)} {c.unidad}
                   {c.cantidadPendiente > 0 && ` · pendiente ${num(c.cantidadPendiente)} ${c.unidad}`}
@@ -162,7 +170,7 @@ export const DocumentacionEntrega: React.FC<{
                   <button type="button" onClick={() => verificar(c)} className="px-1.5 py-0.5 rounded border border-slate-300 hover:bg-slate-100">
                     Verificar
                   </button>
-                  {!anulaciones[c.id] && (
+                  {!anulaciones[c.id] && puedeEmitir && (
                     <button
                       type="button"
                       onClick={() => {
@@ -178,7 +186,7 @@ export const DocumentacionEntrega: React.FC<{
               </div>
               {anulaciones[c.id] && (
                 <p className="text-red-700">
-                  Anulado el {formatearFechaColombia(anulaciones[c.id].emitidoEn)} (bloque v{anulaciones[c.id].version}). Motivo: {anulaciones[c.id].motivo}
+                  Anulado el {formatearFechaColombia(anulaciones[c.id].emitidoEn)} (registro N.º {anulaciones[c.id].version} de la cadena). Motivo: {anulaciones[c.id].motivo}
                 </p>
               )}
               {anulando === c.id && !anulaciones[c.id] && (

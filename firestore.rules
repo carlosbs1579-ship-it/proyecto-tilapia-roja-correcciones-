@@ -68,6 +68,25 @@ service cloud.firestore {
             && perfil().get('permisos', {}).get(permiso, false) == true);
     }
 
+    // Permisos por pestaña: si el perfil no tiene la clave (perfiles anteriores), hereda el permiso
+    // del que se desprende, para que nadie pierda acceso hasta que el administrador lo cambie
+    function permisoDe(p, clave, padre) {
+      return p.get('permisos', {}).get(clave, padre == true || p.get('permisos', {}).get(padre, false) == true) == true;
+    }
+
+    function operadorActivo(p) {
+      return p.get('estado', '') == 'activo' && p.get('rol', '') != 'consulta' && rolesDe(p).hasAny(['operator']);
+    }
+
+    // Puede leer la lista de lotes quien ve alguna pestaña que los usa (Inicio, Lotes, Analítica o Entregas)
+    function leeLotes() {
+      let p = get(perfilPath()).data;
+      return esAdminGranja()
+        || (p.get('estado', '') == 'activo' && rolesDe(p).hasAny(['operator'])
+            && (permisoDe(p, 'verInicio', true) || permisoDe(p, 'verLotes', true)
+                || permisoDe(p, 'verAnalitica', true) || permisoDe(p, 'verEntregas', 'gestionarPedidos')));
+    }
+
     function isValidId(id) {
       return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
@@ -100,7 +119,9 @@ service cloud.firestore {
         && e.tipo != 'Siembra'
         && e.hashAnterior == (antes.size() == 0 ? '0000000000000000000000000000000000000000000000000000000000000000' : antes[antes.size() - 1].hash)
         && e.hash is string && e.hash.size() == 64
-        && e.registradoPor is string && e.registradoPor.lower() == correoSesion();
+        && e.registradoPor is string && e.registradoPor.lower() == correoSesion()
+        && (e.tipo != 'Corrección' || e.get('datos', {}).get('ambito', '') != 'siembra'
+            || isMasterAdmin() || esAdminGranja() || permisoDe(perfil(), 'corregirSiembra', 'crearLotes'));
     }
 
     function eventosSoloCrecen() {
@@ -112,9 +133,43 @@ service cloud.firestore {
             && eventoNuevoValido(despues[antes.size()], antes));
     }
 
+    // Datos de siembra: solo cambian con un evento "Corrección" de siembra que mencione cada campo
+    // cambiado (el evento guarda "anterior → nuevo" y queda en la cadena de hashes)
+    function siembraCoherente(cambios, ev) {
+      let camposSiembra = ['cantidadSembrada', 'estanque', 'pesoInicialPromedioG', 'proveedorAlevinos', 'observacionesIniciales'];
+      let d = ev == null ? {} : ev.get('datos', {});
+      return !cambios.hasAny(camposSiembra)
+        || (ev.tipo == 'Corrección' && d.get('ambito', '') == 'siembra'
+            && cambios.hasOnly(d.keys().concat(['eventos', 'resumen', 'actualizadoEn'])));
+    }
+
+    // La cosecha guardada (de la que dependen las reservas) solo sube con un evento "Cosecha", en
+    // exactamente lo que registra ese evento
+    function cosechaCoherente(a, n, ev) {
+      let r0 = a.get('resumen', {});
+      let r1 = n.get('resumen', {});
+      let db = r1.get('biomasaCosechadaKg', 0) - r0.get('biomasaCosechadaKg', 0);
+      let dp = r1.get('pecesCosechados', 0) - r0.get('pecesCosechados', 0);
+      return (ev != null && ev.tipo == 'Cosecha')
+        ? (igualCantidad(db, ev.get('datos', {}).get('biomasaCosechadaKg', 0))
+            && igualCantidad(dp, ev.get('datos', {}).get('pecesCosechados', 0)))
+        : (igualCantidad(db, 0) && igualCantidad(dp, 0));
+    }
+
+    function loteActivoCoherente() {
+      let a = resource.data;
+      let n = request.resource.data;
+      let cambios = n.diff(a).affectedKeys();
+      let ev = n.get('eventos', []).size() > a.get('eventos', []).size() ? n.eventos[n.eventos.size() - 1] : null;
+      return cambios.hasOnly(['eventos', 'resumen', 'actualizadoEn', 'cantidadSembrada', 'estanque', 'pesoInicialPromedioG',
+                              'proveedorAlevinos', 'observacionesIniciales'])
+        && siembraCoherente(cambios, ev)
+        && cosechaCoherente(a, n, ev);
+    }
+
     match /lotes/{codigo} {
       allow get: if true;
-      allow list: if esAdminGranja() || tieneRol('operator');
+      allow list: if leeLotes();
 
       // Creación: solo lotes activos nuevos, de la granja de quien los crea, con un único evento de siembra
       allow create: if (isMasterAdmin() || (isSignedIn() && tienePermiso('crearLotes')))
@@ -122,7 +177,9 @@ service cloud.firestore {
                     && loteDeMiGranja(request.resource.data)
                     && request.resource.data.eventos.size() == 1
                     && request.resource.data.eventos[0].tipo == 'Siembra'
-                    && request.resource.data.eventos[0].indice == 0;
+                    && request.resource.data.eventos[0].indice == 0
+                    && request.resource.data.get('resumen', {}).get('biomasaCosechadaKg', 0) == 0
+                    && request.resource.data.get('resumen', {}).get('pecesCosechados', 0) == 0;
 
       // Modificación o cierre: Solo permitido si el lote actualmente está ACTIVO (no sellado)
       // Una vez cerrado/sellado (resource.data.estado == 'cerrado'), queda estrictamente bloqueado.
@@ -133,11 +190,13 @@ service cloud.firestore {
                       // Caso A: Incorporar eventos o corregir alevinos/piscina mientras el lote está activo
                       (request.resource.data.estado == 'activo'
                         && (isMasterAdmin() || (isSignedIn() && (tienePermiso('registrarEventos') || tienePermiso('crearLotes'))))
-                        && eventosSoloCrecen())
+                        && eventosSoloCrecen()
+                        && loteActivoCoherente())
                       // Caso B: Cerrar o sellar el lote activo, sin tocar sus eventos
                       || (request.resource.data.estado == 'cerrado'
                         && (isMasterAdmin() || (isSignedIn() && tienePermiso('cerrarLotes')))
-                        && request.resource.data.get('eventos', []) == resource.data.get('eventos', []))
+                        && request.resource.data.get('eventos', []) == resource.data.get('eventos', [])
+                        && cosechaCoherente(resource.data, request.resource.data, null))
                     );
 
       // Eliminación: solo el Administrador Maestro y nunca un lote sellado
@@ -178,6 +237,45 @@ service cloud.firestore {
 
     function puedeGestionarPedidos() {
       return gestionaPedidos(get(perfilPath()).data);
+    }
+
+    // Permiso de la pestaña Entregas (ver, decidir saldos, comprobantes, novedades); hereda de
+    // "Gestionar pedidos" en los perfiles anteriores
+    function permisoPedidos(p, clave) {
+      return isMasterAdmin()
+        || (p.get('estado', '') == 'activo'
+            && (p.get('rol', '') == 'admin' || (operadorActivo(p) && permisoDe(p, clave, 'gestionarPedidos'))));
+    }
+
+    function permisoPedidosEn(granja, clave) {
+      let p = get(perfilPath()).data;
+      let permisos = p.get('permisos', {});
+      return isMasterAdmin()
+        || (p.get('estado', '') == 'activo'
+            && p.get('granjaId', 'cultivos-lore') == granja
+            && (p.get('rol', '') == 'admin'
+                || (p.get('rol', '') != 'consulta'
+                    && rolesDe(p).hasAny(['operator'])
+                    && permisos.get(clave, permisos.get('gestionarPedidos', false)) == true)));
+    }
+
+    function vePedidos() {
+      let p = get(perfilPath()).data;
+      return permisoPedidos(p, 'verEntregas') || gestionaPedidos(p);
+    }
+
+    // Permiso que exige cada acción del operador sobre una orden
+    function permisoDeEvento(tipo) {
+      return {
+        'Reprogramación de saldo': 'decidirSaldos',
+        'Cierre con saldo liberado': 'decidirSaldos',
+        'Corrección de entrega': 'decidirSaldos',
+        'Comprobante emitido': 'gestionarComprobantes',
+        'Comprobante anulado': 'gestionarComprobantes',
+        'Atención de novedad': 'atenderNovedades',
+        'Ajuste rechazado': 'atenderNovedades',
+        'Ajuste aplicado': 'atenderNovedades'
+      }.get(tipo, 'gestionarPedidos');
     }
 
     function granjaPermitida(granja) {
@@ -352,16 +450,16 @@ service cloud.firestore {
 
     match /inventarioLotes/{codigo} {
       // get sobre un inventario que aún no existe: lo hace la transacción antes de la primera reserva
-      allow get: if puedeGestionarPedidos() && (resource == null || granjaPermitida(resource.data.granjaId));
-      allow list: if puedeGestionarPedidos() && granjaPermitida(resource.data.granjaId);
+      allow get: if vePedidos() && (resource == null || granjaPermitida(resource.data.granjaId));
+      allow list: if vePedidos() && granjaPermitida(resource.data.granjaId);
       allow create: if inventarioCreacionValido(codigo);
       allow update: if inventarioActualizacionValida(codigo);
       allow delete: if false;
     }
 
     match /clientes/{clienteId} {
-      allow get: if puedeGestionarPedidos() && (resource == null || granjaPermitida(resource.data.granjaId));
-      allow list: if puedeGestionarPedidos() && granjaPermitida(resource.data.granjaId);
+      allow get: if vePedidos() && (resource == null || granjaPermitida(resource.data.granjaId));
+      allow list: if vePedidos() && granjaPermitida(resource.data.granjaId);
 
       allow create: if request.resource.data.keys().hasOnly(['granjaId', 'nombre', 'contacto', 'direccion', 'creadoPor', 'creadoPorUid', 'creadoEn', 'actualizadoEn'])
         && gestionaPedidosEn(request.resource.data.granjaId)
@@ -512,7 +610,7 @@ service cloud.firestore {
     }
 
     function puedeVerOrden(orden) {
-      return (puedeGestionarPedidos() && granjaPermitida(orden.granjaId))
+      return (vePedidos() && granjaPermitida(orden.granjaId))
         || (orden.repartidorUid == request.auth.uid && tieneRol('courier'));
     }
 
@@ -701,7 +799,7 @@ service cloud.firestore {
         && despues.historial.size() == n + 1
         && eventoOrdenValido(evento, n)
         && despues.historial[0:n] == antes.historial
-        && gestionaPedidosEn(antes.granjaId)
+        && permisoPedidosEn(antes.granjaId, permisoDeEvento(tipo))
         && ((tipo in ['Modificación', 'Cambio de repartidor', 'Asignación y reserva'] && antes.estado == 'borrador'
               && borradorValido(id, antes, despues, cambios))
             || (tipo in ['Cambio de estado', 'Cambio de repartidor'] && antes.estado != 'borrador'
@@ -766,7 +864,7 @@ service cloud.firestore {
         && c.keys().hasOnly(['id', 'version', 'tipoBloque', 'ordenId', 'granjaId', 'tokenConsulta', 'emitidoEn', 'emitidoPorUid',
                              'empresa', 'anulaA', 'versionAnulada', 'motivo', 'eventoEntregaId', 'hashAnterior', 'hashComprobante'])
         && c.tipoBloque == 'anulacion'
-        && gestionaPedidosEn(c.granjaId)
+        && permisoPedidosEn(c.granjaId, 'gestionarComprobantes')
         && c.emitidoPorUid == request.auth.uid
         && a.get('tipoBloque', 'entrega') == 'entrega'
         && a.ordenId == c.ordenId
@@ -811,7 +909,7 @@ service cloud.firestore {
                              'cantidadAutorizada', 'cantidadEntregada', 'cantidadLiberada', 'cantidadPendiente', 'procedencias',
                              'entregas', 'novedades', 'ajustes', 'eventoEntregaId', 'eventoEntregaIndice', 'eventosUsados',
                              'hashEventos', 'hashAnterior', 'hashComprobante'])
-        && gestionaPedidosEn(o.granjaId)
+        && permisoPedidosEn(o.granjaId, 'gestionarComprobantes')
         && c.granjaId == o.granjaId
         && c.emitidoPorUid == request.auth.uid
         && c.tokenConsulta == o.tokenConsulta
@@ -847,7 +945,7 @@ service cloud.firestore {
         && n.token == token
         && token.size() >= 20
         && (resource == null || (resource.data.ordenId == n.ordenId && resource.data.granjaId == n.granjaId))
-        && gestionaPedidosEn(n.granjaId)
+        && permisoPedidosEn(n.granjaId, 'gestionarComprobantes')
         && d.addedKeys().hasOnly([c.eventoEntregaId])
         && d.addedKeys().size() == 1
         && d.changedKeys().size() == 0
@@ -862,7 +960,7 @@ service cloud.firestore {
     match /comprobantes/{comprobanteId} {
       // Lectura pública de UN comprobante conociendo su identificador aleatorio; listar, solo el operador
       allow get: if true;
-      allow list: if puedeGestionarPedidos() && granjaPermitida(resource.data.granjaId);
+      allow list: if vePedidos() && granjaPermitida(resource.data.granjaId);
       allow create: if request.resource.data.get('tipoBloque', 'entrega') == 'anulacion'
                       ? anulacionValida(comprobanteId)
                       : comprobanteValido(comprobanteId);
@@ -1010,8 +1108,8 @@ service cloud.firestore {
 
     match /fotosEntrega/{fotoId} {
       // La ven el operador de la granja y el repartidor que la tomó; no hay lectura pública
-      allow get: if isSignedIn() && (resource.data.subidaPorUid == request.auth.uid || gestionaPedidosEn(resource.data.granjaId));
-      allow list: if isSignedIn() && gestionaPedidosEn(resource.data.granjaId);
+      allow get: if isSignedIn() && (resource.data.subidaPorUid == request.auth.uid || permisoPedidosEn(resource.data.granjaId, 'verEntregas'));
+      allow list: if isSignedIn() && permisoPedidosEn(resource.data.granjaId, 'verEntregas');
       allow create: if isSignedIn() && fotoValida(fotoId);
       // Nadie la modifica ni la borra desde la app: la borra Firestore al vencer (TTL)
       allow update, delete: if false;
@@ -1165,7 +1263,7 @@ service cloud.firestore {
       allow read: if (isSignedIn() && request.auth.uid == userId) || esAdminGranja();
 
       // Quien gestiona pedidos consulta los repartidores activos de su granja para asignarlos
-      allow list: if puedeGestionarPedidos()
+      allow list: if vePedidos()
         && resource.data.get('roles', []).hasAny(['courier'])
         && resource.data.get('estado', '') == 'activo'
         && granjaPermitida(resource.data.get('granjaId', 'cultivos-lore'));

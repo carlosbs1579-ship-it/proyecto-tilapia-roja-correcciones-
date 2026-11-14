@@ -361,3 +361,58 @@ describe('Privacidad y configuración (fase 6)', () => {
     await assertSucceeds(setDoc(doc(como('subadmin'), 'configuracion', 'general'), { rangosReferencia: { ph: 6 } }, { merge: true }));
   });
 });
+
+describe('Lote activo: cosecha y siembra coherentes (revisión de hashes)', () => {
+  const lote = (db) => doc(db, 'lotes', 'L-ACTIVO');
+  const conResumen = async (resumen) =>
+    env.withSecurityRulesDisabled((ctx) => updateDoc(doc(ctx.firestore(), 'lotes', 'L-ACTIVO'), { resumen, cantidadSembrada: 2000 }));
+  const cosecha = (kg, peces, resumenNuevo) =>
+    updateDoc(lote(como('operador')), {
+      eventos: [...LOTE_ACTIVO.eventos, eventoNuevo('operador', { tipo: 'Cosecha', datos: { biomasaCosechadaKg: kg, pecesCosechados: peces } })],
+      resumen: resumenNuevo
+    });
+
+  test('inflar la cosecha guardada sin un evento Cosecha se rechaza (evita sobre-reservar)', async () => {
+    await conResumen({ biomasaCosechadaKg: 300, pecesCosechados: 600 });
+    await assertFails(updateDoc(lote(como('operador')), { 'resumen.biomasaCosechadaKg': 5000 }));
+    await assertFails(updateDoc(lote(como('operador')), {
+      eventos: [...LOTE_ACTIVO.eventos, eventoNuevo('operador')],
+      resumen: { biomasaCosechadaKg: 5000, pecesCosechados: 600 }
+    }));
+  });
+
+  test('un evento Cosecha sube la cosecha exactamente en lo que registra', async () => {
+    await conResumen({ biomasaCosechadaKg: 300, pecesCosechados: 600 });
+    await assertFails(cosecha(100, 200, { biomasaCosechadaKg: 900, pecesCosechados: 800 }));
+    await assertSucceeds(cosecha(100, 200, { biomasaCosechadaKg: 400, pecesCosechados: 800 }));
+  });
+
+  test('los datos de siembra solo cambian con una Corrección de siembra que registre el mismo valor', async () => {
+    await conResumen({ biomasaCosechadaKg: 0, pecesCosechados: 0 });
+    const corr = (datos) => eventoNuevo('operador', { tipo: 'Corrección', datos: { ambito: 'siembra', ...datos } });
+    await assertFails(updateDoc(lote(como('operador')), { cantidadSembrada: 2500 }));
+    await assertFails(updateDoc(lote(como('operador')), { eventos: [...LOTE_ACTIVO.eventos, eventoNuevo('operador')], cantidadSembrada: 2500 }));
+    await assertFails(updateDoc(lote(como('operador')), { eventos: [...LOTE_ACTIVO.eventos, corr({ estanque: 'E1 → E2' })], cantidadSembrada: 2500 }));
+    await assertSucceeds(updateDoc(lote(como('operador')), { eventos: [...LOTE_ACTIVO.eventos, corr({ cantidadSembrada: '2000 → 2500' })], cantidadSembrada: 2500 }));
+  });
+
+  test('al sellar, la cosecha guardada no cambia', async () => {
+    await conResumen({ biomasaCosechadaKg: 300, pecesCosechados: 600 });
+    await assertFails(updateDoc(lote(como('operador')), { estado: 'cerrado', resumen: { biomasaCosechadaKg: 999, pecesCosechados: 600 } }));
+    await assertSucceeds(updateDoc(lote(como('operador')), { estado: 'cerrado', fechaCierre: '2026-11-14' }));
+  });
+
+  test('un lote nuevo no puede traer cosecha', async () => {
+    await assertFails(setDoc(doc(como('operador'), 'lotes', 'L-COS'), { ...LOTE_ACTIVO, codigo: 'L-COS', resumen: { biomasaCosechadaKg: 50 } }));
+  });
+
+  test('sin ningún permiso de "ver", un operador no lista los lotes', async () => {
+    await env.withSecurityRulesDisabled((ctx) =>
+      setDoc(doc(ctx.firestore(), 'usuarios', 'operador'), {
+        ...PERFILES.operador,
+        permisos: { ...PERFILES.operador.permisos, verInicio: false, verLotes: false, verAnalitica: false, verEntregas: false }
+      })
+    );
+    await assertFails(getDocs(collection(como('operador'), 'lotes')));
+  });
+});

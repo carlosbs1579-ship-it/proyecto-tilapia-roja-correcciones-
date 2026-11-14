@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { quienRegistro } from '../services/usuariosService';
 import { Camera, ShieldAlert, ShieldCheck } from 'lucide-react';
 import { OrdenEntrega } from '../types';
 import { DIAS_RETENCION_FOTOS, FotoEntrega, escucharFotosOrden, verificarFoto } from '../services/fotosService';
@@ -47,7 +48,7 @@ export const FotosEntregaOrden: React.FC<{ orden: OrdenEntrega }> = ({ orden: o 
             )}
             <div className="space-y-1 min-w-0 flex-1">
               <span className="block font-semibold text-slate-700">
-                Entrega · {formatearFechaColombia(e.fecha)} · {e.registradoPor}
+                Entrega · {formatearFechaColombia(e.fecha)} · {quienRegistro(e)}
               </span>
               {foto ? (
                 <span className="block text-slate-500">

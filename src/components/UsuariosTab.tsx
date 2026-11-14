@@ -43,6 +43,7 @@ import {
 } from '../services/usuariosService';
 
 type EdicionUsuario = {
+  displayName: string;
   roles: RolFuncional[];
   cargos: Partial<Record<RolFuncional, string>>;
   cargo: string;
@@ -76,6 +77,7 @@ function edicionDesdePerfil(u: UsuarioPerfil): EdicionUsuario {
     permisos[clave] = valorPermiso(u.permisos, clave);
   }
   return {
+    displayName: u.displayName || '',
     roles: [...u.roles],
     cargos: { ...u.cargos },
     cargo: u.cargo || '',
@@ -606,10 +608,26 @@ export const UsuariosTab: React.FC<UsuariosTabProps> = ({
                               </span>
                             )}
                           </div>
-                          <p className="text-[11px] text-slate-400 mt-0.5">
-                            UID: <span className="font-mono">{u.uid.substring(0, 16)}...</span> • Registrado:{' '}
-                            {u.creadoEn ? u.creadoEn.substring(0, 10) : 'Fecha inicial'}
+                          <p className="text-[11px] text-slate-400 mt-0.5" title={`Identificador interno de la cuenta (UID): ${u.uid}`}>
+                            Registrado: {u.creadoEn ? u.creadoEn.substring(0, 10) : 'Fecha inicial'}
                           </p>
+                          {editable && (
+                            <label className="mt-1.5 flex flex-wrap items-center gap-2 text-[11px] text-slate-600">
+                              <span className="font-semibold">Nombre visible:</span>
+                              <input
+                                type="text"
+                                maxLength={60}
+                                value={ed.displayName}
+                                placeholder="Nombre y apellido"
+                                onChange={(e) => {
+                                  const valor = e.target.value;
+                                  setEdicionUsuarios((prev) => ({ ...prev, [u.uid]: { ...prev[u.uid], displayName: valor } }));
+                                }}
+                                className="px-2 py-1 border border-slate-300 rounded text-xs w-56"
+                              />
+                              <span className="text-slate-400">Se muestra en historiales y PDF en lugar del correo.</span>
+                            </label>
+                          )}
                         </div>
                       </div>
 

@@ -17,6 +17,7 @@ import {
   getFechaHoyBogota
 } from '../utils/constants';
 import { calcularHashEvento, HASH_GENESIS } from './hashService';
+import { nombreRegistro } from './usuariosService';
 import { recalcularResumenLote } from './calculosService';
 import { generarYSubirPdfLote } from './pdfService';
 import { construirUrlPublicaPdf, construirUrlPublicaTrazabilidad } from './qrService';
@@ -130,6 +131,7 @@ export async function crearNuevoLote(params: ParamsNuevoLote): Promise<Lote> {
       descripcion: descripcionSiembra,
       datos: datosSiembra,
       registradoPor: userEmail,
+        ...nombreRegistro(),
       registradoEn: fechaIsoAhora,
       hashAnterior: HASH_GENESIS
     });
@@ -142,6 +144,7 @@ export async function crearNuevoLote(params: ParamsNuevoLote): Promise<Lote> {
       descripcion: descripcionSiembra,
       datos: datosSiembra,
       registradoPor: userEmail,
+        ...nombreRegistro(),
       registradoEn: fechaIsoAhora,
       hashAnterior: HASH_GENESIS,
       hash: hashSiembra
@@ -262,6 +265,7 @@ export async function registrarEventoEnLote(params: ParamsAgregarEvento): Promis
         descripcion: descripcion || '',
         datos: datos || {},
         registradoPor: userEmail,
+        ...nombreRegistro(),
         registradoEn: fechaIsoAhora,
         hashAnterior
       });
@@ -274,6 +278,7 @@ export async function registrarEventoEnLote(params: ParamsAgregarEvento): Promis
         descripcion: descripcion || '',
         datos: datos || {},
         registradoPor: userEmail,
+        ...nombreRegistro(),
         registradoEn: fechaIsoAhora,
         hashAnterior,
         hash
@@ -396,6 +401,7 @@ export async function modificarDatosSiembraOPiscina(params: ParamsModificarSiemb
         descripcion,
         datos,
         registradoPor: userEmail,
+        ...nombreRegistro(),
         registradoEn: fechaIsoAhora,
         hashAnterior
       });
@@ -409,6 +415,7 @@ export async function modificarDatosSiembraOPiscina(params: ParamsModificarSiemb
           descripcion,
           datos,
           registradoPor: userEmail,
+        ...nombreRegistro(),
           registradoEn: fechaIsoAhora,
           hashAnterior,
           hash

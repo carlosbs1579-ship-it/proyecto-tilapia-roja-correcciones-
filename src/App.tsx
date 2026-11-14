@@ -12,7 +12,8 @@ import {
   borrarCopiaPerfil,
   esAdminMaestro,
   funcionesDisponibles,
-  verificarPermiso
+  verificarPermiso,
+  establecerNombreSesion
 } from './services/usuariosService';
 
 import { Navbar, TabTipo, tabsDeFuncion } from './components/Navbar';
@@ -134,6 +135,11 @@ export default function App() {
       return guardada && funciones.includes(guardada) ? guardada : null;
     });
   }, [usuario?.uid, clavefunciones]);
+
+  // Los registros nuevos guardan el nombre visible de quien los hace (no solo el correo)
+  useEffect(() => {
+    establecerNombreSesion(perfilUsuario?.displayName);
+  }, [perfilUsuario?.displayName]);
 
   // Mantener la pestaña dentro de las de la función activa
   useEffect(() => {

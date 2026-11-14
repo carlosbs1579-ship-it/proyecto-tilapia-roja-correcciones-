@@ -27,7 +27,7 @@ import {
   UsuarioPerfil
 } from '../types';
 import { GRANJA_ID_PREDETERMINADA, compactarFecha, getFechaHoyBogota } from '../utils/constants';
-import { nombreFuncion, normalizarPerfil } from './usuariosService';
+import { nombreFuncion, normalizarPerfil, nombreRegistro } from './usuariosService';
 
 // Las órdenes de entrega viven en ordenes/{id} y nunca modifican el documento del lote: solo leen
 // su cosecha registrada. Lo reservado y entregado de cada lote se acumula en inventarioLotes/{lote}
@@ -189,6 +189,7 @@ export function nuevoEvento(
     fecha: new Date().toISOString(),
     registradoPor: email,
     registradoPorUid: uid,
+    ...nombreRegistro(),
     descripcion,
     datos,
     eventoId: generarId('ev'),

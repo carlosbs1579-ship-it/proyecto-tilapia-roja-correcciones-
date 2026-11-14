@@ -173,7 +173,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     <UserIcon className="w-4 h-4" />
                   </div>
                   <div className="hidden lg:block text-left text-xs">
-                    <p className="font-semibold text-slate-200 truncate max-w-[150px]">{usuario.email}</p>
+                    <p className="font-semibold text-slate-200 truncate max-w-[150px]" title={usuario.email || undefined}>{perfilUsuario?.displayName || usuario.email}</p>
                     <p className={`text-[10px] flex items-center truncate max-w-[150px] ${
                       funcionActiva === 'admin'
                         ? 'text-amber-400 font-bold'

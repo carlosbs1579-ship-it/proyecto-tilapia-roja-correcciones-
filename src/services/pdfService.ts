@@ -1,6 +1,7 @@
 import { Lote, ConfiguracionGeneral, ComprobanteEntrega, BloqueAnulacion } from '../types';
 import { construirUrlConsultaEntrega, construirUrlPublicaPdf, generarQrDataUrl } from './qrService';
 import { verificarIntegridadLote } from './hashService';
+import { quienRegistro } from './usuariosService';
 import { formatearFechaColombia, getFechaHoyBogota, ocultarCorreo } from '../utils/constants';
 import { evaluarParametroAgua } from './calculosService';
 
@@ -244,7 +245,7 @@ export async function generarLotePdfBlob(
       }
 
       const estadoParam = fuera.length > 0 ? `ALERTA (${fuera.length})` : 'ÓPTIMO';
-      return [ev.fechaEvento, t, ox, ph, am, nit, sec, estadoParam, ocultarCorreo(ev.registradoPor)];
+      return [ev.fechaEvento, t, ox, ph, am, nit, sec, estadoParam, quienRegistro(ev, true)];
     });
 
     autoTable(doc, {
@@ -276,7 +277,7 @@ export async function generarLotePdfBlob(
       } else if (ev.tipo === 'Despacho/transporte') {
         detalle = `Destino: ${d.destino || '-'} | Salida: ${d.fechaHoraSalida || '-'} | Temp despacho: ${d.temperaturaDespachoC ?? '-'}°C | Contenedor c/hielo: ${d.contenedorIsotermico ? 'SÍ' : 'NO'} | Resp: ${d.responsable || '-'}`;
       }
-      return [ev.fechaEvento, ev.tipo, detalle, ocultarCorreo(ev.registradoPor)];
+      return [ev.fechaEvento, ev.tipo, detalle, quienRegistro(ev, true)];
     });
 
     autoTable(doc, {
@@ -301,7 +302,7 @@ export async function generarLotePdfBlob(
       const det = ev.tipo === 'Probióticos'
         ? `Producto: ${d.producto || '-'} | Dosis: ${d.dosis || '-'} ${d.unidad || ''} | Vía: ${d.viaAplicacion || '-'} | Obj: ${d.objetivo || '-'}`
         : `Descripción: ${d.descripcion || ev.descripcion || '-'} | Producto: ${d.producto || '-'} | Dosis: ${d.dosis || '-'}`;
-      return [ev.fechaEvento, ev.tipo, det, ocultarCorreo(ev.registradoPor)];
+      return [ev.fechaEvento, ev.tipo, det, quienRegistro(ev, true)];
     });
 
     autoTable(doc, {
@@ -331,7 +332,7 @@ export async function generarLotePdfBlob(
       ev.fechaEvento,
       ev.tipo,
       contenido || '-',
-      ocultarCorreo(ev.registradoPor),
+      quienRegistro(ev, true),
       ev.hash.substring(0, 12) + '...'
     ];
   });

@@ -29,7 +29,7 @@ import { cerrarLote, escucharLoteIndividual, modificarDatosSiembraOPiscina } fro
 import { previsualizarPdfLote, generarYSubirPdfLote, descargarPdfLoteLocal } from '../services/pdfService';
 import { formatearFechaColombia } from '../utils/constants';
 import { evaluarParametroAgua } from '../services/calculosService';
-import { esAdminMaestro, verificarPermiso } from '../services/usuariosService';
+import { esAdminMaestro, verificarPermiso, quienRegistro } from '../services/usuariosService';
 import { EntregasPanel } from './EntregasPanel';
 
 interface LoteDetailModalProps {
@@ -630,7 +630,7 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
                           </div>
 
                           <div className="text-right shrink-0">
-                            <p className="text-[11px] text-slate-500">{ev.registradoPor}</p>
+                            <p className="text-[11px] text-slate-500">{quienRegistro(ev)}</p>
                             <span
                               title={`SHA-256: ${ev.hash}`}
                               className="font-mono text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded block mt-1 max-w-[120px] truncate"

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { quienRegistro } from '../services/usuariosService';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase/firebaseConfig';
 import { Lote, ConfiguracionGeneral } from '../types';
@@ -472,7 +473,7 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
                     )}
 
                     <div className="mt-2 text-[10px] text-slate-400 flex items-center justify-between">
-                      <span>Registrado por: {ocultarCorreo(ev.registradoPor)}</span>
+                      <span>Registrado por: {quienRegistro(ev, true)}</span>
                       <span className="font-mono text-[9px]">Hash: {ev.hash.substring(0, 12)}...</span>
                     </div>
                   </div>

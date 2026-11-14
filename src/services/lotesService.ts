@@ -17,6 +17,7 @@ import {
   getFechaHoyBogota
 } from '../utils/constants';
 import { calcularHashEvento, HASH_GENESIS } from './hashService';
+import { nombreRegistro } from './usuariosService';
 import { recalcularResumenLote } from './calculosService';
 import { generarYSubirPdfLote } from './pdfService';
 import { construirUrlPublicaPdf, construirUrlPublicaTrazabilidad } from './qrService';
@@ -45,10 +46,10 @@ export function obtenerLetraConsecutiva(consecutivo: number): string {
 export function mensajeErrorFirestore(accion: string, err: any): Error {
   const codigo = err?.code || '';
   if (codigo === 'permission-denied') {
-    return new Error(`No tienes permiso para ${accion} en la base de datos de la granja.`);
+    return new Error(`No tienes permiso para ${accion}.`);
   }
   if (codigo === 'unavailable' || codigo === 'deadline-exceeded') {
-    return new Error(`No hay conexión con la base de datos. No fue posible ${accion}; intenta de nuevo cuando tengas internet.`);
+    return new Error(`No hay conexión. No fue posible ${accion}; intenta de nuevo cuando tengas internet.`);
   }
   return new Error(err?.message || `No fue posible ${accion}.`);
 }
@@ -130,6 +131,7 @@ export async function crearNuevoLote(params: ParamsNuevoLote): Promise<Lote> {
       descripcion: descripcionSiembra,
       datos: datosSiembra,
       registradoPor: userEmail,
+        ...nombreRegistro(),
       registradoEn: fechaIsoAhora,
       hashAnterior: HASH_GENESIS
     });
@@ -142,6 +144,7 @@ export async function crearNuevoLote(params: ParamsNuevoLote): Promise<Lote> {
       descripcion: descripcionSiembra,
       datos: datosSiembra,
       registradoPor: userEmail,
+        ...nombreRegistro(),
       registradoEn: fechaIsoAhora,
       hashAnterior: HASH_GENESIS,
       hash: hashSiembra
@@ -202,7 +205,7 @@ export async function crearNuevoLote(params: ParamsNuevoLote): Promise<Lote> {
           () =>
             reject(
               new Error(
-                'La conexión con Firestore está tardando demasiado. Revisa la lista de lotes antes de intentarlo de nuevo: el lote pudo haberse creado.'
+                'La conexión está tardando demasiado. Revisa la lista de lotes antes de intentarlo de nuevo: el lote pudo haberse creado.'
               )
             ),
           15000
@@ -239,7 +242,7 @@ export async function registrarEventoEnLote(params: ParamsAgregarEvento): Promis
     loteActualizado = await runTransaction(db, async (transaction) => {
       const snap = await transaction.get(loteRef);
       if (!snap.exists()) {
-        throw new Error(`El lote ${codigoLote} no existe en la base de datos de la granja.`);
+        throw new Error(`El lote ${codigoLote} no existe.`);
       }
       const lote = snap.data() as Lote;
 
@@ -262,6 +265,7 @@ export async function registrarEventoEnLote(params: ParamsAgregarEvento): Promis
         descripcion: descripcion || '',
         datos: datos || {},
         registradoPor: userEmail,
+        ...nombreRegistro(),
         registradoEn: fechaIsoAhora,
         hashAnterior
       });
@@ -274,6 +278,7 @@ export async function registrarEventoEnLote(params: ParamsAgregarEvento): Promis
         descripcion: descripcion || '',
         datos: datos || {},
         registradoPor: userEmail,
+        ...nombreRegistro(),
         registradoEn: fechaIsoAhora,
         hashAnterior,
         hash
@@ -347,7 +352,7 @@ export async function modificarDatosSiembraOPiscina(params: ParamsModificarSiemb
     loteModificado = await runTransaction(db, async (transaction) => {
       const snap = await transaction.get(loteRef);
       if (!snap.exists()) {
-        throw new Error(`El lote ${codigoLote} no existe en la base de datos de la granja.`);
+        throw new Error(`El lote ${codigoLote} no existe.`);
       }
       const lote = snap.data() as Lote;
 
@@ -396,6 +401,7 @@ export async function modificarDatosSiembraOPiscina(params: ParamsModificarSiemb
         descripcion,
         datos,
         registradoPor: userEmail,
+        ...nombreRegistro(),
         registradoEn: fechaIsoAhora,
         hashAnterior
       });
@@ -409,6 +415,7 @@ export async function modificarDatosSiembraOPiscina(params: ParamsModificarSiemb
           descripcion,
           datos,
           registradoPor: userEmail,
+        ...nombreRegistro(),
           registradoEn: fechaIsoAhora,
           hashAnterior,
           hash

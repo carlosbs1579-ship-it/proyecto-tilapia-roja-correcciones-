@@ -36,6 +36,7 @@ export interface PayloadHashEvento {
   descripcion: string;
   datos: Record<string, any>;
   registradoPor: string;
+  registradoPorNombre?: string;
   registradoEn: string;
   hashAnterior: string;
 }
@@ -54,6 +55,8 @@ export function generarJsonCanonico(payload: PayloadHashEvento): string {
     descripcion: payload.descripcion || '',
     datos: ordenarObjeto(payload.datos || {}),
     registradoPor: payload.registradoPor,
+    // Solo en los eventos que guardan el nombre: los anteriores conservan exactamente su hash
+    ...(payload.registradoPorNombre ? { registradoPorNombre: payload.registradoPorNombre } : {}),
     registradoEn: payload.registradoEn,
     hashAnterior: payload.hashAnterior
   };
@@ -176,6 +179,7 @@ export async function verificarIntegridadCadena(
       descripcion: ev.descripcion,
       datos: ev.datos,
       registradoPor: ev.registradoPor,
+      registradoPorNombre: (ev as any).registradoPorNombre,
       registradoEn: ev.registradoEn,
       hashAnterior: ev.hashAnterior
     });

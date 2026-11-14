@@ -13,6 +13,7 @@ import { auth, db } from '../firebase/firebaseConfig';
 import { AjusteDistribucion, EventoOrden, OrdenEntrega, TipoEventoOrden } from '../types';
 import { ESTADOS_CON_RESERVA, ETIQUETA_ESTADO_ORDEN, generarId, redondear, saldoLote } from './pedidosService';
 import { DIAS_RETENCION_FOTOS, FotoPreparada } from './fotosService';
+import { nombreRegistro } from './usuariosService';
 
 // Acciones del repartidor sobre sus órdenes. Cada acción se guarda primero en una bandeja local del
 // teléfono (localStorage) con un identificador único, y se envía a Firebase en una transacción que:
@@ -48,7 +49,7 @@ export interface AccionReparto {
 export const ETIQUETA_ESTADO_ACCION: Record<EstadoAccion, string> = {
   guardada: 'Guardada en el teléfono · pendiente de enviar',
   enviando: 'Enviando...',
-  recibida: 'Recibida por Firebase',
+  recibida: 'Recibida',
   confirmada: 'Confirmada por el servidor',
   conflicto: 'No se aplicó'
 };
@@ -297,6 +298,7 @@ async function aplicarAccion(uid: string, accion: AccionReparto): Promise<'aplic
       fecha: accion.registradaEn,
       registradoPor: email,
       registradoPorUid: uid,
+      ...nombreRegistro(),
       descripcion: accion.descripcion,
       datos: { ...accion.datos, registradaEnTelefono: accion.registradaEn, enviadaEn: ahora },
       eventoId: accion.id,

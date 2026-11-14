@@ -199,7 +199,7 @@ export const ConsultaEntregaPublica: React.FC<{
               )}
               <p className="text-[10px] text-slate-400">
                 Registro tipo blockchain: cada comprobante es un bloque sellado con SHA-256 que contiene el hash del bloque anterior; se guarda una
-                sola vez y aquí se recalcula para verificarlo. Cadena de bloques privada sobre Firebase.
+                sola vez y aquí se recalcula para verificarlo. Cadena de bloques privada de la plataforma.
               </p>
             </section>
           </>

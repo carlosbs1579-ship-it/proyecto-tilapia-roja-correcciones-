@@ -290,7 +290,7 @@ export const NuevoLoteModal: React.FC<NuevoLoteModalProps> = ({
               {cargando ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  <span>Creando lote en Firestore...</span>
+                  <span>Creando lote...</span>
                 </>
               ) : (
                 <span>Crear lote y abrir</span>

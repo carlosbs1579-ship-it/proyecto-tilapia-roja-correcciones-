@@ -501,6 +501,7 @@ export async function actualizarPerfilOperario(
     cargo: string;
     estado: 'activo' | 'pendiente' | 'inactivo';
     permisos: PermisosUsuario;
+    displayName?: string;
   },
   adminEmail: string,
   granjaId: string = GRANJA_ID_PREDETERMINADA
@@ -529,6 +530,7 @@ export async function actualizarPerfilOperario(
     cargo,
     estado: datos.estado,
     permisos,
+    ...(datos.displayName && datos.displayName.trim() ? { displayName: datos.displayName.trim().slice(0, 60) } : {}),
     autorizadoPor: adminEmail,
     actualizadoEn: new Date().toISOString()
   };
@@ -541,7 +543,7 @@ export async function actualizarPerfilOperario(
     console.error('Error al actualizar operario en Firestore:', err);
     throw new Error(
       err?.code === 'permission-denied'
-        ? 'No tienes permisos de administrador para guardar cambios de operarios en Firestore.'
+        ? 'No tienes permisos de administrador para guardar cambios de operarios.'
         : `No fue posible guardar el perfil: ${err?.message || err}`
     );
   }
@@ -589,4 +591,33 @@ export async function eliminarPerfilUsuario(uid: string): Promise<void> {
     console.error('Error eliminando usuario de Firestore:', err);
     throw new Error(`Error al eliminar usuario: ${err?.message || err}`);
   }
+}
+
+// ---------- Nombre visible de quien registra ----------
+let nombreSesionActual = '';
+
+/**
+ * La app fija el nombre visible de la cuenta con sesión; los registros nuevos lo guardan junto al correo
+ */
+export function establecerNombreSesion(nombre: string | null | undefined): void {
+  nombreSesionActual = (nombre || '').trim().slice(0, 60);
+}
+
+/**
+ * Campo para agregar a un registro nuevo: el nombre visible de quien lo hace (si lo tiene)
+ */
+export function nombreRegistro(): { registradoPorNombre?: string } {
+  return nombreSesionActual ? { registradoPorNombre: nombreSesionActual } : {};
+}
+
+/**
+ * Quién registró un evento: el nombre si se guardó; si no (registros anteriores), el correo, oculto
+ * en lo público (QR y PDF) y completo en las pantallas internas
+ */
+export function quienRegistro(ev: { registradoPor?: string; registradoPorNombre?: string }, publico = false): string {
+  if (ev.registradoPorNombre) return ev.registradoPorNombre;
+  if (!ev.registradoPor) return '—';
+  if (!publico) return ev.registradoPor;
+  const [usuario, dominio] = ev.registradoPor.split('@');
+  return dominio ? `${usuario.slice(0, 2)}•••@${dominio}` : usuario.slice(0, 2) + '•••';
 }

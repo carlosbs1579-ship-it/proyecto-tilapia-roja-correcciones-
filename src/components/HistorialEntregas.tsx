@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { quienRegistro } from '../services/usuariosService';
 import { History } from 'lucide-react';
 import { EstadoOrden, OrdenEntrega } from '../types';
 import { ETIQUETA_ESTADO_ORDEN } from '../services/pedidosService';
@@ -24,14 +25,14 @@ export const HistorialEntregas: React.FC<{
   const [hasta, setHasta] = useState('');
   const [limite, setLimite] = useState(100);
 
-  const usuarios = Array.from(new Set(eventos.map((x) => x.evento.registradoPor))).sort();
+  const usuarios = Array.from(new Set(eventos.map((x) => quienRegistro(x.evento)))).sort();
   const repartidores = Array.from(new Set(ordenes.map((o) => o.repartidorNombre).filter(Boolean) as string[])).sort();
   const tipos = Array.from(new Set(eventos.map((x) => x.evento.tipo))).sort();
 
   const filtrados = eventos.filter(({ orden, evento }) => {
     const dia = diaBogota(evento.fecha);
     return (!pedido || orden.id.toLowerCase().includes(pedido.toLowerCase()))
-      && (!usuario || evento.registradoPor === usuario)
+      && (!usuario || quienRegistro(evento) === usuario)
       && (!repartidor || orden.repartidorNombre === repartidor)
       && (!tipo || evento.tipo === tipo)
       && (!estado || orden.estado === estado)
@@ -94,7 +95,7 @@ export const HistorialEntregas: React.FC<{
                 </td>
                 <td className="px-2 py-1.5 font-semibold text-slate-800">{evento.tipo}</td>
                 <td className="px-2 py-1.5">
-                  {evento.registradoPor}
+                  {quienRegistro(evento)}
                   <span className="block text-slate-500">{evento.funcion ? ETIQUETA_FUNCION[evento.funcion] : 'sin función registrada'}</span>
                 </td>
                 <td className="px-2 py-1.5 text-slate-700">{cambiosDeEvento(evento) || '—'}</td>

@@ -240,7 +240,7 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
       }
     } catch (err: any) {
       console.error('Error registrando evento:', err);
-      setErrorMsg(err.message || 'Error al guardar el evento en Firestore.');
+      setErrorMsg(err.message || 'No se pudo guardar el evento.');
     } finally {
       setCargando(false);
     }

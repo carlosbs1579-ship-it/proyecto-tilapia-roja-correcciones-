@@ -49,7 +49,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
 
       let mensaje = 'Error al procesar la autenticación.';
       if (err.code === 'auth/operation-not-allowed' || err.code === 'auth/admin-restricted-operation') {
-        mensaje = 'El acceso con correo y contraseña no está habilitado en Firebase. Usa tu cuenta de Google o contacta al administrador.';
+        mensaje = 'El acceso con correo y contraseña no está habilitado. Usa tu cuenta de Google o contacta al administrador.';
       } else if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
         mensaje = 'Correo o contraseña incorrectos.';
       } else if (err.code === 'auth/email-already-in-use') {

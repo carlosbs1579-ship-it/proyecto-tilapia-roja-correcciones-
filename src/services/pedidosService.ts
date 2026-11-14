@@ -27,7 +27,7 @@ import {
   UsuarioPerfil
 } from '../types';
 import { GRANJA_ID_PREDETERMINADA, compactarFecha, getFechaHoyBogota } from '../utils/constants';
-import { nombreFuncion, normalizarPerfil } from './usuariosService';
+import { nombreFuncion, normalizarPerfil, nombreRegistro } from './usuariosService';
 
 // Las órdenes de entrega viven en ordenes/{id} y nunca modifican el documento del lote: solo leen
 // su cosecha registrada. Lo reservado y entregado de cada lote se acumula en inventarioLotes/{lote}
@@ -150,11 +150,11 @@ export function mensajeError(accion: string, err: any): Error {
   const codigo = err?.code || '';
   if (codigo === 'permission-denied') {
     return new Error(
-      `No fue posible ${accion}: la base de datos lo rechazó. Verifica que tengas el permiso de gestionar pedidos y que las cantidades sigan disponibles.`
+      `No fue posible ${accion}: la operación fue rechazada. Verifica que tengas el permiso correspondiente y que las cantidades sigan disponibles.`
     );
   }
   if (codigo === 'unavailable' || codigo === 'deadline-exceeded') {
-    return new Error(`No hay conexión con la base de datos. No fue posible ${accion}.`);
+    return new Error(`No hay conexión. No fue posible ${accion}.`);
   }
   if (codigo === 'aborted') {
     return new Error(`Otra persona modificó las mismas cantidades al mismo tiempo. Intenta ${accion} de nuevo.`);
@@ -189,6 +189,7 @@ export function nuevoEvento(
     fecha: new Date().toISOString(),
     registradoPor: email,
     registradoPorUid: uid,
+    ...nombreRegistro(),
     descripcion,
     datos,
     eventoId: generarId('ev'),

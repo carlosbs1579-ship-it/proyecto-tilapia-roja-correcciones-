@@ -29,6 +29,7 @@ export interface EventoLote {
   descripcion: string;
   datos: Record<string, any>;
   registradoPor: string; // email del usuario
+  registradoPorNombre?: string; // nombre visible de quien registró (eventos nuevos; entra en el hash)
   registradoEn: string; // ISO string generado por cliente
   hashAnterior: string; // 64 ceros para el índice 0, o hash del evento anterior
   hash: string; // SHA-256 del contenido canónico
@@ -301,6 +302,7 @@ export interface EventoOrden {
   fecha: string; // ISO (en acciones sin conexión, la hora en que se registró en el teléfono)
   registradoPor: string; // correo
   registradoPorUid: string;
+  registradoPorNombre?: string; // nombre visible de quien registró (eventos nuevos)
   descripcion: string;
   datos: Record<string, any>;
   eventoId?: string; // identificador único (evita duplicados al sincronizar)

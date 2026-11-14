@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { quienRegistro } from '../services/usuariosService';
 import { AlertTriangle } from 'lucide-react';
 import { EstadoAtencion, OrdenEntrega } from '../types';
 import { atenderNovedad } from '../services/pedidosService';
@@ -38,14 +39,14 @@ export const NovedadTarjeta: React.FC<{
       </div>
       <p className="text-slate-800 bg-orange-50 border border-orange-100 rounded p-2">{n.evento.descripcion}</p>
       <p className="text-slate-500">
-        {n.evento.registradoPor} · {formatearFechaColombia(n.evento.fecha)} · Pedido de {n.orden.clienteNombre}
+        {quienRegistro(n.evento)} · {formatearFechaColombia(n.evento.fecha)} · Pedido de {n.orden.clienteNombre}
         {' · '}Evidencias: no adjuntas (las novedades se registran solo con texto)
       </p>
       {n.seguimiento.length > 0 && (
         <ol className="space-y-0.5 border-l-2 border-slate-200 pl-2">
           {n.seguimiento.map((s) => (
             <li key={s.indice} className="text-slate-600">
-              <strong>{ETIQUETA_ATENCION[s.datos.estado as EstadoAtencion] || s.datos.estado}</strong> · {s.registradoPor} ·{' '}
+              <strong>{ETIQUETA_ATENCION[s.datos.estado as EstadoAtencion] || s.datos.estado}</strong> · {quienRegistro(s)} ·{' '}
               {formatearFechaColombia(s.fecha)}
               {s.descripcion && <span className="block">{s.descripcion}</span>}
             </li>

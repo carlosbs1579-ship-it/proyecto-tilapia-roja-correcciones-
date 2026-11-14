@@ -20,7 +20,7 @@ import { ETIQUETA_FUNCION, EstadoOrdenBadge, num } from './entregasUi';
 import { SolicitudAjusteTarjeta } from './SolicitudesPendientes';
 import { NovedadTarjeta } from './NovedadesIncidencias';
 import { DocumentacionEntrega } from './DocumentacionEntrega';
-import { verificarPermiso } from '../services/usuariosService';
+import { verificarPermiso, quienRegistro } from '../services/usuariosService';
 import { FotosEntregaOrden } from './FotosEntregaOrden';
 import { CorreccionEntrega } from './CorreccionEntrega';
 
@@ -331,7 +331,7 @@ export const DetalleOrdenOperador: React.FC<{
               <span className="absolute -left-[5px] mt-1 w-2 h-2 rounded-full bg-sky-500" />
               <span className="font-semibold text-slate-800">{ev.tipo}</span>
               <span className="text-slate-500">
-                {' · ' + formatearFechaColombia(ev.fecha) + ' · ' + ev.registradoPor}
+                {' · ' + formatearFechaColombia(ev.fecha) + ' · ' + quienRegistro(ev)}
                 {ev.funcion ? ' (' + (ETIQUETA_FUNCION[ev.funcion] || ev.funcion) + ')' : ''}
               </span>
               {(ev.descripcion || cambiosDeEvento(ev)) && (

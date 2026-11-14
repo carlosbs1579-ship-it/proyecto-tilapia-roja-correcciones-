@@ -125,7 +125,7 @@ export async function guardarConfiguracion(
       throw new Error('No tienes permiso para guardar estos cambios de configuración. Pide al administrador el permiso correspondiente.');
     }
     if (err?.code === 'unavailable' || err?.code === 'deadline-exceeded') {
-      throw new Error('No hay conexión con la base de datos. La configuración no se guardó; intenta de nuevo.');
+      throw new Error('No hay conexión. La configuración no se guardó; intenta de nuevo.');
     }
     throw new Error('No fue posible guardar la configuración. Intenta de nuevo.');
   }

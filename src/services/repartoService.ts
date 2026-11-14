@@ -49,7 +49,7 @@ export interface AccionReparto {
 export const ETIQUETA_ESTADO_ACCION: Record<EstadoAccion, string> = {
   guardada: 'Guardada en el teléfono · pendiente de enviar',
   enviando: 'Enviando...',
-  recibida: 'Recibida por Firebase',
+  recibida: 'Recibida',
   confirmada: 'Confirmada por el servidor',
   conflicto: 'No se aplicó'
 };

@@ -635,7 +635,7 @@ export async function generarComprobantePdfBlob(
         `Hash del bloque: ${c.hashComprobante} · Hash del bloque anterior: ${c.hashAnterior || 'no registrado (emitido antes del encadenamiento)'} · ` +
           `Hash de los eventos de entrega: ${c.hashEventos}. ` +
           'Cada comprobante es un bloque sellado con SHA-256 que contiene el hash del bloque anterior de la misma orden; ' +
-          'alterar cualquier dato cambia su hash y rompe la cadena. Cadena de bloques privada registrada en Firebase. ' +
+          'alterar cualquier dato cambia su hash y rompe la cadena. Cadena de bloques privada de la plataforma. ' +
           'Escanee el código QR para consultar la entrega y verificar la cadena. La trazabilidad de cada lote se consulta con el QR del lote.'
       ),
       pageWidth - 20

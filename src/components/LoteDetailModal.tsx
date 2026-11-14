@@ -181,7 +181,7 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
     setProcesandoAccion(true);
     try {
       const { urlPublica, versionPdf } = await generarYSubirPdfLote(lote, config);
-      setMensajeExito(`Certificado PDF v${versionPdf} listo: se genera con los datos vigentes del lote.`);
+      setMensajeExito(`Certificado PDF listo: se genera con los datos vigentes del lote.`);
       setTimeout(() => setMensajeExito(null), 4000);
     } catch (err: any) {
       setErrorAccion(`No se pudo regenerar el PDF: ${err.message || err}`);
@@ -419,7 +419,7 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
                     className="inline-flex items-center space-x-1.5 px-3.5 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-lg text-xs font-semibold transition-colors"
                   >
                     <RefreshCw className={`w-3.5 h-3.5 ${procesandoAccion ? 'animate-spin' : ''}`} />
-                    <span>Regenerar PDF en Storage</span>
+                    <span>Regenerar PDF</span>
                   </button>
                 )}
               </div>

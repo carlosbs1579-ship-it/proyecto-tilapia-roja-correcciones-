@@ -150,11 +150,11 @@ export function mensajeError(accion: string, err: any): Error {
   const codigo = err?.code || '';
   if (codigo === 'permission-denied') {
     return new Error(
-      `No fue posible ${accion}: la base de datos lo rechazó. Verifica que tengas el permiso de gestionar pedidos y que las cantidades sigan disponibles.`
+      `No fue posible ${accion}: la operación fue rechazada. Verifica que tengas el permiso correspondiente y que las cantidades sigan disponibles.`
     );
   }
   if (codigo === 'unavailable' || codigo === 'deadline-exceeded') {
-    return new Error(`No hay conexión con la base de datos. No fue posible ${accion}.`);
+    return new Error(`No hay conexión. No fue posible ${accion}.`);
   }
   if (codigo === 'aborted') {
     return new Error(`Otra persona modificó las mismas cantidades al mismo tiempo. Intenta ${accion} de nuevo.`);

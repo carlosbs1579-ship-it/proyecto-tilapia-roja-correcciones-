@@ -149,7 +149,7 @@ export const UsuariosTab: React.FC<UsuariosTabProps> = ({
       },
       (err) => {
         console.warn('Error al escuchar perfiles de usuarios:', err);
-        setErrorMsg('Error al conectar con la lista de usuarios en Firestore.');
+        setErrorMsg('No se pudo cargar la lista de usuarios.');
         setUsuariosCargando(false);
       }
     );
@@ -205,7 +205,7 @@ export const UsuariosTab: React.FC<UsuariosTabProps> = ({
       setTimeout(() => setMensajeExito(null), 3500);
     } catch (err: any) {
       console.error('Error al actualizar estado:', err);
-      setErrorMsg(err.message || 'Error al actualizar estado en Firestore.');
+      setErrorMsg(err.message || 'No se pudo actualizar el estado.');
     } finally {
       setGuardandoId(null);
     }
@@ -317,11 +317,11 @@ export const UsuariosTab: React.FC<UsuariosTabProps> = ({
 
     try {
       await actualizarPerfilOperario(u.uid, edit, userEmail);
-      setMensajeExito(`Perfil y permisos de "${u.displayName || u.email}" guardados y sincronizados en Firestore.`);
+      setMensajeExito(`Perfil y permisos de "${u.displayName || u.email}" guardados.`);
       setTimeout(() => setMensajeExito(null), 4000);
     } catch (err: any) {
       console.error('Error guardando usuario:', err);
-      setErrorMsg(err.message || 'Error al guardar usuario en Firestore.');
+      setErrorMsg(err.message || 'No se pudo guardar el usuario.');
     } finally {
       setGuardandoId(null);
     }
@@ -340,7 +340,7 @@ export const UsuariosTab: React.FC<UsuariosTabProps> = ({
       setTimeout(() => setMensajeExito(null), 4000);
     } catch (err: any) {
       console.error('Error eliminando usuario:', err);
-      setErrorMsg(err.message || 'Error al eliminar usuario en Firestore.');
+      setErrorMsg(err.message || 'No se pudo eliminar el usuario.');
     } finally {
       setGuardandoId(null);
     }
@@ -362,7 +362,7 @@ export const UsuariosTab: React.FC<UsuariosTabProps> = ({
           guardados++;
         }
       }
-      setMensajeExito(`Se guardaron exitosamente ${guardados} perfiles en Firestore.`);
+      setMensajeExito(`Se guardaron ${guardados} perfiles.`);
       setTimeout(() => setMensajeExito(null), 4000);
     } catch (err: any) {
       console.error('Error guardando perfiles:', err);
@@ -539,7 +539,7 @@ export const UsuariosTab: React.FC<UsuariosTabProps> = ({
           {usuariosCargando ? (
             <div className="py-12 flex flex-col items-center justify-center space-y-2 text-xs text-slate-500">
               <div className="w-6 h-6 border-2 border-sky-600 border-t-transparent rounded-full animate-spin" />
-              <span>Cargando lista de operarios desde Firestore...</span>
+              <span>Cargando lista de operarios...</span>
             </div>
           ) : usuariosFiltrados.length === 0 ? (
             <div className="p-8 bg-slate-50 rounded-xl text-center space-y-2 text-xs text-slate-500 border border-slate-200">
@@ -911,7 +911,7 @@ export const UsuariosTab: React.FC<UsuariosTabProps> = ({
                           {esGuardando ? (
                             <>
                               <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                              <span>Guardando en Firestore...</span>
+                              <span>Guardando...</span>
                             </>
                           ) : (
                             <>

@@ -93,12 +93,12 @@ export const ConfiguracionTab: React.FC<ConfiguracionTabProps> = ({
     try {
       const guardada = await guardarConfiguracion(nuevaConfig, userEmail);
       onConfigActualizada(guardada);
-      setMensajeExito('Configuración sincronizada exitosamente en Firestore.');
+      setMensajeExito('Configuración guardada.');
       setTimeout(() => setMensajeExito(null), 4000);
       return true;
     } catch (err: any) {
       console.error('Error guardando configuración:', err);
-      setErrorMsg(err.message || 'Error al guardar configuración en Firestore.');
+      setErrorMsg(err.message || 'No se pudo guardar la configuración.');
       return false;
     } finally {
       setGuardando(false);
@@ -215,7 +215,7 @@ export const ConfiguracionTab: React.FC<ConfiguracionTabProps> = ({
           {guardando ? (
             <>
               <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              <span>Guardando en Firestore...</span>
+              <span>Guardando...</span>
             </>
           ) : (
             <>
@@ -251,7 +251,7 @@ export const ConfiguracionTab: React.FC<ConfiguracionTabProps> = ({
               </h2>
             </div>
             <p className="text-xs text-slate-500 mt-0.5">
-              Configura tus estanques (E1, E2, E3...). Cualquier estanque agregado aquí se guarda en Firestore y queda disponible de inmediato para crear nuevos lotes y registrar mediciones.
+              Configura tus estanques (E1, E2, E3...). Cualquier estanque agregado aquí queda disponible de inmediato para crear nuevos lotes y registrar mediciones.
             </p>
           </div>
         </div>
@@ -333,7 +333,7 @@ export const ConfiguracionTab: React.FC<ConfiguracionTabProps> = ({
                         <span className="text-xs font-bold">¿Eliminar estanque {est.codigo}?</span>
                       </div>
                       <p className="text-[11px] text-slate-600">
-                        Se retirará de la lista y se sincronizará en Firestore.
+                        Se retirará de la lista.
                       </p>
                       <div className="flex items-center space-x-2 pt-1">
                         <button

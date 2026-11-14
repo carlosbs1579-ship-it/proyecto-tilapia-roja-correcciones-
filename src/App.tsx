@@ -282,7 +282,7 @@ export default function App() {
         setErrorConexion(
           err?.code === 'permission-denied'
             ? 'No tienes permiso para consultar los lotes de la granja.'
-            : 'No fue posible sincronizar los lotes en vivo con Firestore.'
+            : 'No fue posible actualizar los lotes en este momento. Revisa tu conexión.'
         );
       }
     );

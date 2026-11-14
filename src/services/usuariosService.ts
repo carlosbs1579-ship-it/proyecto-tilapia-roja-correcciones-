@@ -543,7 +543,7 @@ export async function actualizarPerfilOperario(
     console.error('Error al actualizar operario en Firestore:', err);
     throw new Error(
       err?.code === 'permission-denied'
-        ? 'No tienes permisos de administrador para guardar cambios de operarios en Firestore.'
+        ? 'No tienes permisos de administrador para guardar cambios de operarios.'
         : `No fue posible guardar el perfil: ${err?.message || err}`
     );
   }

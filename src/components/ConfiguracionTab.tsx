@@ -461,7 +461,7 @@ export const ConfiguracionTab: React.FC<ConfiguracionTabProps> = ({
           </form>
         ) : (
           <p className="text-xs text-slate-400 italic">
-            Para crear o modificar estanques requieres el permiso "Crear piscinas / estanques" otorgado por Carlos.
+            Para crear o modificar estanques requieres el permiso "Crear piscinas / estanques" otorgado por el administrador.
           </p>
         )}
       </div>

@@ -5,7 +5,6 @@ import {
   LogIn,
   LogOut,
   User as UserIcon,
-  Crown,
   Truck,
   Shield,
   Factory
@@ -169,9 +168,9 @@ export const Navbar: React.FC<NavbarProps> = ({
               <>
                 <div className="flex items-center space-x-2">
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                    esAdmin ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-slate-700 text-slate-300'
+                    'bg-slate-700 text-slate-300'
                   }`}>
-                    {esAdmin ? <Crown className="w-4 h-4" /> : <UserIcon className="w-4 h-4" />}
+                    <UserIcon className="w-4 h-4" />
                   </div>
                   <div className="hidden lg:block text-left text-xs">
                     <p className="font-semibold text-slate-200 truncate max-w-[150px]">{usuario.email}</p>
@@ -187,11 +186,11 @@ export const Navbar: React.FC<NavbarProps> = ({
                       ) : eligiendoFuncion ? (
                         <>Elige una función</>
                       ) : esAdmin ? (
-                        <>Administrador Maestro</>
+                        <>Administrador</>
                       ) : perfilUsuario?.estado === 'activo' ? (
                         <>Sin función asignada</>
                       ) : (
-                        <>En espera de Carlos</>
+                        <>En espera de autorización</>
                       )}
                     </p>
                   </div>

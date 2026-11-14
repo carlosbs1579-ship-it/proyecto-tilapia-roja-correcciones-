@@ -192,7 +192,7 @@ function rolesDesdeDatos(data: Partial<UsuarioPerfil>, esAdmin: boolean): RolFun
 export function normalizarPerfil(data: Partial<UsuarioPerfil>, uid: string): UsuarioPerfil {
   const email = (data.email || '').trim().toLowerCase();
   const esAdmin = esAdminMaestro(email);
-  const cargo = data.cargo || (esAdmin ? 'Administrador Maestro' : 'Operario en espera de asignación');
+  const cargo = data.cargo || (esAdmin ? 'Administrador' : 'Operario en espera de asignación');
   const roles = rolesDesdeDatos(data, esAdmin);
   // Sin nombres por función guardados, el cargo único anterior queda como nombre de su rol principal
   const cargos = data.cargos && typeof data.cargos === 'object'
@@ -388,9 +388,9 @@ export async function sincronizarPerfilUsuario(user: User): Promise<UsuarioPerfi
         displayName: 'Carlos',
         rol: 'admin',
         roles: ['admin'],
-        cargos: { admin: 'Administrador Maestro' },
+        cargos: { admin: 'Administrador' },
         granjaId: GRANJA_ID_PREDETERMINADA,
-        cargo: 'Administrador Maestro',
+        cargo: 'Administrador',
         estado: 'activo',
         permisos: PERMISOS_DEFAULT_ADMIN,
         creadoEn: fechaIso,

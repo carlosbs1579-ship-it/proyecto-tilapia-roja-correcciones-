@@ -384,7 +384,7 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
                       onClick={() => setConfirmarCierre(true)}
                       hidden={!puedeCerrar}
                       disabled={procesandoAccion || !puedeCerrar}
-                      title={puedeCerrar ? 'Cerrar lote y publicar PDF' : 'Requiere autorización de Carlos para cerrar lotes'}
+                      title={puedeCerrar ? 'Cerrar lote y publicar PDF' : 'Requiere autorización del administrador para cerrar lotes'}
                       className={`inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold shadow-xs transition-colors ${
                         puedeCerrar
                           ? 'bg-amber-600 hover:bg-amber-500 text-white'

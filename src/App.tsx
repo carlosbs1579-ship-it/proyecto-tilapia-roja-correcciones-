@@ -36,7 +36,7 @@ import { NuevoLoteModal } from './components/NuevoLoteModal';
 import { LoteDetailModal } from './components/LoteDetailModal';
 import { QrModal } from './components/QrModal';
 import { PublicTraceabilityView } from './components/PublicTraceabilityView';
-import { AlertCircle, Lock, Crown, ShieldAlert, Users } from 'lucide-react';
+import { AlertCircle, Lock, Shield, ShieldAlert } from 'lucide-react';
 
 const SESION_STORAGE_KEY_ANTIGUA = 'cultivos_lore_sesion_activa';
 
@@ -161,7 +161,7 @@ export default function App() {
     setAvisoFuncion(
       funcionActiva === 'admin'
         ? esAdmin
-          ? 'Ingresaste como Administrador Maestro.'
+          ? 'Ingresaste como Administrador.'
           : 'Ingresaste como Administrador.'
         : `Trabajando como ${funcionActiva === 'operator' ? 'Operador' : 'Repartidor'}.`
     );
@@ -400,7 +400,7 @@ export default function App() {
             <div className="flex items-center space-x-2">
               <Lock className="w-4 h-4 text-sky-400 shrink-0" />
               <span>
-                <strong>Modo Consulta:</strong> Para ver los lotes de la granja, crear lotes o registrar eventos debes ingresar. Carlos (<strong>carlosbs1579@gmail.com</strong>) tiene acceso de Administrador Maestro.
+                <strong>Modo Consulta:</strong> Para ver los lotes de la granja, crear lotes o registrar eventos debes ingresar con una cuenta autorizada por el administrador.
               </span>
             </div>
             <button
@@ -419,7 +419,7 @@ export default function App() {
           role="status"
           className="fixed bottom-4 left-4 z-50 max-w-xs flex items-center space-x-2 rounded-lg bg-slate-900 text-white shadow-lg px-3 py-2 text-xs"
         >
-          <Crown className="w-4 h-4 text-amber-400 shrink-0" />
+          <Shield className="w-4 h-4 text-sky-300 shrink-0" />
           <span>{avisoFuncion}</span>
         </div>
       )}
@@ -430,7 +430,7 @@ export default function App() {
           <div className="max-w-7xl mx-auto flex items-center space-x-2">
             <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0" />
             <span>
-              <strong>Perfil Pendiente:</strong> Tu cuenta ({usuario.email}) ha sido registrada pero aún no ha sido autorizada por Carlos (<strong>carlosbs1579@gmail.com</strong>). Tan pronto Carlos te autorice en la pestaña "Personal & Permisos", tendrás acceso operativo.
+              <strong>Perfil Pendiente:</strong> Tu cuenta ({usuario.email}) ha sido registrada pero aún no ha sido autorizada por el administrador. Tendrás acceso operativo tan pronto te autorice.
             </span>
           </div>
         </div>

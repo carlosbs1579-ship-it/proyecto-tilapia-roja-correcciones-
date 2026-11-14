@@ -11,7 +11,6 @@ import {
   AlertCircle,
   Check,
   User as UserIcon,
-  Crown,
   Lock,
   Sparkles,
   RefreshCw,
@@ -583,7 +582,7 @@ export const UsuariosTab: React.FC<UsuariosTabProps> = ({
                               : 'bg-slate-300 text-slate-700'
                           }`}
                         >
-                          {esElAdmin ? <Crown className="w-5 h-5 text-amber-200" /> : <UserIcon className="w-5 h-5" />}
+                          {esElAdmin ? <Shield className="w-5 h-5" /> : <UserIcon className="w-5 h-5" />}
                         </div>
                         <div>
                           <div className="flex flex-wrap items-center gap-2">
@@ -591,8 +590,8 @@ export const UsuariosTab: React.FC<UsuariosTabProps> = ({
                             <span className="text-xs text-slate-500 font-mono">({u.email})</span>
                             {esElAdmin ? (
                               <span className="text-[10px] bg-amber-100 text-amber-900 font-bold px-2.5 py-0.5 rounded-full border border-amber-300 flex items-center space-x-1">
-                                <Crown className="w-3 h-3 text-amber-600" />
-                                <span>PROPIETARIO / MASTER ADMIN</span>
+                                <Shield className="w-3 h-3 text-amber-600" />
+                                <span>ADMINISTRADOR</span>
                               </span>
                             ) : (
                               <span
@@ -649,8 +648,8 @@ export const UsuariosTab: React.FC<UsuariosTabProps> = ({
                           {u.uid === perfilActual?.uid
                             ? 'No puedes modificar tus propias funciones ni permisos.'
                             : esElAdmin
-                            ? 'El perfil del Administrador Maestro solo lo modifica él mismo.'
-                            : 'Solo el Administrador Maestro puede modificar a otros administradores.'}
+                            ? 'Este perfil de administrador solo lo modifica su titular.'
+                            : 'Solo el administrador principal puede modificar a otros administradores.'}
                         </span>
                       </p>
                     )}
@@ -1010,7 +1009,7 @@ export const UsuariosTab: React.FC<UsuariosTabProps> = ({
           <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start space-x-2 text-amber-900 text-xs">
             <Lock className="w-4 h-4 shrink-0 mt-0.5 text-amber-600" />
             <span>
-              Solo el administrador maestro Carlos (<strong>{ADMIN_MASTER_EMAIL}</strong>) tiene privilegios para autorizar cuentas, actualizar cargos o conceder permisos en Cultivos Loré.
+              Solo el administrador tiene privilegios para autorizar cuentas, actualizar cargos o conceder permisos en Cultivos Loré.
             </span>
           </div>
         </div>

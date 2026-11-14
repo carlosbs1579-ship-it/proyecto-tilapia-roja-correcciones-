@@ -5,9 +5,42 @@ import { formatearFechaColombia, getFechaHoyBogota, ocultarCorreo } from '../uti
 import { evaluarParametroAgua } from './calculosService';
 
 
+// Las fuentes estándar del PDF solo tienen los caracteres latinos (WinAnsi). Uno fuera de ese
+// juego (p. ej. "→" o un emoji en una observación) hace que la línea se escriba con letras
+// espaciadas y se salga del recuadro. Todo texto se depura antes de escribirse.
+const EXTRA_WINANSI = '€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•–—˜™š›œžŸ';
+export function textoPdf(valor: unknown): string {
+  return String(valor ?? '')
+    .replace(/[→⇒➝➔]/g, '->')
+    .replace(/←/g, '<-')
+    .replace(/[✓✔]/g, 'OK')
+    .split('')
+    .filter((ch) => {
+      const c = ch.charCodeAt(0);
+      return c === 10 || c === 13 || (c >= 32 && c <= 126) || (c >= 160 && c <= 255) || EXTRA_WINANSI.includes(ch);
+    })
+    .join('');
+}
+
+function depurar(valor: any): any {
+  if (typeof valor === 'string') return textoPdf(valor);
+  if (Array.isArray(valor)) return valor.map(depurar);
+  if (valor && typeof valor === 'object' && 'content' in valor) return { ...valor, content: depurar(valor.content) };
+  return valor;
+}
+
 // jsPDF y autotable (~500 KB) se cargan solo al generar un PDF, no al abrir la aplicación
 async function cargarPdf() {
-  const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([import('jspdf'), import('jspdf-autotable')]);
+  const [{ default: JsPdfOriginal }, { default: autoTableOriginal }] = await Promise.all([import('jspdf'), import('jspdf-autotable')]);
+  // Documento cuyo método text depura el texto (las tablas también escriben con él)
+  const jsPDF = function (...args: any[]) {
+    const doc = new (JsPdfOriginal as any)(...args);
+    const textoOriginal = doc.text.bind(doc);
+    doc.text = (texto: any, ...resto: any[]) => textoOriginal(depurar(texto), ...resto);
+    return doc;
+  } as unknown as typeof JsPdfOriginal;
+  const autoTable = ((doc: any, opciones: any) =>
+    autoTableOriginal(doc, { ...opciones, head: depurar(opciones.head), body: depurar(opciones.body) })) as typeof autoTableOriginal;
   return { jsPDF, autoTable };
 }
 
@@ -529,11 +562,19 @@ export async function generarComprobantePdfBlob(
         (e.observacion ? ` · ${e.observacion}` : '') +
         (e.fotoHash ? ` · foto registrada (SHA-256 ${e.fotoHash.slice(0, 16)}…)` : '')
     ]),
-    ...c.ajustes.map((a) => [
-      `Ajuste aprobado ${formatearFechaColombia(a.fecha)}`,
-      `${Object.entries(a.anterior).map(([l, n]) => `${l}: ${n}`).join(', ')} → ${Object.entries(a.nueva).map(([l, n]) => `${l}: ${n}`).join(', ')}` +
-        (a.motivo ? ` · ${a.motivo}` : '')
-    ]),
+    // Ajustes y correcciones: cada lote con su cambio ("de 300 kg a 250 kg")
+    ...c.ajustes.map((a) => {
+      const esCorreccion = a.motivo.startsWith('Corrección de la cantidad entregada');
+      const lotes = Array.from(new Set([...Object.keys(a.anterior), ...Object.keys(a.nueva)]));
+      const cambios = lotes
+        .filter((l) => (a.anterior[l] || 0) !== (a.nueva[l] || 0))
+        .map((l) => `${l}: de ${cantidadTexto(a.anterior[l] || 0, c.unidad)} a ${cantidadTexto(a.nueva[l] || 0, c.unidad)}`);
+      const motivo = a.motivo.replace(/^Corrección de la cantidad entregada: ?/, '');
+      return [
+        `${esCorreccion ? 'Corrección de entrega' : 'Ajuste aprobado'} ${formatearFechaColombia(a.fecha)}`,
+        (cambios.length ? cambios.join('; ') : 'Sin cambios de cantidad') + (motivo ? `. Motivo: ${motivo}` : '')
+      ];
+    }),
     ...c.novedades.map((n) => [`Novedad ${formatearFechaColombia(n.fecha)}`, n.descripcion])
   ];
   if (observaciones.length) {

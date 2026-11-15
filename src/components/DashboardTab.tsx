@@ -77,7 +77,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
         <div>
           <h1 className="text-3xl sm:text-4xl">Cultivos Loré</h1>
           <p className="text-sm text-slate-300 mt-1 max-w-xl">
-            Monitoreo en tiempo real, registro tipo blockchain con hash SHA-256 y certificados QR para Turbaco, Bolívar.
+            Producción de tilapia roja en Turbaco, Bolívar: cada fase queda registrada, firmada y verificable desde su certificado.
           </p>
         </div>
 
@@ -93,21 +93,18 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
       </div>
 
       {/* TARJETAS DE INDICADORES GENERALES */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {/* Lotes Activos */}
         <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-xs">
           <div className="flex items-center justify-between text-slate-500 mb-2">
             <span className="text-xs font-semibold uppercase">Lotes en Cultivo</span>
-            <div className="p-2 rounded-lg bg-emerald-50 text-emerald-600">
-              <Activity className="w-4 h-4" />
-            </div>
           </div>
           <div className="flex items-baseline space-x-2">
             <span className="text-3xl font-extrabold text-slate-900">{lotesActivos.length}</span>
             <span className="text-xs text-slate-500 font-medium">activos</span>
           </div>
           <div className="mt-2 text-xs text-slate-500 flex items-center space-x-2">
-            <span>{lotesCerrados.length} lotes cerrados</span>
+            <span>{lotesCerrados.length} {lotesCerrados.length === 1 ? 'lote cerrado' : 'lotes cerrados'}</span>
           </div>
         </div>
 
@@ -115,9 +112,6 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
         <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-xs">
           <div className="flex items-center justify-between text-slate-500 mb-2">
             <span className="text-xs font-semibold uppercase">Biomasa Viva Total</span>
-            <div className="p-2 rounded-lg bg-sky-50 text-sky-600">
-              <Layers className="w-4 h-4" />
-            </div>
           </div>
           <div className="flex items-baseline space-x-2">
             <span className="text-3xl font-extrabold text-slate-900">
@@ -134,9 +128,6 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
         <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-xs">
           <div className="flex items-center justify-between text-slate-500 mb-2">
             <span className="text-xs font-semibold uppercase">Ocupación Estanques</span>
-            <div className="p-2 rounded-lg bg-indigo-50 text-indigo-600">
-              <Fish className="w-4 h-4" />
-            </div>
           </div>
           <div className="flex items-center space-x-4 mt-1">
             {config.estanques.map((est) => (
@@ -154,9 +145,6 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
         <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-xs">
           <div className="flex items-center justify-between text-slate-500 mb-2">
             <span className="text-xs font-semibold uppercase">Alertas Fisicoquímicas</span>
-            <div className={`p-2 rounded-lg ${totalAlertasAgua > 0 ? 'bg-amber-50 text-amber-600' : 'bg-slate-50 text-slate-400'}`}>
-              <AlertTriangle className="w-4 h-4" />
-            </div>
           </div>
           <div className="flex items-baseline space-x-2">
             <span className={`text-3xl font-extrabold ${totalAlertasAgua > 0 ? 'text-amber-600' : 'text-slate-900'}`}>
@@ -224,22 +212,22 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                   >
                     <td className="px-5 py-3.5">
                       <div className="flex items-center space-x-2">
-                        <span className="font-mono font-bold text-slate-900 text-sm">
+                        <span className="font-serif text-base text-slate-900 tabular-nums">
                           {lote.codigo}
                         </span>
                       </div>
                     </td>
                     <td className="px-4 py-3.5">
-                      <span className="inline-block px-2 py-0.5 rounded font-mono font-bold text-xs bg-sky-50 text-sky-700 border border-sky-200">
+                      <span className="font-serif text-sm text-slate-900">
                         {lote.estanque}
                       </span>
                     </td>
                     <td className="px-4 py-3.5 text-slate-600">
                       <div>{lote.fechaSiembra}</div>
-                      <div className="text-[11px] text-slate-400">{lote.resumen.diasDeCultivo} días</div>
+                      {lote.resumen.diasDeCultivo != null && <div className="text-[11px] text-slate-500">{lote.resumen.diasDeCultivo} días</div>}
                     </td>
                     <td className="px-4 py-3.5 text-right font-medium">
-                      <span className={lote.resumen.supervivencia >= 85 ? 'text-emerald-600 font-bold' : 'text-amber-600'}>
+                      <span className={lote.resumen.supervivencia >= 85 ? 'text-slate-900 font-bold' : 'text-amber-700 font-bold'}>
                         {lote.resumen.supervivencia}%
                       </span>
                     </td>
@@ -251,11 +239,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                     </td>
                     <td className="px-4 py-3.5 text-center">
                       <span
-                        className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider ${
-                          lote.estado === 'activo'
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : 'bg-slate-200 text-slate-700'
-                        }`}
+                        className={`rotulo ${lote.estado === 'activo' ? 'text-emerald-700' : 'text-slate-600'}`}
                       >
                         {lote.estado}
                       </span>

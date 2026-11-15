@@ -9,6 +9,7 @@ import { anotacionesDe, verificarAnotaciones } from './anotacionesService';
 import { nombreDato } from './hashService';
 import { formatearFechaColombia, getFechaHoyBogota, ocultarCorreo } from '../utils/constants';
 import { evaluarParametroAgua } from './calculosService';
+import { logoPngDataUrl } from '../components/LogoLore';
 
 
 // Las fuentes estándar del PDF solo tienen los caracteres latinos (WinAnsi). Uno fuera de ese
@@ -54,9 +55,118 @@ const ETIQUETA_DATO: Record<string, string> = {
   proveedorAlevinos: 'Proveedor de alevinos',
   observacionesIniciales: 'Observaciones iniciales',
   pctProteina: 'Proteína (%)',
-  numeroRaciones: 'Número de raciones'
+  numeroRaciones: 'Número de raciones',
+  pesoInicialG: 'Peso inicial (g)'
 };
 const OMITIR_DATO = new Set(['ambito']);
+
+// ---------- Diseño común de los PDF (mundo "acta": tinta, filetes finos, oro viejo) ----------
+type RGB = [number, number, number];
+const C: Record<'tinta' | 'pizarra' | 'gris' | 'filete' | 'fondo' | 'oro' | 'verde' | 'rojo', RGB> = {
+  tinta: [22, 33, 58],
+  pizarra: [74, 81, 96],
+  gris: [93, 100, 112],
+  filete: [223, 226, 231],
+  fondo: [246, 247, 249],
+  oro: [138, 102, 36],
+  verde: [34, 95, 70],
+  rojo: [179, 38, 30]
+};
+const MARGEN = 14;
+
+// Rótulo pequeño en versalitas espaciadas
+function rotuloPdf(doc: any, texto: string, x: number, y: number) {
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(6.5);
+  doc.setTextColor(...C.gris);
+  doc.text(textoPdf(texto).toUpperCase(), x, y, { charSpace: 0.35 });
+}
+
+// Membrete: logo, nombre en serif, subtítulo espaciado, lugar y fecha a la derecha y doble filete dorado
+function membrete(doc: any, logo: string | null, subtitulo: string, derecha?: string[]): number {
+  const ancho = doc.internal.pageSize.getWidth();
+  const y = 12;
+  if (logo) doc.addImage(logo, 'PNG', MARGEN, y, 17, 13);
+  const xTexto = logo ? MARGEN + 21 : MARGEN;
+  doc.setTextColor(...C.tinta);
+  doc.setFont('times', 'normal');
+  doc.setFontSize(22);
+  doc.text('Cultivos Loré', xTexto, y + 7.5);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.setTextColor(...C.gris);
+  doc.text(textoPdf(subtitulo).toUpperCase(), xTexto, y + 12.5, { charSpace: 0.45 });
+  doc.setFontSize(7.5);
+  const lineas = derecha || ['Turbaco, Bolívar · Colombia', `Generado el ${getFechaHoyBogota()}`];
+  lineas.forEach((l, i) => doc.text(textoPdf(l), ancho - MARGEN, y + 6 + i * 4, { align: 'right' }));
+  dobleFilete(doc, MARGEN, ancho - MARGEN, y + 17);
+  return y + 24;
+}
+
+// Título de sección en serif con un filete fino debajo (y una línea opcional de contexto)
+function tituloSeccion(doc: any, texto: string, y: number, nota?: string): number {
+  const ancho = doc.internal.pageSize.getWidth();
+  if (y > doc.internal.pageSize.getHeight() - 40) {
+    doc.addPage();
+    y = 20;
+  }
+  doc.setFont('times', 'normal');
+  doc.setFontSize(13);
+  doc.setTextColor(...C.tinta);
+  doc.text(textoPdf(texto), MARGEN, y);
+  if (nota) {
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(7.5);
+    doc.setTextColor(...C.gris);
+    doc.text(textoPdf(nota), ancho - MARGEN, y, { align: 'right' });
+  }
+  doc.setDrawColor(...C.oro);
+  doc.setLineWidth(0.25);
+  doc.line(MARGEN, y + 1.8, ancho - MARGEN, y + 1.8);
+  return y + 4.5;
+}
+
+// Estilo de tabla: encabezado tinta en versalitas, filas con filete fino y fondo alterno muy claro
+function estiloTabla(): Record<string, any> {
+  return {
+    theme: 'plain',
+    margin: { left: MARGEN, right: MARGEN, top: 20, bottom: 18 },
+    styles: { font: 'helvetica', fontSize: 7.5, textColor: C.tinta, cellPadding: { top: 1.8, bottom: 1.8, left: 2, right: 2 }, lineColor: C.filete, lineWidth: { bottom: 0.15 } },
+    headStyles: { fillColor: C.tinta, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 7, lineWidth: 0 },
+    alternateRowStyles: { fillColor: C.fondo },
+    // Un dato que no se registró se muestra como raya, nunca como "undefined"
+    willDrawCell: (d: any) => {
+      if (d.section === 'body' && /undefined|NaN|null/.test(d.cell.text.join(' '))) d.cell.text = ['—'];
+    }
+  };
+}
+
+// Pie de todas las páginas: filete dorado, referencia del documento y número de página
+function piePaginas(doc: any, referencia: string) {
+  const ancho = doc.internal.pageSize.getWidth();
+  const alto = doc.internal.pageSize.getHeight();
+  const total = doc.getNumberOfPages();
+  for (let p = 1; p <= total; p++) {
+    doc.setPage(p);
+    doc.setDrawColor(...C.oro);
+    doc.setLineWidth(0.25);
+    doc.line(MARGEN, alto - 12, ancho - MARGEN, alto - 12);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7);
+    doc.setTextColor(...C.gris);
+    doc.text(textoPdf(referencia), MARGEN, alto - 8);
+    doc.text(`Página ${p} de ${total}`, ancho - MARGEN, alto - 8, { align: 'right' });
+  }
+}
+
+// Doble filete dorado bajo los encabezados (rasgo de acta del diseño)
+function dobleFilete(doc: any, x1: number, x2: number, y: number) {
+  doc.setDrawColor(138, 102, 36);
+  doc.setLineWidth(0.3);
+  doc.line(x1, y, x2, y);
+  doc.line(x1, y + 0.9, x2, y + 0.9);
+  doc.setLineWidth(0.2);
+}
 
 function depurar(valor: any): any {
   if (typeof valor === 'string') return textoPdf(valor);
@@ -116,233 +226,179 @@ export async function generarLotePdfBlob(
   const anotacionesSinValidez = anotacionesDe(datosAnotaciones).filter((a) => verifAnotaciones.alteradas.includes(a.numero));
 
   const pageWidth = doc.internal.pageSize.getWidth();
-  let currentY = 14;
+  const M = 14; // margen lateral
+  const logo = await logoPngDataUrl('#16213a').catch(() => null);
 
-  // --- 1. ENCABEZADO Y BRANDING ---
-  doc.setFillColor(3, 105, 161); // Tailwind sky-700
-  doc.rect(10, currentY, pageWidth - 20, 24, 'F');
+  // --- 1. MEMBRETE ---
+  let currentY = membrete(doc, logo, 'Certificado de trazabilidad del lote · Tilapia roja');
 
-  doc.setTextColor(255, 255, 255);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(16);
-  doc.text('CULTIVOS LORÉ — TILAPIA PRO', 16, currentY + 9);
-
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9.5);
-  doc.text('Trazabilidad Integral Inalterable de Lote • Acuicultura Sostenible', 16, currentY + 16);
-  doc.text(`Turbaco, Bolívar, Colombia • Generado: ${getFechaHoyBogota()}`, 16, currentY + 21);
-
-  currentY += 28;
-
-  // --- 2. RESUMEN DE IDENTIDAD DEL LOTE & CÓDIGO QR ---
-  const boxHeight = 44;
-  doc.setFillColor(248, 250, 252);
-  doc.setDrawColor(203, 213, 225);
-  doc.rect(10, currentY, pageWidth - 20, boxHeight, 'FD');
-
-  // Insertar QR a la derecha
+  // --- 2. IDENTIDAD DEL LOTE Y CÓDIGO QR ---
+  const anchoQr = 32;
+  const xQr = pageWidth - M - anchoQr;
   try {
-    doc.addImage(qrDataUrl, 'PNG', pageWidth - 48, currentY + 3, 34, 34);
-    doc.setFontSize(7.5);
-    doc.setTextColor(100, 116, 139);
-    doc.text('Escanear trazabilidad', pageWidth - 48 + 17, currentY + 40, { align: 'center' });
+    doc.addImage(qrDataUrl, 'PNG', xQr, currentY, anchoQr, anchoQr);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.5);
+    doc.setTextColor(...C.gris);
+    doc.text('ESCANEE PARA VERIFICAR', xQr + anchoQr / 2, currentY + anchoQr + 3.5, { align: 'center', charSpace: 0.1 });
   } catch (err) {
     console.warn('No se pudo incrustar QR en el PDF:', err);
   }
 
-  // Textos del lote
-  doc.setTextColor(15, 23, 42);
+  doc.setTextColor(...C.tinta);
+  doc.setFont('times', 'normal');
+  doc.setFontSize(22);
+  doc.text(`Lote ${lote.codigo}`, M, currentY + 7);
+
+  // Franja de estado: sellado (tinta) o en cultivo (verde)
+  const anchoFranja = xQr - M - 6;
+  doc.setFillColor(...(lote.estado === 'cerrado' ? C.tinta : C.verde));
+  doc.rect(M, currentY + 10.5, anchoFranja, 7, 'F');
+  doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(13);
-  doc.text(`LOTE: ${lote.codigo}`, 14, currentY + 7);
+  doc.setFontSize(7.5);
+  doc.text(
+    lote.estado === 'cerrado' ? `LOTE SELLADO${lote.fechaCierre ? ` · ${lote.fechaCierre}` : ''} · REGISTROS CERRADOS` : 'LOTE EN CULTIVO',
+    M + 3,
+    currentY + 15.1,
+    { charSpace: 0.5 }
+  );
 
-  doc.setFontSize(8.5);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Producto:', 14, currentY + 14);
-  doc.setFont('helvetica', 'normal');
-  doc.text(lote.producto, 32, currentY + 14, { maxWidth: pageWidth - 85 });
+  // Ficha de identidad en tres columnas: rótulo pequeño y valor
+  const campos: [string, string][] = [
+    ['Producto', lote.producto],
+    ['Origen', lote.origen],
+    ['Estanque', `${lote.estanque}`],
+    ['Siembra', lote.fechaSiembra],
+    ['Alevinos sembrados', lote.cantidadSembrada.toLocaleString()],
+    ['Proveedor de alevinos', lote.proveedorAlevinos || 'No especificado']
+  ];
+  const anchoCol = anchoFranja / 3;
+  campos.forEach(([rotulo, valor], i) => {
+    const x = M + (i % 3) * anchoCol;
+    const y = currentY + 24 + Math.floor(i / 3) * 10;
+    rotuloPdf(doc, rotulo, x, y);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(...C.tinta);
+    doc.text(doc.splitTextToSize(textoPdf(valor), anchoCol - 3)[0], x, y + 4.2);
+  });
+  currentY += 51;
 
-  doc.setFont('helvetica', 'bold');
-  doc.text('Origen:', 14, currentY + 21);
-  doc.setFont('helvetica', 'normal');
-  doc.text(lote.origen, 28, currentY + 21);
-
-  doc.setFont('helvetica', 'bold');
-  doc.text('Estanque:', 14, currentY + 27);
-  doc.setFont('helvetica', 'normal');
-  doc.text(`${lote.estanque}`, 32, currentY + 27);
-
-  doc.setFont('helvetica', 'bold');
-  doc.text('Siembra:', 52, currentY + 27);
-  doc.setFont('helvetica', 'normal');
-  doc.text(`${lote.fechaSiembra} (${lote.cantidadSembrada.toLocaleString()} alevinos)`, 68, currentY + 27);
-
-  doc.setFont('helvetica', 'bold');
-  doc.text('Estado:', 14, currentY + 33);
-  doc.setFont('helvetica', 'normal');
-  doc.text(`${lote.estado.toUpperCase()}${lote.fechaCierre ? ` (Cierre: ${lote.fechaCierre})` : ''}`, 28, currentY + 33);
-
-  doc.setFont('helvetica', 'bold');
-  doc.text('Proveedor alevinos:', 14, currentY + 39);
-  doc.setFont('helvetica', 'normal');
-  doc.text(`${lote.proveedorAlevinos || 'No especificado'}`, 48, currentY + 39);
-
-  currentY += boxHeight + 4;
-
-  // --- 3. TABLA DE RESUMEN PRODUCTIVO ---
+  // --- 3. INDICADORES PRODUCTIVOS ---
   const r = lote.resumen;
+  currentY = tituloSeccion(doc, 'Indicadores productivos', currentY);
   autoTable(doc, {
+    ...estiloTabla(),
     startY: currentY,
-    margin: { left: 10, right: 10 },
-    theme: 'grid',
-    headStyles: {
-      fillColor: [3, 105, 161],
-      fontSize: 8.5,
-      halign: 'left',
-      fontStyle: 'bold'
-    },
-    bodyStyles: { fontSize: 8, textColor: [15, 23, 42] },
-    head: [['INDICADOR PRODUCTIVO', 'VALOR REGISTRADO', 'INDICADOR PRODUCTIVO', 'VALOR REGISTRADO']],
+    head: [['Indicador', 'Valor', 'Indicador', 'Valor']],
+    columnStyles: { 1: { fontStyle: 'bold' }, 3: { fontStyle: 'bold' } },
     body: [
-      [
-        'Días de cultivo:', `${r.diasDeCultivo} días`,
-        'Supervivencia estimada:', `${r.supervivencia}%`
-      ],
-      [
-        'Peces sembrados:', `${lote.cantidadSembrada.toLocaleString()} peces`,
-        'Mortalidad acumulada:', `${r.mortalidadAcumulada.toLocaleString()} peces`
-      ],
-      [
-        'Peces cosechados:', `${r.pecesCosechados.toLocaleString()} peces`,
-        'Peces vivos actuales:', `${r.pecesVivos.toLocaleString()} peces`
-      ],
-      [
-        'Peso inicial prom:', `${lote.pesoInicialPromedioG} g`,
-        'Peso prom. actual/final:', `${r.pesoPromedioActualG} g`
-      ],
-      [
-        'Biomasa inicial:', `${r.biomasaInicialKg} kg`,
-        'Biomasa estimada viva:', `${r.biomasaEstimadaKg} kg`
-      ],
-      [
-        'Biomasa cosechada:', `${r.biomasaCosechadaKg} kg`,
-        'Alimento acumulado:', `${r.alimentoAcumuladoKg} kg`
-      ],
-      [
-        'FCA (Factor Conversión):', r.FCA !== null ? `${r.FCA}` : 'N/A',
-        'Ganancia diaria:', `${r.gananciaDiariaG} g/día`
-      ],
-      [
-        'Densidad actual:', r.densidadKgM3 !== null ? `${r.densidadKgM3} kg/m³` : 'N/A',
-        'Alertas calidad de agua:', `${r.alertasAgua} mediciones fuera de rango`
-      ]
+      ['Días de cultivo', `${r.diasDeCultivo} días`, 'Supervivencia estimada', `${r.supervivencia}%`],
+      ['Peces sembrados', `${lote.cantidadSembrada.toLocaleString()} peces`, 'Mortalidad acumulada', `${r.mortalidadAcumulada.toLocaleString()} peces`],
+      ['Peces cosechados', `${r.pecesCosechados.toLocaleString()} peces`, 'Peces vivos actuales', `${r.pecesVivos.toLocaleString()} peces`],
+      ['Peso inicial promedio', `${lote.pesoInicialPromedioG} g`, 'Peso promedio actual/final', `${r.pesoPromedioActualG} g`],
+      ['Biomasa inicial', `${r.biomasaInicialKg} kg`, 'Biomasa estimada viva', `${r.biomasaEstimadaKg} kg`],
+      ['Biomasa cosechada', `${r.biomasaCosechadaKg} kg`, 'Alimento acumulado', `${r.alimentoAcumuladoKg} kg`],
+      ['FCA (factor de conversión)', r.FCA !== null ? `${r.FCA}` : 'N/A', 'Ganancia diaria', `${r.gananciaDiariaG} g/día`],
+      ['Densidad actual', r.densidadKgM3 !== null ? `${r.densidadKgM3} kg/m³` : 'N/A', 'Alertas de calidad de agua', `${r.alertasAgua} fuera de rango`]
     ]
   });
+  currentY = (doc as any).lastAutoTable.finalY + 8;
 
-  currentY = (doc as any).lastAutoTable.finalY + 5;
-
-  // --- 4. TABLA DE EVENTOS DE CALIDAD DEL AGUA ---
-  const eventosAgua = (lote.eventos || []).filter(e => e.tipo === 'Calidad del agua');
+  // --- 4. CALIDAD DEL AGUA ---
+  const eventosAgua = (lote.eventos || []).filter((e) => e.tipo === 'Calidad del agua');
   if (eventosAgua.length > 0) {
-    const filasAgua = eventosAgua.map(ev => {
+    const filasAgua = eventosAgua.map((ev) => {
       const d = ev.datos || {};
-      const t = d.temperatura !== undefined ? `${d.temperatura} °C` : '-';
-      const ox = d.oxigenoDisuelto !== undefined ? `${d.oxigenoDisuelto} mg/L` : '-';
-      const ph = d.ph !== undefined ? `${d.ph}` : '-';
-      const am = d.amonioTotal !== undefined ? `${d.amonioTotal} mg/L` : '-';
-      const nit = d.nitritos !== undefined ? `${d.nitritos} mg/L` : '-';
-      const sec = d.transparenciaSecchi !== undefined ? `${d.transparenciaSecchi} cm` : '-';
-
-      // Detectar si está fuera de rango
+      const v = (x: unknown, u = '') => (x !== undefined ? `${x}${u}` : '-');
       const paramsList: Array<'temperatura' | 'oxigenoDisuelto' | 'ph' | 'amonioTotal' | 'nitritos' | 'transparenciaSecchi'> = [
-        'temperatura', 'oxigenoDisuelto', 'ph', 'amonioTotal', 'nitritos', 'transparenciaSecchi'
+        'temperatura',
+        'oxigenoDisuelto',
+        'ph',
+        'amonioTotal',
+        'nitritos',
+        'transparenciaSecchi'
       ];
-      const fuera: string[] = [];
-      for (const p of paramsList) {
+      const fuera = paramsList.filter((p) => {
         const val = Number(d[p]);
-        if (!isNaN(val)) {
-          const evalRes = evaluarParametroAgua(p, val, config.rangosReferencia);
-          if (evalRes.fueraDeRango) {
-            fuera.push(`${p}: ${evalRes.mensaje}`);
-          }
+        return !isNaN(val) && evaluarParametroAgua(p, val, config.rangosReferencia).fueraDeRango;
+      });
+      return [
+        ev.fechaEvento,
+        v(d.temperatura, ' °C'),
+        v(d.oxigenoDisuelto, ' mg/L'),
+        v(d.ph),
+        v(d.amonioTotal, ' mg/L'),
+        v(d.nitritos, ' mg/L'),
+        v(d.transparenciaSecchi, ' cm'),
+        fuera.length ? `Alerta (${fuera.length})` : 'Óptimo',
+        quienRegistro(ev, true)
+      ];
+    });
+    currentY = tituloSeccion(doc, 'Calidad del agua', currentY);
+    autoTable(doc, {
+      ...estiloTabla(),
+      startY: currentY,
+      head: [['Fecha', 'Temp.', 'O2 dis.', 'pH', 'Amonio', 'Nitritos', 'Secchi', 'Estado', 'Registró']],
+      body: filasAgua,
+      didParseCell: (d: any) => {
+        if (d.section === 'body' && d.column.index === 7 && String(d.cell.raw).startsWith('Alerta')) {
+          d.cell.styles.textColor = C.rojo;
+          d.cell.styles.fontStyle = 'bold';
         }
       }
-
-      const estadoParam = fuera.length > 0 ? `ALERTA (${fuera.length})` : 'ÓPTIMO';
-      return [ev.fechaEvento, t, ox, ph, am, nit, sec, estadoParam, quienRegistro(ev, true)];
     });
-
-    autoTable(doc, {
-      startY: currentY,
-      margin: { left: 10, right: 10 },
-      theme: 'striped',
-      headStyles: { fillColor: [8, 145, 178], fontSize: 8, fontStyle: 'bold' },
-      bodyStyles: { fontSize: 7.5 },
-      head: [['Fecha', 'Temp', 'O2 Dis.', 'pH', 'Amonio', 'Nitritos', 'Secchi', 'Estado', 'Operario']],
-      body: filasAgua
-    });
-    currentY = (doc as any).lastAutoTable.finalY + 5;
+    currentY = (doc as any).lastAutoTable.finalY + 8;
   }
 
-  // --- 5. TABLA DE COSECHA, PROCESO, CONSERVACIÓN Y DESPACHO ---
-  const eventosPost = (lote.eventos || []).filter(e =>
+  // --- 5. COSECHA, PROCESO, CONSERVACIÓN Y DESPACHO ---
+  const eventosPost = (lote.eventos || []).filter((e) =>
     ['Cosecha', 'Proceso', 'Empaque y conservación', 'Despacho/transporte'].includes(e.tipo)
   );
   if (eventosPost.length > 0) {
-    const filasPost = eventosPost.map(ev => {
+    const filasPost = eventosPost.map((ev) => {
       let detalle = ev.descripcion || '';
       const d = ev.datos || {};
       if (ev.tipo === 'Cosecha') {
-        detalle = `Peces: ${d.pecesCosechados} | Biomasa: ${d.biomasaCosechadaKg} kg | Peso prom: ${d.pesoPromedioG} g`;
+        detalle = `Peces: ${d.pecesCosechados} · Biomasa: ${d.biomasaCosechadaKg} kg · Peso promedio: ${d.pesoPromedioG} g`;
       } else if (ev.tipo === 'Proceso') {
-        detalle = `Escamado/Eviscerado: ${d.escamadoEviscerado ? 'SÍ' : 'NO'} | Cant: ${d.cantidadProcesada} | Peso final: ${d.pesoPromedioFinalG} g | Resp: ${d.responsable || '-'}`;
+        detalle = `Escamado/eviscerado: ${d.escamadoEviscerado ? 'sí' : 'no'} · Cantidad: ${d.cantidadProcesada} · Peso final: ${d.pesoPromedioFinalG} g · Responsable: ${d.responsable || '-'}`;
       } else if (ev.tipo === 'Empaque y conservación') {
-        detalle = `Empaque: ${d.tipoEmpaque || '-'} | Temp: ${d.temperaturaConservacionC ?? '-'}°C | Hielo: ${d.usoHielo ? 'SÍ' : 'NO'}`;
+        detalle = `Empaque: ${d.tipoEmpaque || '-'} · Temperatura: ${d.temperaturaConservacionC ?? '-'} °C · Hielo: ${d.usoHielo ? 'sí' : 'no'}`;
       } else if (ev.tipo === 'Despacho/transporte') {
-        detalle = `Destino: ${d.destino || '-'} | Salida: ${d.fechaHoraSalida || '-'} | Temp despacho: ${d.temperaturaDespachoC ?? '-'}°C | Contenedor c/hielo: ${d.contenedorIsotermico ? 'SÍ' : 'NO'} | Resp: ${d.responsable || '-'}`;
+        detalle = `Destino: ${d.destino || '-'} · Salida: ${d.fechaHoraSalida || '-'} · Temperatura: ${d.temperaturaDespachoC ?? '-'} °C · Contenedor con hielo: ${d.contenedorIsotermico ? 'sí' : 'no'} · Responsable: ${d.responsable || '-'}`;
       }
       return [ev.fechaEvento, ev.tipo, detalle, quienRegistro(ev, true)];
     });
-
-    autoTable(doc, {
-      startY: currentY,
-      margin: { left: 10, right: 10 },
-      theme: 'grid',
-      headStyles: { fillColor: [15, 118, 110], fontSize: 8, fontStyle: 'bold' },
-      bodyStyles: { fontSize: 7.5 },
-      head: [['Fecha', 'Etapa', 'Detalle Técnico / Parámetros', 'Registrado Por']],
-      body: filasPost
-    });
-    currentY = (doc as any).lastAutoTable.finalY + 5;
+    currentY = tituloSeccion(doc, 'Cosecha, proceso y despacho', currentY);
+    autoTable(doc, { ...estiloTabla(), startY: currentY, head: [['Fecha', 'Etapa', 'Detalle técnico', 'Registró']], body: filasPost });
+    currentY = (doc as any).lastAutoTable.finalY + 8;
   }
 
-  // --- 6. TABLA DE PROBIÓTICOS Y TRATAMIENTOS ---
-  const eventosSanitarios = (lote.eventos || []).filter(e =>
-    ['Probióticos', 'Tratamiento o manejo sanitario'].includes(e.tipo)
-  );
+  // --- 6. PROBIÓTICOS Y TRATAMIENTOS ---
+  const eventosSanitarios = (lote.eventos || []).filter((e) => ['Probióticos', 'Tratamiento o manejo sanitario'].includes(e.tipo));
   if (eventosSanitarios.length > 0) {
-    const filasSan = eventosSanitarios.map(ev => {
+    const filasSan = eventosSanitarios.map((ev) => {
       const d = ev.datos || {};
-      const det = ev.tipo === 'Probióticos'
-        ? `Producto: ${d.producto || '-'} | Dosis: ${d.dosis || '-'} ${d.unidad || ''} | Vía: ${d.viaAplicacion || '-'} | Obj: ${d.objetivo || '-'}`
-        : `Descripción: ${d.descripcion || ev.descripcion || '-'} | Producto: ${d.producto || '-'} | Dosis: ${d.dosis || '-'}`;
+      const det =
+        ev.tipo === 'Probióticos'
+          ? `Producto: ${d.producto || '-'} · Dosis: ${d.dosis || '-'} ${d.unidad || ''} · Vía: ${d.viaAplicacion || '-'} · Objetivo: ${d.objetivo || '-'}`
+          : `Descripción: ${d.descripcion || ev.descripcion || '-'} · Producto: ${d.producto || '-'} · Dosis: ${d.dosis || '-'}`;
       return [ev.fechaEvento, ev.tipo, det, quienRegistro(ev, true)];
     });
-
+    currentY = tituloSeccion(doc, 'Manejo sanitario', currentY);
     autoTable(doc, {
+      ...estiloTabla(),
       startY: currentY,
-      margin: { left: 10, right: 10 },
-      theme: 'grid',
-      headStyles: { fillColor: [30, 64, 175], fontSize: 8, fontStyle: 'bold' },
-      bodyStyles: { fontSize: 7.5 },
-      head: [['Fecha', 'Tipo de Manejo', 'Producto / Dosis / Aplicación', 'Registrado Por']],
+      head: [['Fecha', 'Tipo de manejo', 'Producto, dosis y aplicación', 'Registró']],
       body: filasSan
     });
-    currentY = (doc as any).lastAutoTable.finalY + 5;
+    currentY = (doc as any).lastAutoTable.finalY + 8;
   }
 
-  // --- 7. HISTORIAL CRONOLÓGICO COMPLETO DE EVENTOS ---
-  const filasEventos = (lote.eventos || []).map(ev => {
+  // --- 7. HISTORIAL DE FASES ---
+  const filasEventos = (lote.eventos || []).map((ev) => {
     let detalleDatos = '';
     if (ev.datos && Object.keys(ev.datos).length > 0) {
       detalleDatos = Object.entries(ev.datos)
@@ -354,136 +410,134 @@ export async function generarLotePdfBlob(
     const notas = anotacionesAprobadas.filter((a) => a.propuesta.datos.fase === ev.indice).map((a) => a.numero);
     const refNotas = notas.length ? `(ver anotación N.º ${notas.join(', ')})` : '';
     const contenido = [ev.descripcion, detalleDatos, refNotas].filter(Boolean).join(' — ');
-    return [
-      `#${ev.indice}`,
-      ev.fechaEvento,
-      ev.tipo,
-      contenido || '-',
-      quienRegistro(ev, true),
-      ev.hash.substring(0, 12) + '...'
-    ];
+    return [`#${ev.indice}`, ev.fechaEvento, ev.tipo, contenido || '-', quienRegistro(ev, true), ev.hash.substring(0, 10)];
   });
-
+  currentY = tituloSeccion(doc, 'Historial de fases', currentY);
   autoTable(doc, {
+    ...estiloTabla(),
     startY: currentY,
-    margin: { left: 10, right: 10 },
-    theme: 'striped',
-    headStyles: { fillColor: [51, 65, 85], fontSize: 8, fontStyle: 'bold' },
-    bodyStyles: { fontSize: 7.5 },
     columnStyles: {
-      0: { cellWidth: 10 },
-      1: { cellWidth: 20 },
-      2: { cellWidth: 32 },
-      3: { cellWidth: 68 },
-      4: { cellWidth: 36 },
-      5: { cellWidth: 24 }
+      0: { cellWidth: 9, textColor: C.gris },
+      1: { cellWidth: 19 },
+      2: { cellWidth: 28, fontStyle: 'bold' },
+      3: { cellWidth: 'auto' },
+      4: { cellWidth: 32 },
+      5: { cellWidth: 22, font: 'courier', fontSize: 6.5, textColor: C.gris }
     },
-    head: [['#', 'Fecha', 'Fase', 'Detalle / Mediciones', 'Operario', 'Hash SHA-256']],
+    head: [['#', 'Fecha', 'Fase', 'Detalle y mediciones', 'Registró', 'Huella SHA-256']],
     body: filasEventos
   });
-  currentY = (doc as any).lastAutoTable.finalY + 5;
+  currentY = (doc as any).lastAutoTable.finalY + 8;
 
   // --- 7b. ANOTACIONES POSTERIORES AL CIERRE (no modifican el lote sellado) ---
   if (anotacionesAprobadas.length || anotacionesSinValidez.length) {
+    currentY = tituloSeccion(
+      doc,
+      'Anotaciones posteriores al cierre',
+      currentY,
+      'Aprobadas por una segunda persona; el registro sellado no se modificó.'
+    );
     autoTable(doc, {
+      ...estiloTabla(),
       startY: currentY,
-      margin: { left: 10, right: 10 },
-      theme: 'grid',
-      styles: { fontSize: 7, cellPadding: 1.5 },
-      headStyles: { fillColor: [2, 132, 199], textColor: [255, 255, 255], fontStyle: 'bold' },
-      columnStyles: { 0: { cellWidth: 12 }, 1: { cellWidth: 22 }, 2: { cellWidth: 46 }, 3: { cellWidth: 52 }, 4: { cellWidth: 36 } },
-      head: [
-        [{ content: 'ANOTACIONES POSTERIORES AL CIERRE (aprobadas; el registro sellado no se modificó)', colSpan: 6 }],
-        ['N.º', 'Fase', 'Dato: registrado / correcto', 'Motivo', 'Propuso / Aprobó', 'Hash']
-      ],
+      columnStyles: {
+        0: { cellWidth: 11 },
+        1: { cellWidth: 22 },
+        2: { cellWidth: 44 },
+        3: { cellWidth: 'auto' },
+        4: { cellWidth: 34 },
+        5: { cellWidth: 22, font: 'courier', fontSize: 6.5, textColor: C.gris }
+      },
+      head: [['N.º', 'Fase', 'Dato: registrado / correcto', 'Motivo', 'Propuso / aprobó', 'Huella']],
       body: [
         ...anotacionesAprobadas.map((a) => {
-        const d = a.propuesta.datos;
-        const ev = (lote.eventos || [])[d.fase];
-        const registrado = d.dato && ev ? String(ev.datos?.[d.dato] ?? d.valorRegistrado) : d.valorRegistrado;
-        return [
-          String(a.numero),
-          `#${d.fase} ${ev ? ev.tipo : ''}`,
-          d.dato ? `${nombreDato(d.dato)}: ${registrado} / ${d.valorCorrecto}` : 'Aclaración general',
-          d.motivo,
-          `${quienRegistro(a.propuesta, true)} / ${a.resolucion ? quienRegistro(a.resolucion, true) : '-'}\n${formatearFechaColombia(a.resolucion?.fecha || a.propuesta.fecha)}`,
-          (a.resolucion?.hash || a.propuesta.hash).slice(0, 12) + '...'
-        ];
+          const d = a.propuesta.datos;
+          const ev = (lote.eventos || [])[d.fase];
+          const registrado = d.dato && ev ? String(ev.datos?.[d.dato] ?? d.valorRegistrado) : d.valorRegistrado;
+          return [
+            String(a.numero),
+            `#${d.fase} ${ev ? ev.tipo : ''}`,
+            d.dato ? `${nombreDato(d.dato)}: ${registrado} / ${d.valorCorrecto}` : 'Aclaración general',
+            d.motivo,
+            `${quienRegistro(a.propuesta, true)} / ${a.resolucion ? quienRegistro(a.resolucion, true) : '-'}\n${formatearFechaColombia(a.resolucion?.fecha || a.propuesta.fecha)}`,
+            (a.resolucion?.hash || a.propuesta.hash).slice(0, 10)
+          ];
         }),
         ...anotacionesSinValidez.map((a) => [String(a.numero), '', 'ALTERADA después de registrarse: SIN VALIDEZ', '', '', ''])
-      ]
+      ],
+      didParseCell: (d: any) => {
+        if (d.section === 'body' && String(d.row.raw?.[2] || '').startsWith('ALTERADA')) {
+          d.cell.styles.textColor = C.rojo;
+          d.cell.styles.fontStyle = 'bold';
+        }
+      }
     });
-    currentY = (doc as any).lastAutoTable.finalY + 5;
-  }
-
-  // Si estamos muy cerca del pie de página, agregar nueva página
-  if (currentY > doc.internal.pageSize.getHeight() - 48) {
-    doc.addPage();
-    currentY = 15;
+    currentY = (doc as any).lastAutoTable.finalY + 8;
   }
 
   // --- 8. FICHA NUTRICIONAL REFERENCIAL ---
   const fn = config.fichaNutricional;
-  autoTable(doc, {
-    startY: currentY,
-    margin: { left: 10, right: 10 },
-    theme: 'plain',
-    headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontSize: 8, fontStyle: 'bold' },
-    bodyStyles: { fontSize: 7.5 },
-    head: [[`FICHA NUTRICIONAL REFERENCIAL (por cada ${fn.porcionG} g de tilapia cruda)`]],
-    body: [
-      [
-        `Energía: ${fn.energiaKcal} kcal  |  Proteína: ${fn.proteinaG} g  |  Grasa total: ${fn.grasaTotalG} g  |  Carbohidratos: ${fn.carbohidratosG} g  |  Colesterol: ${fn.colesterolMg} mg  |  Sodio: ${fn.sodioMg} mg`
-      ],
-      [
-        `Fuente: ${fn.fuente}. ${fn.notas}`
-      ]
-    ]
-  });
-  currentY = (doc as any).lastAutoTable.finalY + 4;
-
-  // --- 9. PIE DE PÁGINA: INTEGRIDAD HASH, QR & NOTA DE INOCUIDAD ---
-  if (currentY > doc.internal.pageSize.getHeight() - 32) {
+  if (currentY > doc.internal.pageSize.getHeight() - 70) {
     doc.addPage();
-    currentY = 15;
+    currentY = 20;
   }
-
-  doc.setFillColor(241, 245, 249);
-  doc.rect(10, currentY, pageWidth - 20, 24, 'F');
-
-  doc.setFontSize(7.5);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(15, 23, 42);
-  doc.text('VERIFICACIÓN CRIPTOGRÁFICA DE INTEGRIDAD (REGISTRO TIPO BLOCKCHAIN · SHA-256):', 13, currentY + 5);
-
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(resultadoIntegridad.valido ? 22 : 185, resultadoIntegridad.valido ? 101 : 28, resultadoIntegridad.valido ? 52 : 28);
-  doc.text(
-    resultadoIntegridad.valido
-      ? `ESTADO: ÍNTEGRO (Cadena válida de ${lote.eventos?.length || 0} bloques SHA-256 sin manipulación)`
-      : `ESTADO: ALTERADO (Falla en la fase #${resultadoIntegridad.primerErrorIndex})`,
-    13,
-    currentY + 10
-  );
-
-  doc.setTextColor(71, 85, 105);
-  doc.setFont('helvetica', 'normal');
-  doc.text(`Hash final: ${lote.resumen.hashFinal || 'N/A'}`, 13, currentY + 14);
-  if (datosAnotaciones?.registros?.length) {
-    doc.setTextColor(verifAnotaciones.integra ? 22 : 185, verifAnotaciones.integra ? 101 : 28, verifAnotaciones.integra ? 52 : 28);
-    doc.text(textoPdf(`Anotaciones: ${verifAnotaciones.mensaje}`), 13, currentY + 17);
-    doc.setTextColor(71, 85, 105);
-  }
-
-  // NOTA OBLIGATORIA
+  currentY = tituloSeccion(doc, 'Ficha nutricional referencial', currentY, `Por cada ${fn.porcionG} g de tilapia cruda.`);
+  autoTable(doc, {
+    ...estiloTabla(),
+    startY: currentY,
+    head: [['Energía', 'Proteína', 'Grasa total', 'Carbohidratos', 'Colesterol', 'Sodio']],
+    body: [[`${fn.energiaKcal} kcal`, `${fn.proteinaG} g`, `${fn.grasaTotalG} g`, `${fn.carbohidratosG} g`, `${fn.colesterolMg} mg`, `${fn.sodioMg} mg`]],
+    bodyStyles: { fontStyle: 'bold' }
+  });
+  currentY = (doc as any).lastAutoTable.finalY + 3;
   doc.setFont('helvetica', 'italic');
   doc.setFontSize(7);
-  doc.setTextColor(100, 116, 139);
+  doc.setTextColor(...C.gris);
+  doc.text(doc.splitTextToSize(textoPdf(`Fuente: ${fn.fuente}. ${fn.notas}`), pageWidth - 2 * M), M, currentY + 2);
+  currentY += 9;
+
+  // --- 9. VERIFICACIÓN DE INTEGRIDAD ---
+  if (currentY > doc.internal.pageSize.getHeight() - 48) {
+    doc.addPage();
+    currentY = 20;
+  }
+  currentY = tituloSeccion(doc, 'Verificación de integridad', currentY);
+  const altoCaja = datosAnotaciones?.registros?.length ? 27 : 22;
+  doc.setDrawColor(...C.filete);
+  doc.setLineWidth(0.2);
+  doc.rect(M, currentY, pageWidth - 2 * M, altoCaja);
+  doc.setFillColor(...(resultadoIntegridad.valido ? C.verde : C.rojo));
+  doc.rect(M, currentY, 1.4, altoCaja, 'F');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.setTextColor(...(resultadoIntegridad.valido ? C.verde : C.rojo));
   doc.text(
-    'Nota de inocuidad: Este registro documenta cómo se produjo y manejó el lote; no reemplaza los controles de inocuidad.',
-    13,
-    currentY + 20
+    resultadoIntegridad.valido
+      ? `Cadena íntegra: ${lote.eventos?.length || 0} fases encadenadas con SHA-256, sin alteraciones.`
+      : `Cadena alterada: falla en la fase #${resultadoIntegridad.primerErrorIndex}.`,
+    M + 5,
+    currentY + 6
   );
+  rotuloPdf(doc, 'Huella final de la cadena', M + 5, currentY + 11.5);
+  doc.setFont('courier', 'normal');
+  doc.setFontSize(7.5);
+  doc.setTextColor(...C.tinta);
+  doc.text(lote.resumen.hashFinal || 'N/A', M + 5, currentY + 15.5);
+  let yNota = currentY + 20;
+  if (datosAnotaciones?.registros?.length) {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.setTextColor(...(verifAnotaciones.integra ? C.verde : C.rojo));
+    doc.text(doc.splitTextToSize(textoPdf(`Anotaciones: ${verifAnotaciones.mensaje}`), pageWidth - 2 * M - 10)[0], M + 5, yNota);
+    yNota += 4.5;
+  }
+  doc.setFont('helvetica', 'italic');
+  doc.setFontSize(7);
+  doc.setTextColor(...C.gris);
+  doc.text('Este registro documenta cómo se produjo y manejó el lote; no reemplaza los controles de inocuidad.', M + 5, yNota);
+
+  piePaginas(doc, `Cultivos Loré · Certificado del lote ${lote.codigo}`);
 
   const pdfBlob = doc.output('blob');
   return { blob: pdfBlob, urlPublica };
@@ -542,60 +596,66 @@ export async function generarComprobantePdfBlob(
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const pageWidth = doc.internal.pageSize.getWidth();
   const parcial = c.estadoEntrega === 'entrega_parcial' || c.cantidadPendiente > 0;
-  let y = 14;
+  const M = 14;
+  const logo = await logoPngDataUrl('#16213a').catch(() => null);
+  let y = membrete(
+    doc,
+    logo,
+    opciones.preliminar ? 'Comprobante de entrega · preliminar' : 'Comprobante de entrega',
+    ['Turbaco, Bolívar · Colombia', `${opciones.preliminar ? 'Generado' : 'Emitido'} el ${formatearFechaColombia(c.emitidoEn)}`]
+  );
 
-  // Encabezado con la misma identidad del certificado del lote
-  doc.setFillColor(3, 105, 161);
-  doc.rect(10, y, pageWidth - 20, 26, 'F');
-  doc.setTextColor(255, 255, 255);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(15);
-  doc.text(c.empresa.toUpperCase(), 16, y + 9);
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(10);
-  doc.text(opciones.preliminar ? 'COMPROBANTE DE ENTREGA — PRELIMINAR' : 'COMPROBANTE DE ENTREGA', 16, y + 16);
-  doc.setFontSize(8);
-  // Dos renglones cortos para que el texto no pase por debajo del QR
-  const anchoEncabezado = pageWidth - 16 - 50;
-  const encabezado = opciones.preliminar
-    ? [`Orden ${c.ordenId} · generado el ${formatearFechaColombia(c.emitidoEn)}`, 'Sin validez como comprobante definitivo']
-    : [`Comprobante N.º ${c.version} · orden ${c.ordenId}`, `Código ${c.id.slice(0, 15)} · emitido el ${formatearFechaColombia(c.emitidoEn)}`];
-  doc.text(encabezado.map((l) => doc.splitTextToSize(textoPdf(l), anchoEncabezado)[0]), 16, y + 20.5);
-  if (!opciones.preliminar && c.tokenConsulta) {
-    const qr = await generarQrDataUrl(construirUrlConsultaEntrega(c.tokenConsulta));
-    doc.addImage(qr, 'PNG', pageWidth - 44, y + 1, 24, 24);
+  // Identificación del comprobante y QR de consulta
+  const anchoQr = 28;
+  const conQr = !opciones.preliminar && Boolean(c.tokenConsulta);
+  if (conQr) {
+    const qr = await generarQrDataUrl(construirUrlConsultaEntrega(c.tokenConsulta!));
+    doc.addImage(qr, 'PNG', pageWidth - M - anchoQr, y - 3, anchoQr, anchoQr);
   }
-  y += 32;
+  doc.setFont('times', 'normal');
+  doc.setFontSize(21);
+  doc.setTextColor(...C.tinta);
+  doc.text(opciones.preliminar ? 'Documento preliminar' : `Comprobante N.º ${c.version}`, M, y + 6);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(...C.gris);
+  doc.text(
+    textoPdf(opciones.preliminar ? `Orden ${c.ordenId} · sin validez como comprobante definitivo` : `Orden ${c.ordenId} · código ${c.id.slice(0, 15)}`),
+    M,
+    y + 11.5
+  );
+  y += conQr ? 29 : 17;
 
   // Estado de la entrega (una parcial nunca se presenta como completa)
-  doc.setFillColor(
-    ...((opciones.anulacion ? [185, 28, 28] : opciones.preliminar ? [100, 116, 139] : parcial ? [217, 119, 6] : [5, 150, 105]) as [number, number, number])
-  );
-  doc.rect(10, y, pageWidth - 20, 9, 'F');
+  doc.setFillColor(...(opciones.anulacion ? C.rojo : opciones.preliminar ? C.gris : parcial ? C.oro : C.verde));
+  doc.rect(M, y, pageWidth - 2 * M, 8, 'F');
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(10);
+  doc.setFontSize(8);
   doc.text(
-    opciones.anulacion
-      ? `COMPROBANTE ANULADO el ${formatearFechaColombia(opciones.anulacion.emitidoEn)} · sin validez`
-      : opciones.preliminar
-      ? 'DOCUMENTO PRELIMINAR · la entrega aún no está confirmada o el comprobante no se ha emitido'
-      : parcial
-      ? `ENTREGA PARCIAL · pendientes ${cantidadTexto(c.cantidadPendiente, c.unidad)}`
-      : 'ENTREGA COMPLETA',
-    14,
-    y + 6
+    textoPdf(
+      (opciones.anulacion
+        ? `Comprobante anulado el ${formatearFechaColombia(opciones.anulacion.emitidoEn)} · sin validez`
+        : opciones.preliminar
+        ? 'Documento preliminar · la entrega aún no está confirmada'
+        : parcial
+        ? `Entrega parcial · pendientes ${cantidadTexto(c.cantidadPendiente, c.unidad)}`
+        : 'Entrega completa'
+      ).toUpperCase()
+    ),
+    M + 3,
+    y + 5.4,
+    { charSpace: 0.4 }
   );
-  y += 14;
+  y += 15;
 
-  doc.setTextColor(15, 23, 42);
+  y = tituloSeccion(doc, 'Cliente y logística', y);
   autoTable(doc, {
+    ...estiloTabla(),
     startY: y,
-    theme: 'grid',
-    styles: { fontSize: 8.5, cellPadding: 2 },
-    headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42] },
     // Columnas de igual ancho: un nombre de cliente largo no estrecha la de logística
-    columnStyles: { 0: { cellWidth: (pageWidth - 28) / 2 }, 1: { cellWidth: (pageWidth - 28) / 2 } },
+    columnStyles: { 0: { cellWidth: (pageWidth - 2 * M) / 2 }, 1: { cellWidth: (pageWidth - 2 * M) / 2 } },
+    bodyStyles: { fontSize: 8.5, cellPadding: 2.5 },
     head: [['Cliente', 'Logística']],
     body: [[
       `${c.cliente.nombre}\n${c.cliente.direccion || 'Dirección no registrada'}`,
@@ -609,13 +669,14 @@ export async function generarComprobantePdfBlob(
       ].join('\n')
     ]]
   });
-  y = (doc as any).lastAutoTable.finalY + 5;
+  y = (doc as any).lastAutoTable.finalY + 8;
 
+  y = tituloSeccion(doc, 'Cantidades', y);
   autoTable(doc, {
+    ...estiloTabla(),
     startY: y,
-    theme: 'grid',
-    styles: { fontSize: 8.5, cellPadding: 2, halign: 'right' },
-    headStyles: { fillColor: [3, 105, 161], textColor: [255, 255, 255], halign: 'right' },
+    headStyles: { ...estiloTabla().headStyles, halign: 'right' },
+    bodyStyles: { fontSize: 9, fontStyle: 'bold', halign: 'right' },
     head: [['Solicitada', 'Autorizada', 'Entregada', 'Liberada al cerrar', 'Pendiente']],
     body: [[
       cantidadTexto(c.cantidadSolicitada, c.unidad),
@@ -625,18 +686,17 @@ export async function generarComprobantePdfBlob(
       cantidadTexto(c.cantidadPendiente, c.unidad)
     ]]
   });
-  y = (doc as any).lastAutoTable.finalY + 5;
+  y = (doc as any).lastAutoTable.finalY + 8;
 
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(10);
-  doc.text('Procedencia del producto (por lote y piscina)', 10, y);
+  y = tituloSeccion(doc, 'Procedencia del producto', y, 'Por lote y estanque');
   autoTable(doc, {
-    startY: y + 2,
-    theme: 'striped',
-    styles: { fontSize: 8.5, cellPadding: 2 },
-    headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255] },
-    columnStyles: { 2: { halign: 'right' }, 3: { halign: 'right' } },
-    head: [['Lote', 'Piscina', 'Cantidad autorizada', 'Cantidad entregada']],
+    ...estiloTabla(),
+    startY: y,
+    columnStyles: { 0: { fontStyle: 'bold' }, 2: { halign: 'right' }, 3: { halign: 'right' } },
+    head: [['Lote', 'Estanque', 'Cantidad autorizada', 'Cantidad entregada']],
+    didParseCell: (d: any) => {
+      if (d.section === 'head' && d.column.index >= 2) d.cell.styles.halign = 'right';
+    },
     body: Object.entries(c.procedencias).map(([lote, p]) => [
       lote,
       p.estanque,
@@ -644,7 +704,7 @@ export async function generarComprobantePdfBlob(
       cantidadTexto(p.entregada, c.unidad)
     ])
   });
-  y = (doc as any).lastAutoTable.finalY + 5;
+  y = (doc as any).lastAutoTable.finalY + 8;
 
   const observaciones: string[][] = [
     ...c.entregas.map((e) => [
@@ -670,16 +730,15 @@ export async function generarComprobantePdfBlob(
     ...c.novedades.map((n) => [`Novedad ${formatearFechaColombia(n.fecha)}`, n.descripcion])
   ];
   if (observaciones.length) {
+    y = tituloSeccion(doc, 'Observaciones', y);
     autoTable(doc, {
+      ...estiloTabla(),
       startY: y,
-      theme: 'grid',
-      styles: { fontSize: 8, cellPadding: 1.8 },
-      headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42] },
-      columnStyles: { 0: { cellWidth: 48 } },
-      head: [['Observaciones', 'Detalle']],
+      columnStyles: { 0: { cellWidth: 48, fontStyle: 'bold' } },
+      head: [['Registro', 'Detalle']],
       body: observaciones
     });
-    y = (doc as any).lastAutoTable.finalY + 5;
+    y = (doc as any).lastAutoTable.finalY + 8;
   }
 
   // Verificación: si no cabe completa en la página actual, pasa a una página nueva (nunca se corta)
@@ -687,13 +746,13 @@ export async function generarComprobantePdfBlob(
   const ALTO_LINEA = 3.4;
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7.5);
-  doc.setTextColor(71, 85, 105);
+  doc.setTextColor(74, 81, 96);
   if (opciones.preliminar) {
-    if (y + 6 > pageHeight - 10) {
+    if (y + 6 > pageHeight - 18) {
       doc.addPage();
-      y = 15;
+      y = 20;
     }
-    doc.text('Documento preliminar: no tiene hash de verificación ni código de consulta.', 10, y);
+    doc.text('Documento preliminar: no tiene hash de verificación ni código de consulta.', M, y);
   } else {
     const lineas = doc.splitTextToSize(
       textoPdf(
@@ -703,7 +762,7 @@ export async function generarComprobantePdfBlob(
           'alterar cualquier dato cambia su hash y rompe la cadena. Cadena de bloques privada de la plataforma. ' +
           'Escanee el código QR para consultar la entrega y verificar la cadena. La trazabilidad de cada lote se consulta con el QR del lote.'
       ),
-      pageWidth - 20
+      pageWidth - 2 * M
     );
     const a = opciones.anulacion;
     const lineasAnulacion = a
@@ -712,23 +771,26 @@ export async function generarComprobantePdfBlob(
             `ANULADO por el bloque N.º ${a.version} (hash ${a.hashComprobante}). Motivo: ${a.motivo}. ` +
               'El comprobante original se conserva sin cambios en la cadena; solo queda sin validez.'
           ),
-          pageWidth - 20
+          pageWidth - 2 * M
         )
       : [];
     const alto = 4 + lineas.length * ALTO_LINEA + (lineasAnulacion.length ? 2 + lineasAnulacion.length * ALTO_LINEA : 0);
-    if (y + alto > pageHeight - 10) {
+    if (y + alto + 8 > pageHeight - 18) {
       doc.addPage();
-      y = 15;
+      y = 20;
     }
-    doc.setFont('helvetica', 'bold');
-    doc.text(`REGISTRO TIPO BLOCKCHAIN · BLOQUE N.º ${c.version}`, 10, y);
+    y = tituloSeccion(doc, `Registro encadenado · bloque N.º ${c.version}`, y + 2);
     doc.setFont('helvetica', 'normal');
-    doc.text(lineas, 10, y + 4);
+    doc.setFontSize(7.5);
+    doc.setTextColor(...C.pizarra);
+    doc.text(lineas, M, y + 2);
     if (lineasAnulacion.length) {
-      doc.setTextColor(185, 28, 28);
-      doc.text(lineasAnulacion, 10, y + 4 + lineas.length * ALTO_LINEA + 2);
+      doc.setTextColor(...C.rojo);
+      doc.text(lineasAnulacion, M, y + 2 + lineas.length * ALTO_LINEA + 2);
     }
   }
+
+  piePaginas(doc, `${c.empresa} · Comprobante de entrega · orden ${c.ordenId}`);
 
   if (opciones.preliminar || opciones.anulacion) {
     // Marca de agua en TODAS las páginas, para que ninguna se confunda con un comprobante vigente.
@@ -738,7 +800,7 @@ export async function generarComprobantePdfBlob(
     for (let p = 1; p <= paginas; p++) {
       doc.setPage(p);
       if (anyDoc.GState) anyDoc.setGState(new anyDoc.GState({ opacity: 0.18 }));
-      doc.setTextColor(...((opciones.anulacion ? [220, 38, 38] : [100, 116, 139]) as [number, number, number]));
+      doc.setTextColor(...((opciones.anulacion ? [179, 38, 30] : [93, 100, 112]) as [number, number, number]));
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(64);
       doc.text(opciones.anulacion ? 'ANULADO' : 'PRELIMINAR', pageWidth / 2, 170, { align: 'center', angle: 35 });

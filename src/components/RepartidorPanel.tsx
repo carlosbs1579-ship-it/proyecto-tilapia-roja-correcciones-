@@ -127,12 +127,9 @@ export const RepartidorPanel: React.FC<RepartidorPanelProps> = ({ perfil }) => {
   return (
     <div className="max-w-3xl mx-auto space-y-4">
       <div className="flex items-center space-x-3">
-        <div className="w-11 h-11 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
-          <Truck className="w-6 h-6" />
-        </div>
         <div>
-          <h1 className="text-lg font-bold text-slate-900">Mis entregas</h1>
-          <p className="text-xs text-slate-500">
+          <h1 className="text-2xl text-slate-900">Mis entregas</h1>
+          <p className="text-sm text-slate-500">
             {perfil.displayName || perfil.email} • {nombreFuncion(perfil, 'courier')}
           </p>
         </div>
@@ -162,7 +159,7 @@ export const RepartidorPanel: React.FC<RepartidorPanelProps> = ({ perfil }) => {
         </div>
       )}
 
-      <div className="flex flex-wrap gap-1.5">
+      <div className="flex gap-1.5 overflow-x-auto sin-barra -mx-4 px-4 pb-1" role="tablist" aria-label="Filtrar entregas">
         {FILTROS.map((f) => {
           const cantidad = f.id === 'activas'
             ? visibles.filter((o) => o.estado !== 'entregado').length
@@ -171,7 +168,9 @@ export const RepartidorPanel: React.FC<RepartidorPanelProps> = ({ perfil }) => {
             <button
               key={f.id}
               onClick={() => setFiltro(f.id)}
-              className={`px-3 py-2 rounded-full text-sm font-semibold border ${
+              role="tab"
+              aria-selected={filtro === f.id}
+              className={`shrink-0 whitespace-nowrap px-3.5 py-2.5 rounded-md text-sm font-semibold border ${
                 filtro === f.id ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-700 border-slate-300'
               }`}
             >

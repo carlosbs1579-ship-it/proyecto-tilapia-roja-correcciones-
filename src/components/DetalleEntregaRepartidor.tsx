@@ -331,7 +331,7 @@ export const DetalleEntregaRepartidor: React.FC<DetalleEntregaRepartidorProps> =
       <div className="bg-white rounded-xl border border-slate-200 shadow-xs p-5 space-y-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h1 className="text-lg font-bold text-slate-900">{orden.clienteNombre}</h1>
-          <span className="px-3 py-1 rounded-full bg-sky-100 text-sky-800 border border-sky-300 text-xs font-bold">{etiquetaEstado}</span>
+          <span className="rotulo text-sky-800 border-b border-sky-600">{etiquetaEstado}</span>
         </div>
         <p className="text-xs text-slate-500 font-mono">{orden.id}</p>
         <p className="flex items-start space-x-2 text-sm text-slate-800">
@@ -377,7 +377,7 @@ export const DetalleEntregaRepartidor: React.FC<DetalleEntregaRepartidorProps> =
             {lotes.map(([codigo, p]) => (
               <div key={codigo} className="flex flex-wrap items-center justify-between gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm">
                 <span>
-                  <strong className="font-mono">{codigo}</strong>
+                  <strong className="font-serif text-base">{codigo}</strong>
                   <span className="text-slate-500"> · piscina {p.estanque}</span>
                 </span>
                 <span className="text-slate-800">
@@ -455,7 +455,7 @@ export const DetalleEntregaRepartidor: React.FC<DetalleEntregaRepartidorProps> =
               {lotes.map(([codigo, p]) => (
                 <label key={codigo} className="flex flex-wrap items-center justify-between gap-2 text-sm">
                   <span>
-                    <strong className="font-mono">{codigo}</strong>
+                    <strong className="font-serif text-base">{codigo}</strong>
                     <span className="text-slate-500"> · piscina {p.estanque} · máximo {num(saldoLote(orden, codigo))} {orden.unidad}</span>
                   </span>
                   <input
@@ -513,7 +513,7 @@ export const DetalleEntregaRepartidor: React.FC<DetalleEntregaRepartidorProps> =
               />
               {errorMsg && <p className="text-sm text-red-700">{errorMsg}</p>}
               <div className="flex flex-col sm:flex-row gap-2">
-                <button onClick={confirmarEntrega} disabled={procesandoFoto} className="flex-1 px-4 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold">
+                <button onClick={confirmarEntrega} disabled={procesandoFoto} className="flex-1 px-4 py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-md font-bold">
                   Confirmar entrega
                 </button>
                 <button onClick={() => setPanel(null)} className="px-4 py-3 bg-slate-100 text-slate-700 rounded-xl font-semibold">
@@ -589,7 +589,7 @@ export const DetalleEntregaRepartidor: React.FC<DetalleEntregaRepartidorProps> =
           {lotes.map(([codigo, p]) => (
             <label key={codigo} className="flex flex-wrap items-center justify-between gap-2 text-sm">
               <span>
-                <strong className="font-mono">{codigo}</strong>
+                <strong className="font-serif text-base">{codigo}</strong>
                 <span className="text-slate-500"> · autorizado {num(p.cantidad)} {orden.unidad}</span>
               </span>
               <input

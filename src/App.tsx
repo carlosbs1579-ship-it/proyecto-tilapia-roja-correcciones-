@@ -383,7 +383,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-white flex flex-col font-sans">
+    <div className="min-h-dvh bg-white flex flex-col font-sans">
       {/* NAVBAR */}
       <Navbar
         tabActiva={tabActiva}
@@ -423,7 +423,7 @@ export default function App() {
       {avisoFuncion && (
         <div
           role="status"
-          className="fixed bottom-4 left-4 z-50 max-w-xs flex items-center space-x-2 rounded-lg bg-slate-900 text-white shadow-lg px-3 py-2 text-xs"
+          className="aviso-inferior fixed bottom-4 left-4 z-50 max-w-xs flex items-center space-x-2 rounded-lg bg-slate-900 text-white shadow-lg px-3 py-2 text-xs"
         >
           <Shield className="w-4 h-4 text-sky-300 shrink-0" />
           <span>{avisoFuncion}</span>
@@ -483,7 +483,7 @@ export default function App() {
       )}
 
       {/* CONTENIDO PRINCIPAL SEGÚN PESTAÑA SELECCIONADA */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <main key={tabActiva} className="aparece flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <Suspense fallback={<Cargando />}>
         {/* SELECCIÓN DE FUNCIÓN (CUENTAS CON VARIOS ROLES) */}
         {mostrarSelectorFuncion && perfilUsuario && (

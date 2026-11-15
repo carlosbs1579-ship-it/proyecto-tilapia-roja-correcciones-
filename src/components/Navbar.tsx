@@ -10,6 +10,7 @@ import {
   Factory
 } from 'lucide-react';
 import { User } from 'firebase/auth';
+import { LogoLore } from './LogoLore';
 import { RolFuncional, UsuarioPerfil } from '../types';
 import { ETIQUETA_ROL, esAdminMaestro, nombreFuncion, veePestana } from '../services/usuariosService';
 
@@ -125,12 +126,12 @@ export const Navbar: React.FC<NavbarProps> = ({
   const tabInicial = tabsDeFuncion(funcionActiva, perfilUsuario)[0];
 
   return (
-    <header className="bg-slate-900 text-white border-b-4 border-double border-amber-600 sticky top-0 z-40">
+    <header className="bg-slate-900 text-white border-b-4 border-double border-amber-600 sticky top-0 z-40 pt-[env(safe-area-inset-top,0px)]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Nombre de la granja */}
           <button type="button" className="flex items-center space-x-3 shrink-0 text-left" onClick={() => setTabActiva(tabInicial)}>
-            <Fish className="w-6 h-6 text-amber-400" strokeWidth={1.5} aria-hidden="true" />
+            <LogoLore className="w-10 h-8 text-amber-400" />
             <span>
               <span className="block font-serif text-xl leading-tight">Cultivos Loré</span>
               <span className="rotulo hidden sm:block text-slate-300">Trazabilidad Tilapia Pro · Turbaco, Bolívar</span>
@@ -166,7 +167,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <div className="hidden lg:block text-left text-xs">
                     <p className="font-semibold text-slate-200 truncate max-w-[150px]" title={usuario.email || undefined}>{perfilUsuario?.displayName || usuario.email}</p>
                     <p className={`text-[11px] flex items-center truncate max-w-[150px] ${
-                      funcionActiva ? 'text-amber-400 font-semibold' : 'text-slate-300'
+                      funcionActiva ? 'text-slate-300 font-semibold' : 'text-slate-300'
                     }`}>
                       {funcionActiva ? (
                         <>{nombreFuncion(perfilUsuario, funcionActiva)}</>
@@ -216,17 +217,19 @@ export const Navbar: React.FC<NavbarProps> = ({
         )}
 
         {/* Navegación móvil */}
-        <div className="md:hidden flex border-t border-slate-800 py-2 space-x-1 overflow-x-auto">
+        {tabs.length > 1 && (
+        <div className="md:hidden flex border-t border-slate-800 -mx-4 px-2 overflow-x-auto sin-barra">
           {tabs.map((t) => (
             <button
               key={t.id}
               onClick={() => setTabActiva(t.id)}
-              className={`px-3 py-1 text-xs rounded font-medium whitespace-nowrap ${tabActiva === t.id ? 'bg-slate-50 text-slate-900 font-bold' : 'text-slate-300'}`}
+              className={`rotulo px-3 py-3 whitespace-nowrap border-b-2 ${tabActiva === t.id ? 'text-white border-amber-400' : 'text-slate-300 border-transparent'}`}
             >
               {t.etiquetaMovil}
             </button>
           ))}
         </div>
+        )}
       </div>
     </header>
   );

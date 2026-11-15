@@ -90,6 +90,35 @@
   --color-red-800: #6f1712;
   --color-red-900: #52110d;
 
+  /* Curvas de movimiento (salida fuerte para entradas de interfaz) */
+  --ease-salida: cubic-bezier(0.23, 1, 0.32, 1);
+
+  /* Escalas que no tienen papel propio se llevan a tonos del sistema:
+     violeta (en ruta) a pizarra, naranja (revisión, novedades) al oro, morado a pizarra */
+  --color-violet-50: #eff1f5;
+  --color-violet-100: #dfe3ec;
+  --color-violet-200: #bfc7d8;
+  --color-violet-300: #96a3bd;
+  --color-violet-500: #4a5a7d;
+  --color-violet-600: #3a4a6b;
+  --color-violet-700: #2f3c57;
+  --color-violet-800: #252f44;
+  --color-purple-50: #eff1f5;
+  --color-purple-100: #dfe3ec;
+  --color-purple-200: #bfc7d8;
+  --color-purple-600: #3a4a6b;
+  --color-purple-700: #2f3c57;
+  --color-purple-800: #252f44;
+  --color-orange-50: #faf5e8;
+  --color-orange-100: #f2e6c6;
+  --color-orange-200: #e6cf92;
+  --color-orange-300: #d5b262;
+  --color-orange-500: #a07a2c;
+  --color-orange-600: #8a6624;
+  --color-orange-700: #6e501d;
+  --color-orange-800: #553e18;
+  --color-orange-900: #3f2e13;
+
   /* Esquinas pequeñas y sombras mínimas */
   --radius-md: 0.25rem;
   --radius-lg: 0.3125rem;
@@ -107,6 +136,8 @@
 @layer base {
   html {
     -webkit-text-size-adjust: 100%;
+    /* Sin el destello gris al tocar: cada control da su propia respuesta al presionar */
+    -webkit-tap-highlight-color: transparent;
   }
   body {
     background-color: #ffffff;
@@ -147,6 +178,38 @@
   a {
     text-underline-offset: 3px;
   }
+  /* Toque inmediato (sin la espera de doble toque) y sin seleccionar el texto de los botones al mantener presionado */
+  button,
+  a,
+  [role="button"],
+  [role="tab"] {
+    touch-action: manipulation;
+  }
+  button,
+  [role="button"],
+  [role="tab"] {
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+  }
+  /* Las ventanas y listas con desplazamiento propio no arrastran la página de atrás */
+  .overflow-y-auto,
+  .overflow-auto {
+    overscroll-behavior: contain;
+  }
+  /* Respuesta al presionar, igual con dedo o con mouse */
+  button:not(:disabled):active,
+  [role="button"]:active {
+    filter: brightness(0.93);
+  }
+  /* En pantallas táctiles los campos usan 16 px para que el teléfono no haga zoom al escribir */
+  @media (pointer: coarse) {
+    input,
+    select,
+    textarea {
+      font-size: 16px;
+    }
+  }
   * {
     scrollbar-color: #c5cad3 transparent;
     scrollbar-width: thin;
@@ -154,6 +217,14 @@
 }
 
 @layer components {
+  /* Franja desplazable sin barra visible (pestañas y filtros en el celular) */
+  .sin-barra {
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .sin-barra::-webkit-scrollbar {
+    display: none;
+  }
   /* Rótulo en versalitas espaciadas */
   .rotulo {
     font-size: 0.6875rem;
@@ -178,12 +249,70 @@
   }
 }
 
+/*
+ * Movimiento: pocas entradas, cortas y con propósito.
+ * - Ventanas: el velo aparece y la ventana sube un poco desde 97 % (no surge de la nada).
+ * - Cambio de pestaña: solo un fundido breve, porque se usa muchas veces al día.
+ * - Aviso inferior: entra desde abajo, por donde se va.
+ * - Lote sellado: el doble filete se traza de izquierda a derecha una sola vez.
+ */
+.velo {
+  transition: opacity 200ms var(--ease-salida);
+}
+.velo > * {
+  transition:
+    opacity 240ms var(--ease-salida),
+    transform 240ms var(--ease-salida);
+}
+.aparece,
+.animate-fadeIn {
+  transition: opacity 160ms ease-out;
+}
+.aviso-inferior {
+  transition:
+    opacity 300ms var(--ease-salida),
+    transform 300ms var(--ease-salida);
+}
+.trazo-acta {
+  position: relative;
+  padding-top: 0.75rem;
+}
+.trazo-acta::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  border-top: 3px double var(--color-amber-500);
+  transform-origin: left center;
+  transition: transform 520ms var(--ease-salida) 120ms;
+}
+@starting-style {
+  .velo,
+  .aparece,
+  .animate-fadeIn {
+    opacity: 0;
+  }
+  .velo > * {
+    opacity: 0;
+    transform: translateY(6px) scale(0.97);
+  }
+  .aviso-inferior {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+  .trazo-acta::before {
+    transform: scaleX(0);
+  }
+}
+
+/* Con movimiento reducido se conservan los fundidos y se quitan los desplazamientos */
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+  @starting-style {
+    .velo > *,
+    .aviso-inferior {
+      transform: none;
+    }
+    .trazo-acta::before {
+      transform: none;
+    }
   }
 }

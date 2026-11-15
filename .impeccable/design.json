@@ -1,0 +1,154 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-15T00:00:00Z",
+  "title": "Design System: Cultivos Loré · Trazabilidad Tilapia Pro",
+  "extensions": {
+    "colorMeta": {
+      "tinta": { "role": "primary", "displayName": "Tinta", "canonical": "#16213a", "tonalRamp": ["#0d1526", "#16213a", "#232a39", "#363d4b", "#4a5160", "#5d6470", "#868c93", "#c5cad3"] },
+      "tinta-profunda": { "role": "primary", "displayName": "Tinta profunda", "canonical": "#0d1526", "tonalRamp": ["#0d1526", "#16213a", "#232a39", "#363d4b", "#4a5160", "#5d6470", "#868c93", "#c5cad3"] },
+      "azul-accion": { "role": "primary", "displayName": "Azul de acción", "canonical": "#2c426e", "tonalRamp": ["#0c1427", "#14213d", "#1a2b4a", "#22375c", "#2c426e", "#3e5584", "#b9c4dc", "#eef1f7"] },
+      "azul-accion-claro": { "role": "primary", "displayName": "Azul de acción claro", "canonical": "#3e5584", "tonalRamp": ["#0c1427", "#14213d", "#1a2b4a", "#22375c", "#2c426e", "#3e5584", "#b9c4dc", "#eef1f7"] },
+      "azul-velado": { "role": "primary", "displayName": "Azul velado", "canonical": "#dce2ee", "tonalRamp": ["#0c1427", "#14213d", "#1a2b4a", "#22375c", "#2c426e", "#3e5584", "#dce2ee", "#eef1f7"] },
+      "pizarra": { "role": "secondary", "displayName": "Pizarra", "canonical": "#3a4a6b", "tonalRamp": ["#1b2333", "#252f44", "#2f3c57", "#3a4a6b", "#4a5a7d", "#6d7c9d", "#bfc7d8", "#eff1f5"] },
+      "oro-viejo": { "role": "tertiary", "displayName": "Oro viejo", "canonical": "#8a6624", "tonalRamp": ["#261b0b", "#3f2e13", "#553e18", "#6e501d", "#8a6624", "#a07a2c", "#e6cf92", "#faf5e8"] },
+      "oro-filete": { "role": "tertiary", "displayName": "Oro de filete", "canonical": "#a07a2c", "tonalRamp": ["#261b0b", "#3f2e13", "#553e18", "#6e501d", "#8a6624", "#a07a2c", "#e6cf92", "#faf5e8"] },
+      "oro-sobre-tinta": { "role": "tertiary", "displayName": "Oro sobre tinta", "canonical": "#d1ac5c", "tonalRamp": ["#261b0b", "#3f2e13", "#553e18", "#6e501d", "#8a6624", "#a07a2c", "#d1ac5c", "#faf5e8"] },
+      "verde-integro": { "role": "tertiary", "displayName": "Verde íntegro", "canonical": "#225f46", "tonalRamp": ["#0a1e17", "#113126", "#163d2e", "#1b4d39", "#225f46", "#2f7758", "#abd0bc", "#eef5f1"] },
+      "verde-integro-claro": { "role": "tertiary", "displayName": "Verde íntegro claro", "canonical": "#eef5f1", "tonalRamp": ["#0a1e17", "#113126", "#163d2e", "#1b4d39", "#225f46", "#2f7758", "#abd0bc", "#eef5f1"] },
+      "rojo-alteracion": { "role": "tertiary", "displayName": "Rojo de alteración", "canonical": "#b3261e", "tonalRamp": ["#52110d", "#6f1712", "#8e1d17", "#b3261e", "#c62828", "#df8a82", "#edb6b1", "#fbf0ef"] },
+      "rojo-alteracion-claro": { "role": "tertiary", "displayName": "Rojo de alteración claro", "canonical": "#fbf0ef", "tonalRamp": ["#52110d", "#6f1712", "#8e1d17", "#b3261e", "#c62828", "#df8a82", "#edb6b1", "#fbf0ef"] },
+      "papel": { "role": "neutral", "displayName": "Papel", "canonical": "#ffffff", "tonalRamp": ["#16213a", "#363d4b", "#5d6470", "#868c93", "#c5cad3", "#dfe2e7", "#f6f7f9", "#ffffff"] },
+      "gris-fondo": { "role": "neutral", "displayName": "Gris de fondo", "canonical": "#f6f7f9", "tonalRamp": ["#16213a", "#363d4b", "#5d6470", "#868c93", "#c5cad3", "#dfe2e7", "#eef0f3", "#f6f7f9"] },
+      "filete": { "role": "neutral", "displayName": "Filete", "canonical": "#dfe2e7", "tonalRamp": ["#16213a", "#363d4b", "#5d6470", "#868c93", "#c5cad3", "#dfe2e7", "#eef0f3", "#f6f7f9"] },
+      "borde-campo": { "role": "neutral", "displayName": "Borde de campo", "canonical": "#c5cad3", "tonalRamp": ["#16213a", "#363d4b", "#5d6470", "#868c93", "#c5cad3", "#dfe2e7", "#eef0f3", "#f6f7f9"] },
+      "texto-secundario": { "role": "neutral", "displayName": "Texto secundario", "canonical": "#5d6470", "tonalRamp": ["#16213a", "#363d4b", "#4a5160", "#5d6470", "#868c93", "#c5cad3", "#dfe2e7", "#f6f7f9"] }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Título de cada pestaña y \"Lote sellado\"." },
+      "headline": { "displayName": "Headline", "purpose": "Nombre \"Cultivos Loré\" en la barra." },
+      "title": { "displayName": "Title", "purpose": "Títulos de sección; los códigos de lote y comprobante usan Caslon 400." },
+      "body": { "displayName": "Body", "purpose": "Texto operativo." },
+      "body-compacto": { "displayName": "Body compacto", "purpose": "Tablas y metadatos; el tamaño más usado." },
+      "label": { "displayName": "Rótulo", "purpose": "Versalitas espaciadas: pestañas, cargos de firma, estado del lote, línea de acta." },
+      "firma": { "displayName": "Firma", "purpose": "Nombre de quien registra, sobre filete de 1 px." }
+    },
+    "shadows": [
+      { "name": "minima", "value": "0 1px 2px 0 rgb(20 33 61 / 0.05)", "purpose": "Tarjetas y botones principales." },
+      { "name": "suave", "value": "0 1px 3px 0 rgb(20 33 61 / 0.07)", "purpose": "Elementos sobre gris de fondo." },
+      { "name": "media", "value": "0 3px 8px -2px rgb(20 33 61 / 0.09)", "purpose": "Menús desplegables." },
+      { "name": "ventana", "value": "0 24px 48px -16px rgb(20 33 61 / 0.2)", "purpose": "Ventanas modales sobre el velo tinta al 55 %." }
+    ],
+    "motion": [
+      { "name": "ease-salida", "value": "cubic-bezier(0.23, 1, 0.32, 1)", "purpose": "Curva de salida fuerte para todas las entradas de interfaz." },
+      { "name": "velo", "value": "opacity 200ms", "purpose": "Fundido del velo de ventana." },
+      { "name": "ventana", "value": "opacity, transform 240ms desde translateY(6px) scale(0.97)", "purpose": "La ventana sube un poco al abrir." },
+      { "name": "cambio-pestana", "value": "opacity 160ms ease-out", "purpose": "Fundido breve; se usa muchas veces al día." },
+      { "name": "aviso-inferior", "value": "opacity, transform 300ms desde translateY(100%)", "purpose": "El aviso entra desde abajo, por donde se va." },
+      { "name": "trazo-acta", "value": "scaleX 0→1, 520ms, retraso 120ms", "purpose": "El doble filete del lote sellado se traza de izquierda a derecha una vez." },
+      { "name": "presion", "value": "filter: brightness(0.93)", "purpose": "Respuesta al presionar, igual con dedo o mouse." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Botón principal",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Acción principal de cada bloque: registrar fase, guardar, emitir.",
+      "html": "<button class=\"ds-btn-primario\">Registrar fase</button>",
+      "css": ".ds-btn-primario { background: #2c426e; color: #ffffff; padding: 8px 20px; font-family: 'Public Sans', ui-sans-serif, system-ui, sans-serif; font-size: 0.875rem; font-weight: 500; border: none; border-radius: 0.3125rem; box-shadow: 0 1px 2px 0 rgb(20 33 61 / 0.05); cursor: pointer; transition: background-color 150ms; } .ds-btn-primario:hover { background: #3e5584; } .ds-btn-primario:focus-visible { outline: 2px solid #3e5584; outline-offset: 2px; } .ds-btn-primario:active { filter: brightness(0.93); }"
+    },
+    {
+      "name": "Campo de formulario",
+      "kind": "input",
+      "refersTo": "input-campo",
+      "description": "Campo de texto o número con anillo de foco azul.",
+      "html": "<input class=\"ds-campo\" type=\"text\" placeholder=\"Buscar lote\" />",
+      "css": ".ds-campo { width: 260px; padding: 8px 12px; font-family: 'Public Sans', ui-sans-serif, system-ui, sans-serif; font-size: 0.875rem; color: #16213a; background: #ffffff; border: 1px solid #c5cad3; border-radius: 0.3125rem; caret-color: #2c426e; } .ds-campo:focus { outline: none; box-shadow: 0 0 0 2px #3e5584; }"
+    },
+    {
+      "name": "Barra superior",
+      "kind": "nav",
+      "refersTo": "nav-barra",
+      "description": "Barra tinta con marca en serif, pestañas en versalitas y subrayado oro en la activa.",
+      "html": "<header class=\"ds-barra\"><span class=\"ds-marca\">Cultivos Loré</span><nav class=\"ds-pestanas\"><button class=\"ds-pestana ds-activa\">Inicio</button><button class=\"ds-pestana\">Lotes</button><button class=\"ds-pestana\">Entregas</button></nav></header>",
+      "css": ".ds-barra { display: flex; align-items: stretch; justify-content: space-between; height: 64px; padding: 0 24px; background: #16213a; color: #ffffff; border-bottom: 4px double #8a6624; } .ds-marca { align-self: center; font-family: 'Libre Caslon Text', Georgia, serif; font-size: 1.25rem; } .ds-pestanas { display: flex; } .ds-pestana { background: none; border: none; border-bottom: 2px solid transparent; padding: 0 12px; color: #c5cad3; font-family: 'Public Sans', sans-serif; font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; cursor: pointer; transition: color 150ms; } .ds-pestana:hover { color: #ffffff; } .ds-pestana:focus-visible { outline: 2px solid #3e5584; outline-offset: 2px; } .ds-activa { color: #ffffff; border-bottom-color: #d1ac5c; }"
+    },
+    {
+      "name": "Etiqueta de estado",
+      "kind": "chip",
+      "refersTo": "etiqueta-estado",
+      "description": "Estado de una orden de entrega: rectángulo de esquina mínima con borde.",
+      "html": "<span class=\"ds-estado ds-estado-ok\">Entregado</span> <span class=\"ds-estado ds-estado-pend\">Entrega parcial</span>",
+      "css": ".ds-estado { display: inline-block; padding: 2px 8px; border: 1px solid; border-radius: 0.125rem; font-family: 'Public Sans', sans-serif; font-size: 11px; font-weight: 600; white-space: nowrap; } .ds-estado-ok { background: #d5e8dd; color: #163d2e; border-color: #7cb397; } .ds-estado-pend { background: #f2e6c6; color: #553e18; border-color: #d5b262; }"
+    },
+    {
+      "name": "Tarjeta de registro",
+      "kind": "card",
+      "refersTo": "card-registro",
+      "description": "Contenedor de bloques: papel blanco, filete gris y sombra mínima.",
+      "html": "<div class=\"ds-tarjeta\"><h2 class=\"ds-tarjeta-titulo\">Calidad de agua</h2><p class=\"ds-tarjeta-texto\">Oxígeno disuelto 5.8 mg/L · pH 7.4</p></div>",
+      "css": ".ds-tarjeta { background: #ffffff; border: 1px solid #dfe2e7; border-radius: 0.375rem; box-shadow: 0 1px 2px 0 rgb(20 33 61 / 0.05); padding: 20px; max-width: 360px; } .ds-tarjeta-titulo { margin: 0 0 6px; font-family: 'Libre Caslon Text', Georgia, serif; font-weight: 700; font-size: 0.875rem; color: #16213a; } .ds-tarjeta-texto { margin: 0; font-family: 'Public Sans', sans-serif; font-size: 0.75rem; color: #5d6470; font-variant-numeric: tabular-nums; }"
+    },
+    {
+      "name": "Firma",
+      "kind": "custom",
+      "refersTo": "firma",
+      "description": "Nombre de quien registra sobre un filete, con el cargo en versalitas debajo.",
+      "html": "<div class=\"ds-firma-bloque\"><span class=\"ds-firma\">María Pérez</span><span class=\"ds-cargo\">Registró</span></div>",
+      "css": ".ds-firma-bloque { display: inline-flex; flex-direction: column; align-items: flex-end; gap: 4px; font-family: 'Public Sans', sans-serif; color: #232a39; } .ds-firma { font-size: 0.875rem; font-weight: 600; border-bottom: 1px solid currentColor; padding: 0 4px 1px; } .ds-cargo { font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: #5d6470; }"
+    },
+    {
+      "name": "Aviso de lote sellado",
+      "kind": "custom",
+      "refersTo": "aviso-sellado",
+      "description": "Bloque tinta con la línea de acta y el doble filete dorado.",
+      "html": "<div class=\"ds-sellado\"><div class=\"ds-sellado-fila\"><span class=\"ds-sellado-titulo\">Lote sellado</span><span class=\"ds-sellado-acta\">Sellado · 12 nov 2026 · Cadena íntegra</span></div><p class=\"ds-sellado-texto\">El registro quedó sellado: no admite cambios ni fases nuevas.</p></div>",
+      "css": ".ds-sellado { background: #16213a; color: #ffffff; border-radius: 0.25rem; padding: 20px 24px; max-width: 560px; } .ds-sellado-fila { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 16px; } .ds-sellado-titulo { font-family: 'Libre Caslon Text', Georgia, serif; font-size: 1.5rem; } .ds-sellado-acta { font-family: 'Public Sans', sans-serif; font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: #d5b262; } .ds-sellado-texto { margin: 12px 0 0; padding-top: 12px; border-top: 3px double #a07a2c; font-family: 'Public Sans', sans-serif; font-size: 0.875rem; color: #dfe2e7; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "El acta formal",
+    "overview": "La plataforma se lee como un acta: cada registro aparece firmado y fechado, y lo sellado se declara en una línea de acta con doble filete y versalitas, no con insignias. El papel es blanco puro, la tinta es azul muy oscuro, y el color de estado se reserva para dos verdades opuestas: lo íntegro en verde formal y la alteración en rojo. El oro viejo solo aparece en detalles de acta: filetes dobles, subrayado de la pestaña activa, el trazo del logo sobre la tinta.\n\nLa densidad es de oficina y de campo a la vez: tablas compactas con cifras tabulares y filetes finos en computador, y la misma información apilada en el celular junto al estanque o en ruta. La identidad se cambió sin mover la distribución: misma barra superior, mismas pestañas, mismos bloques y en el mismo orden. Lo que cambió es la piel: serif de libro para títulos y códigos, sans pública para lo operativo, esquinas pequeñas, sombras apenas perceptibles.\n\nRechazos confirmados por el usuario: el panel SaaS de tarjetas muy redondeadas, degradados, vidrio y pastillas de color; el fondo hueso o crema; el sello circular en relieve; las firmas en cursiva serif; cualquier corona en el logo.",
+    "keyCharacteristics": [
+      "Papel blanco puro (#ffffff) bajo una barra de tinta con doble filete dorado inferior.",
+      "Libre Caslon Text para títulos, nombres y códigos; Public Sans para todo lo demás.",
+      "Rótulos en versalitas espaciadas (11 px, seminegrita, 0.14em).",
+      "Firma: nombre de quien registra en sans seminegrita sobre un filete de 1 px, cargo debajo en versalitas.",
+      "Verde solo para íntegro, rojo solo para alteración, oro solo para detalles de acta.",
+      "Esquinas de 2 a 8 px, sombras tintadas casi planas."
+    ],
+    "rules": [
+      { "name": "The Un Color, Un Significado Rule", "body": "Verde es íntegro, rojo es alteración, oro es acta. Ningún otro uso. Si un verde aparece en un botón de \"guardar\" o un rojo en un adorno, el sistema miente.", "section": "colors" },
+      { "name": "The Papel Blanco Rule", "body": "El fondo es #ffffff. No se tiñe a hueso ni a crema; la formalidad viene de la tipografía y los filetes, no de imitar papel viejo.", "section": "colors" },
+      { "name": "The Escalas Redefinidas Rule", "body": "Los colores se aplican a través de las escalas de Tailwind que ya usan los componentes (`slate`, `sky`, `cyan`, `indigo`, `emerald`, `amber`, `red`), redefinidas en `@theme`. Una escala no redefinida (violeta, naranja, púrpura) queda fuera del sistema.", "section": "colors" },
+      { "name": "The Cifras Tabulares Rule", "body": "Tablas, campos numéricos y códigos usan `tabular-nums`. Las columnas de kg, pH y oxígeno se alinean por dígito.", "section": "typography" },
+      { "name": "The Firma Sans Rule", "body": "El nombre de quien firma va en Public Sans seminegrita (600) sobre un filete de 1 px del color del texto. Nunca cursiva, nunca serif.", "section": "typography" },
+      { "name": "The Serif Nombra Rule", "body": "Caslon solo para lo que se nombra o certifica: títulos, la marca, códigos, números de fase. Botones, campos, tablas y avisos van en Public Sans.", "section": "typography" },
+      { "name": "The Distribución Intacta Rule", "body": "El orden de navegación, pestañas y bloques es un contrato con los operadores. Las mejoras visuales cambian la piel, no la ubicación de la información.", "section": "layout" },
+      { "name": "The Sin Vidrio Rule", "body": "No hay desenfoque de fondo ni degradados. El velo de las ventanas es un color plano (#0d1526 al 55 %).", "section": "elevation" },
+      { "name": "The Doble Filete Rule", "body": "Lo sellado y los encabezados de documento se marcan con doble filete fino en oro, nunca con un sello circular, una insignia o un ícono de medalla.", "section": "shapes" }
+    ],
+    "dos": [
+      "**Do** usar fondo blanco puro (#ffffff) en cuerpo y tarjetas.",
+      "**Do** declarar lo sellado con la línea de acta: doble filete oro y versalitas con fecha y estado de la cadena.",
+      "**Do** firmar cada fase y anotación con el nombre en Public Sans 600 sobre filete de 1 px y el cargo en rótulo.",
+      "**Do** usar Libre Caslon Text para títulos, marca y códigos, y `tabular-nums` en toda cifra de tabla.",
+      "**Do** aplicar color a través de las escalas redefinidas en `src/index.css`, no con hex sueltos.",
+      "**Do** conservar la distribución original de la información al cambiar cualquier estilo."
+    ],
+    "donts": [
+      "**Don't** usar fondo hueso o crema.",
+      "**Don't** dibujar un sello circular en relieve ni medallas o insignias para lo sellado.",
+      "**Don't** poner las firmas en cursiva ni en serif.",
+      "**Don't** añadir corona ni ornamento al logo.",
+      "**Don't** usar verde para algo que no sea íntegro ni rojo para algo que no sea alteración o error.",
+      "**Don't** usar degradados, vidrio esmerilado ni tarjetas con esquinas mayores de 8 px.",
+      "**Don't** usar escalas de color fuera del sistema (violeta, naranja, púrpura)."
+    ]
+  }
+}

@@ -220,7 +220,7 @@ export const LotesTab: React.FC<LotesTabProps> = ({
                     onClick={() => onSeleccionarLote(lote)}
                   >
                     <td className="px-5 py-3.5">
-                      <div className="font-mono font-bold text-slate-900 text-sm">
+                      <div className="font-serif text-base text-slate-900 tabular-nums">
                         {lote.codigo}
                       </div>
                       <div className="text-[11px] text-slate-400">
@@ -228,7 +228,7 @@ export const LotesTab: React.FC<LotesTabProps> = ({
                       </div>
                     </td>
                     <td className="px-4 py-3.5">
-                      <span className="inline-block px-2 py-0.5 rounded font-mono font-bold text-xs bg-sky-50 text-sky-700 border border-sky-200">
+                      <span className="font-serif text-sm text-slate-900">
                         {lote.estanque}
                       </span>
                     </td>
@@ -236,13 +236,13 @@ export const LotesTab: React.FC<LotesTabProps> = ({
                       {lote.fechaSiembra}
                     </td>
                     <td className="px-4 py-3.5 text-right font-medium text-slate-600">
-                      {lote.resumen.diasDeCultivo} d
+                      {lote.resumen.diasDeCultivo != null ? `${lote.resumen.diasDeCultivo} d` : '—'}
                     </td>
                     <td className="px-4 py-3.5 text-right text-slate-800">
                       {lote.resumen.pecesVivos.toLocaleString()}
                     </td>
                     <td className="px-4 py-3.5 text-right font-medium">
-                      <span className={lote.resumen.supervivencia >= 85 ? 'text-emerald-600 font-bold' : 'text-amber-600'}>
+                      <span className={lote.resumen.supervivencia >= 85 ? 'text-slate-900 font-bold' : 'text-amber-700 font-bold'}>
                         {lote.resumen.supervivencia}%
                       </span>
                     </td>
@@ -257,11 +257,7 @@ export const LotesTab: React.FC<LotesTabProps> = ({
                     </td>
                     <td className="px-4 py-3.5 text-center">
                       <span
-                        className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider ${
-                          lote.estado === 'activo'
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : 'bg-slate-200 text-slate-700'
-                        }`}
+                        className={`rotulo ${lote.estado === 'activo' ? 'text-emerald-700' : 'text-slate-600'}`}
                       >
                         {lote.estado}
                       </span>

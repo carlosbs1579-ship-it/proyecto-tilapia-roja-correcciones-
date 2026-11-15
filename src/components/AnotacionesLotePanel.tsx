@@ -208,12 +208,12 @@ export const AnotacionesLotePanel: React.FC<{
                     {ev ? ` (${ev.tipo})` : ''}
                   </span>
                   <span
-                    className={`px-2 py-0.5 rounded-full font-semibold ${
+                    className={`rotulo border-b ${
                       a.estado === 'aprobada'
-                        ? 'bg-emerald-100 text-emerald-800'
+                        ? 'text-emerald-700 border-emerald-600'
                         : a.estado === 'rechazada'
-                        ? 'bg-slate-200 text-slate-600'
-                        : 'bg-amber-100 text-amber-800'
+                        ? 'text-slate-600 border-slate-400'
+                        : 'text-amber-700 border-amber-600'
                     }`}
                   >
                     {a.estado === 'aprobada' ? 'Aprobada' : a.estado === 'rechazada' ? 'Rechazada' : 'Pendiente de aprobación'}
@@ -227,12 +227,21 @@ export const AnotacionesLotePanel: React.FC<{
                   <p className="text-slate-700">Aclaración general de la fase</p>
                 )}
                 <p className="text-slate-600">Motivo: {d.motivo}</p>
-                <p className="text-[11px] text-slate-400">
-                  Propuesta por {quienRegistro(a.propuesta)} · {formatearFechaColombia(a.propuesta.fecha)}
-                  {a.resolucion &&
-                    ` · ${a.estado === 'aprobada' ? 'Aprobada' : 'Rechazada'} por ${quienRegistro(a.resolucion)} · ${formatearFechaColombia(a.resolucion.fecha)}`}
-                  {a.resolucion?.datos?.respuesta ? ` · "${a.resolucion.datos.respuesta}"` : ''}
+                <p className="flex flex-wrap items-baseline gap-x-5 gap-y-1 pt-1 text-slate-700">
+                  <span>
+                    <span className="rotulo text-slate-500 mr-2">Propuso</span>
+                    <span className="firma">{quienRegistro(a.propuesta)}</span>
+                    <span className="text-[11px] text-slate-500 ml-2 tabular-nums">{formatearFechaColombia(a.propuesta.fecha)}</span>
+                  </span>
+                  {a.resolucion && (
+                    <span>
+                      <span className="rotulo text-slate-500 mr-2">{a.estado === 'aprobada' ? 'Aprobó' : 'Rechazó'}</span>
+                      <span className="firma">{quienRegistro(a.resolucion)}</span>
+                      <span className="text-[11px] text-slate-500 ml-2 tabular-nums">{formatearFechaColombia(a.resolucion.fecha)}</span>
+                    </span>
+                  )}
                 </p>
+                {a.resolucion?.datos?.respuesta ? <p className="text-slate-600 italic">"{a.resolucion.datos.respuesta}"</p> : null}
                 {a.estado === 'pendiente' && puedeAprobar && !propia && !alterada && verificacion?.integra !== false && (
                   <div className="flex flex-wrap items-center gap-2 pt-1">
                     <input
@@ -252,7 +261,7 @@ export const AnotacionesLotePanel: React.FC<{
                           `Anotación N.º ${a.numero} aprobada.`
                         )
                       }
-                      className="flex items-center px-2 py-1 rounded bg-emerald-600 text-white font-semibold disabled:opacity-40"
+                      className="flex items-center px-2 py-1 rounded bg-slate-900 text-white font-semibold disabled:opacity-40"
                     >
                       <Check className="w-3.5 h-3.5 mr-0.5" /> Aprobar
                     </button>

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { usePresencia } from '../lib/presencia';
 import { X, Calendar, AlertTriangle, CheckCircle2, ShieldAlert, Lock } from 'lucide-react';
 import { Lote, TipoEvento, ConfiguracionGeneral } from '../types';
 import { getFechaHoyBogota } from '../utils/constants';
@@ -111,7 +112,8 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
     lote.eventos && lote.eventos.length > 0 ? lote.eventos[lote.eventos.length - 1].id : ''
   );
 
-  if (!isOpen) return null;
+  const presencia = usePresencia(isOpen);
+  if (!presencia.montado) return null;
 
   // Evaluaciones en tiempo real de agua
   const rangos = config.rangosReferencia;
@@ -247,20 +249,20 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
   };
 
   return (
-    <div className="velo fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4 overflow-y-auto">
+    <div role="dialog" aria-modal="true" data-saliendo={presencia.saliendo || undefined} className="velo fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4 overflow-y-auto">
       <div className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-2xl w-full overflow-hidden my-6">
         {/* Cabecera */}
         <div className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between">
           <div>
             <h3 className="font-semibold text-base">Registrar Fase de Trazabilidad</h3>
-            <p className="text-xs text-slate-400">
-              Lote: <strong className="text-sky-400">{lote.codigo}</strong> • Evento #{lote.eventos?.length || 0}
+            <p className="text-xs text-slate-500">
+              Lote: <strong className="text-sky-400">{lote.codigo}</strong> · Evento #{lote.eventos?.length || 0}
             </p>
           </div>
           <button
             onClick={onClose}
             disabled={cargando}
-            className="text-slate-400 hover:text-white p-1 rounded transition-colors"
+            className="text-slate-500 hover:text-white p-1 rounded-md transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -273,8 +275,8 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
               <Lock className="w-7 h-7" />
             </div>
             <div>
-              <h4 className="text-base font-bold text-slate-900">Lote Sellado y Cerrado</h4>
-              <p className="text-xs text-slate-600 mt-1.5 max-w-md mx-auto">
+              <h4 className="text-base font-semibold text-slate-900">Lote Sellado y Cerrado</h4>
+              <p className="text-xs text-slate-600 mt-2 max-w-md mx-auto">
                 El lote <strong className="font-mono text-slate-900">{lote.codigo}</strong> completó su ciclo de producción y su trazabilidad inalterable SHA-256 está sellada. Queda terminantemente bloqueada la incorporación de nuevos registros de producción o modificaciones.
               </p>
             </div>
@@ -292,7 +294,7 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
           <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[80dvh] overflow-y-auto">
           {errorMsg && (
             <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-start space-x-2 text-red-700 text-xs">
-              <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+              <AlertTriangle className="w-4 h-4 shrink-0 mt-1" />
               <span>{errorMsg}</span>
             </div>
           )}
@@ -322,7 +324,7 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                 Fecha de la Fase (Bogotá) *
               </label>
               <div className="relative">
-                <Calendar className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                <Calendar className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
                 <input
                   type="date"
                   required
@@ -342,19 +344,19 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
           {tipo === 'Calidad del agua' && (
             <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold uppercase text-slate-700">Parámetros Fisicoquímicos</span>
-                <span className="text-[11px] text-slate-500">Comparación automática con rangos de Turbaco</span>
+                <span className="text-xs font-semibold uppercase text-slate-700">Parámetros Fisicoquímicos</span>
+                <span className="text-xs text-slate-500">Comparación automática con rangos de Turbaco</span>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                 {/* Temp */}
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <label className="text-[11px] font-medium text-slate-700">Temperatura (°C)</label>
+                    <label className="text-xs font-medium text-slate-700">Temperatura (°C)</label>
                     {evalTemp.fueraDeRango ? (
-                      <span className="text-[11px] bg-red-100 text-red-700 px-1.5 py-0.2 rounded font-semibold">Fuera</span>
+                      <span className="text-xs bg-red-100 text-red-700 px-2 py-0.2 rounded-md font-semibold">Fuera</span>
                     ) : (
-                      <span className="text-[11px] bg-emerald-100 text-emerald-700 px-1.5 py-0.2 rounded font-semibold">Óptimo</span>
+                      <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.2 rounded-md font-semibold">Óptimo</span>
                     )}
                   </div>
                   <input
@@ -363,19 +365,19 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                     required
                     value={tempAgua}
                     onChange={(e) => setTempAgua(e.target.value === '' ? '' : Number(e.target.value))}
-                    className={`w-full px-2.5 py-1.5 text-xs border rounded-md ${evalTemp.fueraDeRango ? 'border-red-400 bg-red-50/50' : 'border-slate-300'}`}
+                    className={`w-full px-3 py-2 text-xs border rounded-md ${evalTemp.fueraDeRango ? 'border-red-400 bg-red-50/50' : 'border-slate-300'}`}
                   />
-                  <p className="text-[11px] text-slate-400 mt-0.5">Rango: {rangos.temperaturaMin}-{rangos.temperaturaMax} °C</p>
+                  <p className="text-xs text-slate-500 mt-1">Rango: {rangos.temperaturaMin}-{rangos.temperaturaMax} °C</p>
                 </div>
 
                 {/* Oxígeno */}
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <label className="text-[11px] font-medium text-slate-700">O₂ Disuelto (mg/L)</label>
+                    <label className="text-xs font-medium text-slate-700">O₂ Disuelto (mg/L)</label>
                     {evalOx.fueraDeRango ? (
-                      <span className="text-[11px] bg-red-100 text-red-700 px-1.5 py-0.2 rounded font-semibold">Crítico</span>
+                      <span className="text-xs bg-red-100 text-red-700 px-2 py-0.2 rounded-md font-semibold">Crítico</span>
                     ) : (
-                      <span className="text-[11px] bg-emerald-100 text-emerald-700 px-1.5 py-0.2 rounded font-semibold">Óptimo</span>
+                      <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.2 rounded-md font-semibold">Óptimo</span>
                     )}
                   </div>
                   <input
@@ -384,19 +386,19 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                     required
                     value={oxigeno}
                     onChange={(e) => setOxigeno(e.target.value === '' ? '' : Number(e.target.value))}
-                    className={`w-full px-2.5 py-1.5 text-xs border rounded-md ${evalOx.fueraDeRango ? 'border-red-400 bg-red-50/50' : 'border-slate-300'}`}
+                    className={`w-full px-3 py-2 text-xs border rounded-md ${evalOx.fueraDeRango ? 'border-red-400 bg-red-50/50' : 'border-slate-300'}`}
                   />
-                  <p className="text-[11px] text-slate-400 mt-0.5">Mínimo: {rangos.oxigenoMin} mg/L</p>
+                  <p className="text-xs text-slate-500 mt-1">Mínimo: {rangos.oxigenoMin} mg/L</p>
                 </div>
 
                 {/* pH */}
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <label className="text-[11px] font-medium text-slate-700">pH</label>
+                    <label className="text-xs font-medium text-slate-700">pH</label>
                     {evalPh.fueraDeRango ? (
-                      <span className="text-[11px] bg-red-100 text-red-700 px-1.5 py-0.2 rounded font-semibold">Fuera</span>
+                      <span className="text-xs bg-red-100 text-red-700 px-2 py-0.2 rounded-md font-semibold">Fuera</span>
                     ) : (
-                      <span className="text-[11px] bg-emerald-100 text-emerald-700 px-1.5 py-0.2 rounded font-semibold">Óptimo</span>
+                      <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.2 rounded-md font-semibold">Óptimo</span>
                     )}
                   </div>
                   <input
@@ -405,19 +407,19 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                     required
                     value={phAgua}
                     onChange={(e) => setPhAgua(e.target.value === '' ? '' : Number(e.target.value))}
-                    className={`w-full px-2.5 py-1.5 text-xs border rounded-md ${evalPh.fueraDeRango ? 'border-red-400 bg-red-50/50' : 'border-slate-300'}`}
+                    className={`w-full px-3 py-2 text-xs border rounded-md ${evalPh.fueraDeRango ? 'border-red-400 bg-red-50/50' : 'border-slate-300'}`}
                   />
-                  <p className="text-[11px] text-slate-400 mt-0.5">Rango: {rangos.phMin}-{rangos.phMax}</p>
+                  <p className="text-xs text-slate-500 mt-1">Rango: {rangos.phMin}-{rangos.phMax}</p>
                 </div>
 
                 {/* Amonio */}
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <label className="text-[11px] font-medium text-slate-700">Amonio total (mg/L)</label>
+                    <label className="text-xs font-medium text-slate-700">Amonio total (mg/L)</label>
                     {evalAm.fueraDeRango ? (
-                      <span className="text-[11px] bg-red-100 text-red-700 px-1.5 py-0.2 rounded font-semibold">Alto</span>
+                      <span className="text-xs bg-red-100 text-red-700 px-2 py-0.2 rounded-md font-semibold">Alto</span>
                     ) : (
-                      <span className="text-[11px] bg-emerald-100 text-emerald-700 px-1.5 py-0.2 rounded font-semibold">Óptimo</span>
+                      <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.2 rounded-md font-semibold">Óptimo</span>
                     )}
                   </div>
                   <input
@@ -426,19 +428,19 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                     required
                     value={amonio}
                     onChange={(e) => setAmonio(e.target.value === '' ? '' : Number(e.target.value))}
-                    className={`w-full px-2.5 py-1.5 text-xs border rounded-md ${evalAm.fueraDeRango ? 'border-red-400 bg-red-50/50' : 'border-slate-300'}`}
+                    className={`w-full px-3 py-2 text-xs border rounded-md ${evalAm.fueraDeRango ? 'border-red-400 bg-red-50/50' : 'border-slate-300'}`}
                   />
-                  <p className="text-[11px] text-slate-400 mt-0.5">Máximo: {rangos.amonioMax} mg/L</p>
+                  <p className="text-xs text-slate-500 mt-1">Máximo: {rangos.amonioMax} mg/L</p>
                 </div>
 
                 {/* Nitritos */}
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <label className="text-[11px] font-medium text-slate-700">Nitritos (mg/L)</label>
+                    <label className="text-xs font-medium text-slate-700">Nitritos (mg/L)</label>
                     {evalNit.fueraDeRango ? (
-                      <span className="text-[11px] bg-red-100 text-red-700 px-1.5 py-0.2 rounded font-semibold">Tóxico</span>
+                      <span className="text-xs bg-red-100 text-red-700 px-2 py-0.2 rounded-md font-semibold">Tóxico</span>
                     ) : (
-                      <span className="text-[11px] bg-emerald-100 text-emerald-700 px-1.5 py-0.2 rounded font-semibold">Óptimo</span>
+                      <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.2 rounded-md font-semibold">Óptimo</span>
                     )}
                   </div>
                   <input
@@ -447,19 +449,19 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                     required
                     value={nitritos}
                     onChange={(e) => setNitritos(e.target.value === '' ? '' : Number(e.target.value))}
-                    className={`w-full px-2.5 py-1.5 text-xs border rounded-md ${evalNit.fueraDeRango ? 'border-red-400 bg-red-50/50' : 'border-slate-300'}`}
+                    className={`w-full px-3 py-2 text-xs border rounded-md ${evalNit.fueraDeRango ? 'border-red-400 bg-red-50/50' : 'border-slate-300'}`}
                   />
-                  <p className="text-[11px] text-slate-400 mt-0.5">Máximo: {rangos.nitritosMax} mg/L</p>
+                  <p className="text-xs text-slate-500 mt-1">Máximo: {rangos.nitritosMax} mg/L</p>
                 </div>
 
                 {/* Secchi */}
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <label className="text-[11px] font-medium text-slate-700">Transp. Secchi (cm)</label>
+                    <label className="text-xs font-medium text-slate-700">Transp. Secchi (cm)</label>
                     {evalSec.fueraDeRango ? (
-                      <span className="text-[11px] bg-red-100 text-red-700 px-1.5 py-0.2 rounded font-semibold">Fuera</span>
+                      <span className="text-xs bg-red-100 text-red-700 px-2 py-0.2 rounded-md font-semibold">Fuera</span>
                     ) : (
-                      <span className="text-[11px] bg-emerald-100 text-emerald-700 px-1.5 py-0.2 rounded font-semibold">Óptimo</span>
+                      <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.2 rounded-md font-semibold">Óptimo</span>
                     )}
                   </div>
                   <input
@@ -468,9 +470,9 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                     required
                     value={secchi}
                     onChange={(e) => setSecchi(e.target.value === '' ? '' : Number(e.target.value))}
-                    className={`w-full px-2.5 py-1.5 text-xs border rounded-md ${evalSec.fueraDeRango ? 'border-red-400 bg-red-50/50' : 'border-slate-300'}`}
+                    className={`w-full px-3 py-2 text-xs border rounded-md ${evalSec.fueraDeRango ? 'border-red-400 bg-red-50/50' : 'border-slate-300'}`}
                   />
-                  <p className="text-[11px] text-slate-400 mt-0.5">Rango: {rangos.secchiMin}-{rangos.secchiMax} cm</p>
+                  <p className="text-xs text-slate-500 mt-1">Rango: {rangos.secchiMin}-{rangos.secchiMax} cm</p>
                 </div>
               </div>
             </div>
@@ -486,7 +488,7 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                   required
                   value={tipoAlimento}
                   onChange={(e) => setTipoAlimento(e.target.value)}
-                  className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-md"
+                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md"
                 />
               </div>
               <div>
@@ -496,7 +498,7 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                   step="0.5"
                   value={pctProteina}
                   onChange={(e) => setPctProteina(e.target.value === '' ? '' : Number(e.target.value))}
-                  className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-md"
+                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md"
                 />
               </div>
               <div>
@@ -508,7 +510,7 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                   min="0.1"
                   value={cantAlimentoKg}
                   onChange={(e) => setCantAlimentoKg(e.target.value === '' ? '' : Number(e.target.value))}
-                  className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-md"
+                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md"
                 />
               </div>
               <div>
@@ -519,7 +521,7 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                   step="1"
                   value={numRaciones}
                   onChange={(e) => setNumRaciones(e.target.value === '' ? '' : Number(e.target.value))}
-                  className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-md"
+                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md"
                 />
               </div>
             </div>
@@ -535,7 +537,7 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                   min="1"
                   value={pecesMuestreados}
                   onChange={(e) => setPecesMuestreados(e.target.value === '' ? '' : Number(e.target.value))}
-                  className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-md"
+                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md"
                 />
               </div>
               <div>
@@ -547,7 +549,7 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                   min="0.1"
                   value={pesoPromedioG}
                   onChange={(e) => setPesoPromedioG(e.target.value === '' ? '' : Number(e.target.value))}
-                  className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-md"
+                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md"
                 />
               </div>
               <div>
@@ -557,7 +559,7 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                   step="0.01"
                   value={tallaPromedioCm}
                   onChange={(e) => setTallaPromedioCm(e.target.value === '' ? '' : Number(e.target.value))}
-                  className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-md"
+                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md"
                 />
               </div>
               <div>
@@ -565,7 +567,7 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                 <select
                   value={etapaCultivo}
                   onChange={(e) => setEtapaCultivo(e.target.value)}
-                  className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-md bg-white"
+                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md bg-white"
                 >
                   <option value="Alevinaje">Alevinaje</option>
                   <option value="Levante">Levante</option>
@@ -588,7 +590,7 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                   required
                   value={cantMortalidad}
                   onChange={(e) => setCantMortalidad(e.target.value === '' ? '' : Number(e.target.value))}
-                  className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-md"
+                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md"
                 />
               </div>
               <div>
@@ -598,7 +600,7 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                   placeholder="ej: Adaptación, hipoxia nocturna, manipulación..."
                   value={causaMortalidad}
                   onChange={(e) => setCausaMortalidad(e.target.value)}
-                  className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-md"
+                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md"
                 />
               </div>
             </div>
@@ -614,7 +616,7 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                   required
                   value={prodProbiotico}
                   onChange={(e) => setProdProbiotico(e.target.value)}
-                  className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-md"
+                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md"
                 />
               </div>
               <div className="grid grid-cols-2 gap-2">
@@ -625,7 +627,7 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                     step="0.01"
                     value={dosisProbiotico}
                     onChange={(e) => setDosisProbiotico(e.target.value === '' ? '' : Number(e.target.value))}
-                    className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-md"
+                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md"
                   />
                 </div>
                 <div>
@@ -634,7 +636,7 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                     type="text"
                     value={unidadProbiotico}
                     onChange={(e) => setUnidadProbiotico(e.target.value)}
-                    className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-md"
+                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md"
                   />
                 </div>
               </div>
@@ -643,7 +645,7 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                 <select
                   value={viaProbiotico}
                   onChange={(e) => setViaProbiotico(e.target.value as any)}
-                  className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-md bg-white"
+                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md bg-white"
                 >
                   <option value="Agua">Agua del estanque</option>
                   <option value="Alimento">Mezclado en alimento</option>
@@ -655,7 +657,7 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                   type="text"
                   value={objetivoProbiotico}
                   onChange={(e) => setObjetivoProbiotico(e.target.value)}
-                  className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-md"
+                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md"
                 />
               </div>
             </div>
@@ -672,7 +674,7 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                   placeholder="ej: Baño profiláctico con sal marina, adición de melaza..."
                   value={descTratamiento}
                   onChange={(e) => setDescTratamiento(e.target.value)}
-                  className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-md"
+                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md"
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -682,7 +684,7 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                     type="text"
                     value={prodTratamiento}
                     onChange={(e) => setProdTratamiento(e.target.value)}
-                    className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-md"
+                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md"
                   />
                 </div>
                 <div>
@@ -691,7 +693,7 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                     type="text"
                     value={dosisTratamiento}
                     onChange={(e) => setDosisTratamiento(e.target.value)}
-                    className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-md"
+                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md"
                   />
                 </div>
               </div>
@@ -710,7 +712,7 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                   required
                   value={pecesCosechados}
                   onChange={(e) => setPecesCosechados(e.target.value === '' ? '' : Number(e.target.value))}
-                  className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-md"
+                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md"
                 />
               </div>
               <div>
@@ -722,7 +724,7 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                   required
                   value={biomasaCosechadaKg}
                   onChange={(e) => setBiomasaCosechadaKg(e.target.value === '' ? '' : Number(e.target.value))}
-                  className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-md"
+                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md"
                 />
               </div>
               <div>
@@ -732,7 +734,7 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                   step="0.01"
                   value={pesoPromCosechaG}
                   onChange={(e) => setPesoPromCosechaG(e.target.value === '' ? '' : Number(e.target.value))}
-                  className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-md"
+                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md"
                 />
               </div>
             </div>
@@ -747,7 +749,7 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                   id="escamado"
                   checked={escamadoEviscerado}
                   onChange={(e) => setEscamadoEviscerado(e.target.checked)}
-                  className="rounded text-sky-600 focus:ring-sky-500 h-4 w-4"
+                  className="rounded-md text-sky-600 focus:ring-sky-500 h-4 w-4"
                 />
                 <label htmlFor="escamado" className="text-xs font-medium text-slate-700">
                   Escamado y eviscerado completo verificado (Calibre 450 - 500 g)
@@ -761,7 +763,7 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                     min="1"
                     value={cantProcesada}
                     onChange={(e) => setCantProcesada(e.target.value === '' ? '' : Number(e.target.value))}
-                    className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-md"
+                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md"
                   />
                 </div>
                 <div>
@@ -771,7 +773,7 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                     step="0.01"
                     value={pesoPromFinalG}
                     onChange={(e) => setPesoPromFinalG(e.target.value === '' ? '' : Number(e.target.value))}
-                    className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-md"
+                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md"
                   />
                 </div>
                 <div>
@@ -780,7 +782,7 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                     type="text"
                     value={responsableProceso}
                     onChange={(e) => setResponsableProceso(e.target.value)}
-                    className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-md"
+                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md"
                   />
                 </div>
               </div>
@@ -796,7 +798,7 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                   type="text"
                   value={tipoEmpaque}
                   onChange={(e) => setTipoEmpaque(e.target.value)}
-                  className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-md"
+                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md"
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -807,7 +809,7 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                     step="0.5"
                     value={tempConservacionC}
                     onChange={(e) => setTempConservacionC(e.target.value === '' ? '' : Number(e.target.value))}
-                    className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-md"
+                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md"
                   />
                 </div>
                 <div className="flex items-center pt-5">
@@ -816,7 +818,7 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                     id="hielo"
                     checked={usoHielo}
                     onChange={(e) => setUsoHielo(e.target.checked)}
-                    className="rounded text-sky-600 focus:ring-sky-500 h-4 w-4"
+                    className="rounded-md text-sky-600 focus:ring-sky-500 h-4 w-4"
                   />
                   <label htmlFor="hielo" className="ml-2 text-xs font-medium text-slate-700">
                     Uso de hielo en escamas para cadena de frío
@@ -836,7 +838,7 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                     type="datetime-local"
                     value={fechaHoraSalida}
                     onChange={(e) => setFechaHoraSalida(e.target.value)}
-                    className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-md"
+                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md"
                   />
                 </div>
                 <div>
@@ -846,7 +848,7 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                     required
                     value={destinoDespacho}
                     onChange={(e) => setDestinoDespacho(e.target.value)}
-                    className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-md"
+                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md"
                   />
                 </div>
               </div>
@@ -858,7 +860,7 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                     step="0.5"
                     value={tempDespachoC}
                     onChange={(e) => setTempDespachoC(e.target.value === '' ? '' : Number(e.target.value))}
-                    className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-md"
+                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md"
                   />
                 </div>
                 <div>
@@ -867,7 +869,7 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                     type="text"
                     value={responsableDespacho}
                     onChange={(e) => setResponsableDespacho(e.target.value)}
-                    className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-md"
+                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md"
                   />
                 </div>
                 <div className="flex items-center pt-5">
@@ -876,7 +878,7 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                     id="isotermico"
                     checked={contenedorIsotermico}
                     onChange={(e) => setContenedorIsotermico(e.target.checked)}
-                    className="rounded text-sky-600 focus:ring-sky-500 h-4 w-4"
+                    className="rounded-md text-sky-600 focus:ring-sky-500 h-4 w-4"
                   />
                   <label htmlFor="isotermico" className="ml-2 text-xs font-medium text-slate-700">
                     Contenedor isotérmico con hielo
@@ -904,7 +906,7 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                 >
                   {(lote.eventos || []).map((ev) => (
                     <option key={ev.id} value={ev.id}>
-                      #{ev.indice} • {ev.fechaEvento} • {ev.tipo} — {ev.descripcion || 'Sin descripción'}
+                      #{ev.indice} · {ev.fechaEvento} · {ev.tipo} · {ev.descripcion || 'Sin descripción'}
                     </option>
                   ))}
                 </select>

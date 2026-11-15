@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { Bloque } from './Esqueleto';
+import { usePresencia } from '../lib/presencia';
 import { X, ShieldCheck, ShieldAlert, CheckCircle, Hash, RefreshCw } from 'lucide-react';
 import { Lote } from '../types';
 import { verificarIntegridadLote, ResultadoVerificacion, analizarCadenaLote, AnalisisCadena } from '../services/hashService';
@@ -43,10 +45,11 @@ export const IntegrityCheckModal: React.FC<IntegrityCheckModalProps> = ({
     }
   }, [isOpen, lote]);
 
-  if (!isOpen) return null;
+  const presencia = usePresencia(isOpen);
+  if (!presencia.montado) return null;
 
   return (
-    <div className="velo fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4">
+    <div role="dialog" aria-modal="true" data-saliendo={presencia.saliendo || undefined} className="velo fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4">
       <div className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-lg w-full overflow-hidden">
         {/* Cabecera */}
         <div className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between">
@@ -56,7 +59,7 @@ export const IntegrityCheckModal: React.FC<IntegrityCheckModalProps> = ({
           </div>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-white p-1 rounded transition-colors"
+            className="text-slate-500 hover:text-white p-1 rounded-md transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -69,24 +72,24 @@ export const IntegrityCheckModal: React.FC<IntegrityCheckModalProps> = ({
 
           {verificando ? (
             <div className="py-12 flex flex-col items-center justify-center space-y-3">
-              <div className="w-10 h-10 border-3 border-sky-600 border-t-transparent rounded-full animate-spin" />
+              <Bloque className="w-10 h-10 rounded-full" />
               <p className="text-sm font-medium text-slate-700">Auditando cadena de bloques SHA-256...</p>
-              <p className="text-xs text-slate-400">Verificando {lote.eventos?.length || 0} fases registradas</p>
+              <p className="text-xs text-slate-500">Verificando {lote.eventos?.length || 0} fases registradas</p>
             </div>
           ) : resultado?.valido ? (
             <div className="space-y-4">
               <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl flex items-start space-x-3 text-emerald-900">
-                <ShieldCheck className="w-8 h-8 text-emerald-600 shrink-0 mt-0.5" />
+                <ShieldCheck className="w-8 h-8 text-emerald-600 shrink-0 mt-1" />
                 <div>
-                  <h4 className="font-bold text-base text-emerald-800">Resultado: ÍNTEGRO</h4>
+                  <h4 className="font-semibold text-base text-emerald-800">Resultado: ÍNTEGRO</h4>
                   <p className="text-xs text-emerald-700 mt-1">{resultado.mensaje}</p>
                 </div>
               </div>
 
-              <div className="bg-slate-50 border border-slate-200 rounded-lg p-3.5 space-y-2 text-xs">
+              <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-2 text-xs">
                 <div className="flex justify-between items-center py-1 border-b border-slate-200/60">
                   <span className="text-slate-500 font-medium">Lote auditado:</span>
-                  <span className="font-mono font-bold text-slate-800">{lote.codigo}</span>
+                  <span className="font-mono font-semibold text-slate-800">{lote.codigo}</span>
                 </div>
                 <div className="flex justify-between items-center py-1 border-b border-slate-200/60">
                   <span className="text-slate-500 font-medium">Bloques verificados:</span>
@@ -94,17 +97,17 @@ export const IntegrityCheckModal: React.FC<IntegrityCheckModalProps> = ({
                 </div>
                 <div className="flex justify-between items-center py-1 border-b border-slate-200/60">
                   <span className="text-slate-500 font-medium">Hash Génesis (#0):</span>
-                  <span className="font-mono text-[11px] text-slate-600">0000...0000 (64 ceros válidos)</span>
+                  <span className="font-mono text-xs text-slate-600">0000...0000 (64 ceros válidos)</span>
                 </div>
                 <div className="py-1">
                   <span className="text-slate-500 font-medium block mb-1">Hash Final del Lote (resumen.hashFinal):</span>
-                  <span className="font-mono text-[11px] bg-white p-1.5 rounded border border-slate-300 block break-all text-slate-700">
+                  <span className="font-mono text-xs bg-white p-2 rounded-md border border-slate-300 block break-all text-slate-700">
                     {lote.resumen.hashFinal || 'Sin hash registrado'}
                   </span>
                 </div>
               </div>
 
-              <div className="flex items-center text-xs text-emerald-700 space-x-1.5 bg-emerald-50/50 p-2 rounded">
+              <div className="flex items-center text-xs text-emerald-700 space-x-2 bg-emerald-50/50 p-2 rounded-md">
                 <CheckCircle className="w-4 h-4 shrink-0" />
                 <span>La evidencia digital concuerda 100% con los estándares de trazabilidad inalterable.</span>
               </div>
@@ -112,9 +115,9 @@ export const IntegrityCheckModal: React.FC<IntegrityCheckModalProps> = ({
           ) : (
             <div className="space-y-4">
               <div className="p-4 bg-red-50 border border-red-200 rounded-xl flex items-start space-x-3 text-red-900">
-                <ShieldAlert className="w-8 h-8 text-red-600 shrink-0 mt-0.5" />
+                <ShieldAlert className="w-8 h-8 text-red-600 shrink-0 mt-1" />
                 <div>
-                  <h4 className="font-bold text-base text-red-800">Resultado: ¡ALTERACIÓN DETECTADA!</h4>
+                  <h4 className="font-semibold text-base text-red-800">Resultado: ¡ALTERACIÓN DETECTADA!</h4>
                   <p className="text-xs text-red-700 mt-1">{resultado?.mensaje}</p>
                 </div>
               </div>
@@ -129,7 +132,7 @@ export const IntegrityCheckModal: React.FC<IntegrityCheckModalProps> = ({
                         <li key={f.indice} className="px-3 py-2 bg-white">
                           <span className="text-slate-800">{f.mensaje}</span>
                           {f.estado === 'alterada' && !f.conRastro && (
-                            <span className="block text-[11px] text-slate-500 mt-0.5">
+                            <span className="block text-xs text-slate-500 mt-1">
                               Fase registrada antes del rastro por dato: se sabe que fue alterada, pero no qué dato cambió.
                             </span>
                           )}
@@ -147,17 +150,17 @@ export const IntegrityCheckModal: React.FC<IntegrityCheckModalProps> = ({
                   <p className="font-semibold text-red-800">Detalles de la discrepancia criptográfica:</p>
                   <div>
                     <span className="text-slate-500 block">Índice de la fase alterada:</span>
-                    <span className="font-bold font-mono text-slate-900">#{resultado.detalles.indice}</span>
+                    <span className="font-semibold font-mono text-slate-900">#{resultado.detalles.indice}</span>
                   </div>
                   <div>
                     <span className="text-slate-500 block">Hash recalculado según datos actuales:</span>
-                    <span className="font-mono text-[11px] bg-red-50 text-red-800 p-1 rounded block break-all border border-red-200">
+                    <span className="font-mono text-xs bg-red-50 text-red-800 p-1 rounded-md block break-all border border-red-200">
                       {resultado.detalles.hashEsperado || 'Discrepancia en cadena previa'}
                     </span>
                   </div>
                   <div>
                     <span className="text-slate-500 block">Hash guardado en el documento original:</span>
-                    <span className="font-mono text-[11px] bg-slate-100 text-slate-800 p-1 rounded block break-all border border-slate-300">
+                    <span className="font-mono text-xs bg-slate-100 text-slate-800 p-1 rounded-md block break-all border border-slate-300">
                       {resultado.detalles.hashAlmacenado}
                     </span>
                   </div>
@@ -170,7 +173,7 @@ export const IntegrityCheckModal: React.FC<IntegrityCheckModalProps> = ({
             <button
               onClick={ejecutarVerificacion}
               disabled={verificando}
-              className="inline-flex items-center space-x-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+              className="inline-flex items-center space-x-2 px-3 py-2 text-xs font-medium text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${verificando ? 'animate-spin' : ''}`} />
               <span>Re-auditar ahora</span>

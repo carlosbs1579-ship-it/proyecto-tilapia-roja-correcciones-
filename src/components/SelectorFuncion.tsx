@@ -34,9 +34,9 @@ export const SelectorFuncion: React.FC<SelectorFuncionProps> = ({
 }) => (
   <div className="max-w-md mx-auto bg-white rounded-xl border border-slate-200 shadow-xs p-6 space-y-4">
     <div>
-      <h1 className="text-base font-bold text-slate-900">¿Con qué función deseas trabajar?</h1>
-      <p className="text-xs text-slate-500 mt-0.5">
-        {perfil.displayName || perfil.email} • Puedes cambiar de función en cualquier momento desde la barra superior.
+      <h1 className="text-base font-semibold text-slate-900">¿Con qué función deseas trabajar?</h1>
+      <p className="text-xs text-slate-500 mt-1">
+        {perfil.displayName || perfil.email} · Puedes cambiar de función en cualquier momento desde la barra superior.
       </p>
     </div>
 
@@ -53,13 +53,13 @@ export const SelectorFuncion: React.FC<SelectorFuncionProps> = ({
               {ICONO_FUNCION[f]}
             </div>
             <div>
-              <span className="block text-sm font-bold text-slate-900">{nombreFuncion(perfil, f)}</span>
-              <span className="block text-[11px] text-slate-500">
-                {ETIQUETA_ROL[f]} • {DESCRIPCION_FUNCION[f]}
+              <span className="block text-sm font-semibold text-slate-900">{nombreFuncion(perfil, f)}</span>
+              <span className="block text-xs text-slate-500">
+                {ETIQUETA_ROL[f]} · {DESCRIPCION_FUNCION[f]}
               </span>
             </div>
           </div>
-          <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
+          <ChevronRight className="w-4 h-4 text-slate-500 shrink-0" />
         </button>
       ))}
     </div>
@@ -67,7 +67,7 @@ export const SelectorFuncion: React.FC<SelectorFuncionProps> = ({
     <button
       type="button"
       onClick={onCerrarSesion}
-      className="inline-flex items-center space-x-1.5 text-xs text-slate-500 hover:text-red-600"
+      className="inline-flex items-center space-x-2 text-xs text-slate-500 hover:text-red-600"
     >
       <LogOut className="w-3.5 h-3.5" />
       <span>Cerrar sesión</span>

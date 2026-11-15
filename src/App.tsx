@@ -1,4 +1,10 @@
-import React, { useState, useEffect, Suspense, lazy } from 'react';
+import React, { useState, useEffect, Suspense, lazy, useRef } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
+import { EsqueletoPantalla } from './components/Esqueleto';
+import { PantallaVerificando } from './components/PantallaVerificando';
+const PantallaIngreso = lazy(() => import('./components/PantallaIngreso').then((m) => ({ default: m.PantallaIngreso })));
+import { DISTANCIA, VAR_CONTENIDO_TAB, entrada } from './lib/motion';
+import { useConservar, usePresencia } from './lib/presencia';
 import { onAuthStateChanged, signOut, User } from 'firebase/auth';
 import { auth, db } from './firebase/firebaseConfig';
 import { Lote, ConfiguracionGeneral, UsuarioPerfil, RolFuncional } from './types';
@@ -30,7 +36,7 @@ const ConsultaEntregaPublica = lazy(() =>
   import('./components/ConsultaEntregaPublica').then((m) => ({ default: m.ConsultaEntregaPublica }))
 );
 
-const Cargando = () => <p className="py-10 text-center text-sm text-slate-500">Cargando…</p>;
+const Cargando = () => <EsqueletoPantalla />;
 import { LotesTab } from './components/LotesTab';
 import { AuthModal } from './components/AuthModal';
 import { NuevoLoteModal } from './components/NuevoLoteModal';
@@ -68,6 +74,20 @@ interface UsuarioSesion {
 
 export default function App() {
   const [tabActiva, setTabActiva] = useState<TabTipo>('inicio');
+  // Dirección del cambio de pestaña (1 avanza, -1 retrocede) y posición de scroll de cada pestaña
+  const tabAnterior = useRef<TabTipo>('inicio');
+  const scrollPorTab = useRef<Partial<Record<TabTipo, number>>>({});
+  const ORDEN_TABS: TabTipo[] = ['inicio', 'lotes', 'pedidos', 'analitica', 'configuracion', 'usuarios', 'reparto'];
+  const direccionTab = ORDEN_TABS.indexOf(tabActiva) >= ORDEN_TABS.indexOf(tabAnterior.current) ? 1 : -1;
+  useEffect(() => {
+    tabAnterior.current = tabActiva;
+    const y = scrollPorTab.current[tabActiva] ?? 0;
+    const raf = requestAnimationFrame(() => window.scrollTo({ top: y }));
+    return () => {
+      cancelAnimationFrame(raf);
+      scrollPorTab.current[tabActiva] = window.scrollY;
+    };
+  }, [tabActiva]);
 
   // Si se ingresó mediante escaneo de QR (con parámetro ?lote=...), mostrar vista pública
   const [lotePublicoCodigo, setLotePublicoCodigo] = useState<string | null>(() => {
@@ -108,12 +128,18 @@ export default function App() {
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [nuevoLoteModalOpen, setNuevoLoteModalOpen] = useState(false);
   const [loteDetalle, setLoteDetalle] = useState<Lote | null>(null);
+  // Se conserva unos milisegundos al cerrar para que la ventana termine de desvanecerse
+  const loteDetalleVisible = useConservar(loteDetalle);
   const [loteQr, setLoteQr] = useState<Lote | null>(null);
+  const loteQrVisible = useConservar(loteQr);
 
   const esAdmin = esAdminMaestro(usuario?.email);
 
   // Funciones (roles) con las que la cuenta puede trabajar y la elegida en esta sesión
   const [funcionActiva, setFuncionActiva] = useState<RolFuncional | null>(null);
+  // Función elegida en la pantalla de ingreso: es solo una preferencia; se aplica si la cuenta la tiene
+  const [funcionPedida, setFuncionPedida] = useState<RolFuncional | null>(null);
+  const [avisoFuncionPedida, setAvisoFuncionPedida] = useState<string | null>(null);
   const funciones = usuario ? funcionesDisponibles(perfilUsuario) : [];
   const clavefunciones = funciones.join(',');
   const mostrarSelectorFuncion = Boolean(usuario) && funciones.length > 1 && !funcionActiva;
@@ -125,6 +151,25 @@ export default function App() {
       setFuncionActiva(null);
       return;
     }
+    // Preferencia del ingreso: se evalúa cuando ya cargó el perfil de esta cuenta
+    if (funcionPedida && perfilUsuario?.uid !== usuario.uid) return;
+    // Solo si la cuenta tiene esa función (un administrador entra como tal al elegir Operador)
+    if (funcionPedida) {
+      const aplicable = funciones.includes(funcionPedida)
+        ? funcionPedida
+        : funcionPedida === 'operator' && funciones.includes('admin')
+        ? 'admin'
+        : null;
+      setFuncionPedida(null);
+      if (aplicable) {
+        guardarFuncion(usuario.uid, aplicable);
+        setFuncionActiva(aplicable);
+        return;
+      }
+      setAvisoFuncionPedida(
+        `Tu cuenta no tiene la función de ${funcionPedida === 'courier' ? 'repartidor' : 'operador'}. Entraste con las funciones que te asignó el administrador.`
+      );
+    }
     if (funciones.length === 1) {
       setFuncionActiva(funciones[0]);
       return;
@@ -134,7 +179,7 @@ export default function App() {
       const guardada = leerFuncionGuardada(usuario.uid) as RolFuncional | null;
       return guardada && funciones.includes(guardada) ? guardada : null;
     });
-  }, [usuario?.uid, clavefunciones]);
+  }, [usuario?.uid, clavefunciones, perfilUsuario?.uid]);
 
   // Los registros nuevos guardan el nombre visible de quien los hace (no solo el correo)
   useEffect(() => {
@@ -314,9 +359,9 @@ export default function App() {
 
   const accesoRestringido = (
     <div className="max-w-2xl mx-auto bg-white rounded-xl border border-slate-200 shadow-xs p-6 flex items-start space-x-3 text-xs text-slate-700">
-      <Lock className="w-5 h-5 text-slate-400 shrink-0" />
+      <Lock className="w-5 h-5 text-slate-500 shrink-0" />
       <div>
-        <p className="font-bold text-sm text-slate-900">Información productiva restringida</p>
+        <p className="font-semibold text-sm text-slate-900">Información productiva restringida</p>
         <p className="mt-1">
           {!usuario
             ? 'Ingresa al sistema con una cuenta autorizada para consultar los lotes de la granja.'
@@ -343,6 +388,9 @@ export default function App() {
   };
 
   // Si se detectó un código de lote por escaneo de QR en la URL, mostrar vista pública interactiva
+  // La pantalla de ingreso se desvanece (180 ms) cuando la sesión queda activa, antes de que entre la app
+  const ingreso = usePresencia(!usuario && !authCargando);
+
   if (entregaPublicaToken && !lotePublicoCodigo) {
     return (
       <Suspense fallback={<Cargando />}>
@@ -382,8 +430,24 @@ export default function App() {
     );
   }
 
+  // Sin sesión: pantalla breve con el logo mientras se verifica y, después, la pantalla de ingreso
+  if (authCargando && !usuario) return <PantallaVerificando />;
+  if (!usuario || ingreso.saliendo) {
+    return (
+      <div className={ingreso.saliendo ? "opacity-0 transition-opacity duration-(--mov-salida) ease-(--curva-salida)" : ""}>
+        <Suspense fallback={<PantallaVerificando />}>
+          <PantallaIngreso onRolElegido={(rol) => setFuncionPedida(rol)} />
+        </Suspense>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-dvh bg-white flex flex-col font-sans">
+    <motion.div
+      initial={{ opacity: 0, y: DISTANCIA.tarjeta }}
+      animate={{ opacity: 1, y: 0, transition: entrada() }}
+      className="min-h-dvh bg-white flex flex-col font-sans"
+    >
       {/* NAVBAR */}
       <Navbar
         tabActiva={tabActiva}
@@ -399,21 +463,12 @@ export default function App() {
         onNuevoLote={handleAbrirNuevoLote}
       />
 
-      {/* BANNER 1: SI NO HA INICIADO SESIÓN */}
-      {!usuario && !authCargando && (
-        <div className="bg-sky-950 text-sky-100 px-4 py-2.5 text-xs border-b border-sky-800">
-          <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
-            <div className="flex items-center space-x-2">
-              <Lock className="w-4 h-4 text-sky-400 shrink-0" />
-              <span>
-                <strong>Modo Consulta:</strong> Para ver los lotes de la granja, crear lotes o registrar eventos debes ingresar con una cuenta autorizada por el administrador.
-              </span>
-            </div>
-            <button
-              onClick={() => setAuthModalOpen(true)}
-              className="px-3.5 py-1 bg-sky-500 hover:bg-sky-400 text-white font-semibold rounded-md shadow-xs transition-colors shrink-0"
-            >
-              Ingresar al sistema
+      {avisoFuncionPedida && (
+        <div role="status" className="bg-amber-50 border-b border-amber-200 text-amber-900 text-sm">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-start justify-between gap-3">
+            <span>{avisoFuncionPedida}</span>
+            <button type="button" onClick={() => setAvisoFuncionPedida(null)} className="font-semibold underline shrink-0">
+              Entendido
             </button>
           </div>
         </div>
@@ -483,7 +538,17 @@ export default function App() {
       )}
 
       {/* CONTENIDO PRINCIPAL SEGÚN PESTAÑA SELECCIONADA */}
-      <main key={tabActiva} className="aparece flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="relative flex-1 flex flex-col min-h-[60vh]">
+      <AnimatePresence mode="popLayout" initial={false} custom={direccionTab}>
+      <motion.main
+        key={tabActiva}
+        custom={direccionTab}
+        variants={VAR_CONTENIDO_TAB}
+        initial="entra"
+        animate="visible"
+        exit="sale"
+        className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6"
+      >
         <Suspense fallback={<Cargando />}>
         {/* SELECCIÓN DE FUNCIÓN (CUENTAS CON VARIOS ROLES) */}
         {mostrarSelectorFuncion && perfilUsuario && (
@@ -509,7 +574,7 @@ export default function App() {
         <>
         {/* 1. INICIO */}
         {tabActiva === 'inicio' && tabsPermitidas.includes('inicio') && (funcionActiva === 'admin' || puede('verInicio') || puede('crearLotes')) && (
-          <DashboardTab
+          lotesCargando ? <EsqueletoPantalla /> : <DashboardTab
             lotes={lotes}
             config={config}
             onNuevoLote={handleAbrirNuevoLote}
@@ -528,7 +593,7 @@ export default function App() {
 
         {/* 2. LOTES */}
         {tabActiva === 'lotes' && tabsPermitidas.includes('lotes') && (
-          <LotesTab
+          lotesCargando ? <EsqueletoPantalla /> : <LotesTab
             lotes={lotes}
             config={config}
             onNuevoLote={handleAbrirNuevoLote}
@@ -546,7 +611,7 @@ export default function App() {
 
         {/* 3. ANALÍTICA */}
         {tabActiva === 'analitica' && tabsPermitidas.includes('analitica') && (
-          <AnaliticaTab
+          lotesCargando ? <EsqueletoPantalla /> : <AnaliticaTab
             lotes={lotes}
             config={config}
             onSeleccionarLote={(lote) => setLoteDetalle(lote)}
@@ -577,18 +642,20 @@ export default function App() {
         </>
         )}
         </Suspense>
-      </main>
+      </motion.main>
+      </AnimatePresence>
+      </div>
 
       {/* FOOTER */}
-      <footer className="bg-slate-900 text-slate-400 border-t border-slate-800 py-6 text-xs text-center">
+      <footer className="bg-slate-900 text-slate-300 border-t border-slate-800 py-6 text-xs text-center">
         <div className="max-w-7xl mx-auto px-4">
           <p className="font-semibold text-slate-300">
-            Cultivos Loré — Granja de Tilapia Roja en Turbaco (Bolívar, Colombia)
+            Cultivos Loré · Granja de Tilapia Roja en Turbaco (Bolívar, Colombia)
           </p>
           <p className="text-slate-500 mt-1">
             Producto: Tilapia roja entera fresca, limpia (escamada y eviscerada), calibre 450 a 500 g • Modalidad Tilapia Pro
           </p>
-          <p className="text-[11px] text-slate-500 mt-2">
+          <p className="text-xs text-slate-500 mt-2">
             Este registro documenta cómo se produjo y manejó el lote; no reemplaza los controles de inocuidad.
           </p>
         </div>
@@ -611,11 +678,11 @@ export default function App() {
         />
       )}
 
-      {loteDetalle && (
+      {loteDetalleVisible && (
         <LoteDetailModal
           isOpen={Boolean(loteDetalle)}
           onClose={() => setLoteDetalle(null)}
-          loteInicial={loteDetalle}
+          loteInicial={loteDetalleVisible}
           config={config}
           userEmail={usuario?.email || ''}
           perfilActual={perfilUsuario}
@@ -630,11 +697,11 @@ export default function App() {
         />
       )}
 
-      {loteQr && (
+      {loteQrVisible && (
         <QrModal
           isOpen={Boolean(loteQr)}
           onClose={() => setLoteQr(null)}
-          lote={loteQr}
+          lote={loteQrVisible}
           config={config}
           onAbrirVistaPublica={(codigo) => {
             setLoteQr(null);
@@ -645,6 +712,6 @@ export default function App() {
           }}
         />
       )}
-    </div>
+    </motion.div>
   );
 }

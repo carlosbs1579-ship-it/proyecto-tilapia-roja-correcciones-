@@ -1,4 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { escalon, usePrimerMontaje } from '../lib/montaje';
+import { EsqueletoTarjetas } from './Esqueleto';
+import { Pestanas } from './Pestanas';
 import {
   ClipboardList,
   Plus,
@@ -91,6 +94,8 @@ export const PedidosTab: React.FC<PedidosTabProps> = ({ lotes, perfilActual }) =
   const [inventario, setInventario] = useState<Record<string, InventarioLote>>({});
   const [repartidores, setRepartidores] = useState<Repartidor[]>([]);
   const [cargando, setCargando] = useState(true);
+  // Las tarjetas entran escalonadas solo la primera vez que llegan los datos
+  const primerMontaje = usePrimerMontaje(!cargando);
   const [errorCarga, setErrorCarga] = useState<string | null>(null);
   const [abierta, setAbierta] = useState<string | null>(null);
   const [modalAbierto, setModalAbierto] = useState(false);
@@ -181,9 +186,9 @@ export const PedidosTab: React.FC<PedidosTabProps> = ({ lotes, perfilActual }) =
   if (!puedeVer) {
     return (
       <div className="max-w-2xl mx-auto bg-white rounded-xl border border-slate-200 shadow-xs p-6 flex items-start space-x-3 text-xs text-slate-700">
-        <Lock className="w-5 h-5 text-slate-400 shrink-0" />
+        <Lock className="w-5 h-5 text-slate-500 shrink-0" />
         <div>
-          <p className="font-bold text-sm text-slate-900">Gestión de entregas restringida</p>
+          <p className="font-semibold text-sm text-slate-900">Gestión de entregas restringida</p>
           <p className="mt-1">Tu cuenta no tiene permisos en la pestaña Entregas. Solicítalos al administrador en "Personal & Permisos".</p>
         </div>
       </div>
@@ -221,18 +226,18 @@ export const PedidosTab: React.FC<PedidosTabProps> = ({ lotes, perfilActual }) =
   };
 
   const pestañas: { id: Vista; etiqueta: string; icono: React.ReactNode; contador?: number }[] = [
-    { id: 'pedidos', etiqueta: 'Pedidos', icono: <ListChecks className="w-3.5 h-3.5" />, contador: ordenes.length },
-    { id: 'repartidores', etiqueta: 'Repartidores', icono: <Truck className="w-3.5 h-3.5" /> },
+    { id: 'pedidos', etiqueta: 'Pedidos', icono: <ListChecks className="w-4 h-4" strokeWidth={1.75} />, contador: ordenes.length },
+    { id: 'repartidores', etiqueta: 'Repartidores', icono: <Truck className="w-4 h-4" strokeWidth={1.75} /> },
     ...(puedeNovedades
       ? ([
-          { id: 'solicitudes', etiqueta: 'Solicitudes', icono: <Repeat className="w-3.5 h-3.5" />, contador: solicitudesPendientes },
-          { id: 'novedades', etiqueta: 'Novedades', icono: <AlertTriangle className="w-3.5 h-3.5" />, contador: novedadesAbiertas }
+          { id: 'solicitudes', etiqueta: 'Solicitudes', icono: <Repeat className="w-4 h-4" strokeWidth={1.75} />, contador: solicitudesPendientes },
+          { id: 'novedades', etiqueta: 'Novedades', icono: <AlertTriangle className="w-4 h-4" strokeWidth={1.75} />, contador: novedadesAbiertas }
         ] as { id: Vista; etiqueta: string; icono: React.ReactNode; contador?: number }[])
       : []),
-    { id: 'historial', etiqueta: 'Historial', icono: <History className="w-3.5 h-3.5" /> },
-    { id: 'lotes', etiqueta: 'Disponibilidad por lote', icono: <Layers className="w-3.5 h-3.5" /> }
+    { id: 'historial', etiqueta: 'Historial', icono: <History className="w-4 h-4" strokeWidth={1.75} /> },
+    { id: 'lotes', etiqueta: 'Disponibilidad', icono: <Layers className="w-4 h-4" strokeWidth={1.75} /> }
   ];
-  const campo = 'px-2.5 py-1.5 border border-slate-300 rounded-lg bg-white text-xs';
+  const campo = 'px-3 py-2 border border-slate-300 rounded-lg bg-white text-xs';
 
   return (
     <div className="space-y-5">
@@ -240,7 +245,7 @@ export const PedidosTab: React.FC<PedidosTabProps> = ({ lotes, perfilActual }) =
         <div>
           <h1 className="text-2xl text-slate-900"><span>Gestión de entregas</span>
           </h1>
-          <p className="text-xs text-slate-500 mt-0.5">
+          <p className="text-xs text-slate-500 mt-1">
             Órdenes de entrega de la granja, avance de los repartidores, solicitudes, novedades e historial (en tiempo real)
           </p>
         </div>
@@ -250,7 +255,7 @@ export const PedidosTab: React.FC<PedidosTabProps> = ({ lotes, perfilActual }) =
               setOrdenEditar(null);
               setModalAbierto(true);
             }}
-            className="inline-flex items-center space-x-2 px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-xs font-bold shadow-xs transition-colors shrink-0"
+            className="inline-flex items-center space-x-2 px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors shrink-0"
           >
             <Plus className="w-4 h-4" />
             <span>Nueva orden</span>
@@ -289,7 +294,7 @@ export const PedidosTab: React.FC<PedidosTabProps> = ({ lotes, perfilActual }) =
                 (activo ? 'border-sky-500 ring-2 ring-sky-200' : id === 'atencion' && cantidad > 0 ? 'border-orange-300' : 'border-slate-200')}
             >
               <span className="block text-slate-500">{DEFINICION_INDICADOR[id].etiqueta}</span>
-              <strong className={`text-lg ${id === 'atencion' && cantidad > 0 ? 'text-orange-700' : 'text-slate-900'}`}>{cargando ? '…' : cantidad}</strong>
+              <strong className={`text-base ${id === 'atencion' && cantidad > 0 ? 'text-orange-700' : 'text-slate-900'}`}>{cargando ? '…' : cantidad}</strong>
             </button>
           );
         })}
@@ -299,7 +304,7 @@ export const PedidosTab: React.FC<PedidosTabProps> = ({ lotes, perfilActual }) =
       {alertas.length > 0 && (
         <div className="bg-white border border-orange-200 rounded-xl p-3 text-xs space-y-2">
           <button onClick={() => setVerAlertas(!verAlertas)} className="w-full flex items-center justify-between">
-            <span className="flex items-center space-x-1.5 font-bold text-orange-900">
+            <span className="flex items-center space-x-2 font-semibold text-orange-900">
               <Bell className="w-4 h-4" />
               <span>{alertas.length} alerta(s) operativa(s)</span>
               <span className="font-normal text-slate-500">
@@ -311,7 +316,7 @@ export const PedidosTab: React.FC<PedidosTabProps> = ({ lotes, perfilActual }) =
           {verAlertas && (
             <div className="space-y-1">
               {alertas.map((a) => (
-                <div key={a.id} className={`border rounded-lg px-3 py-1.5 flex flex-wrap items-center justify-between gap-2 ${ESTILO_ALERTA[a.tipo]}`}>
+                <div key={a.id} className={`border rounded-lg px-3 py-2 flex flex-wrap items-center justify-between gap-2 ${ESTILO_ALERTA[a.tipo]}`}>
                   <span>
                     <strong>{ETIQUETA_ALERTA[a.tipo]}</strong>
                     {a.ordenId && <span className="font-mono"> · {a.ordenId}</span>}
@@ -324,7 +329,7 @@ export const PedidosTab: React.FC<PedidosTabProps> = ({ lotes, perfilActual }) =
                   )}
                 </div>
               ))}
-              <p className="text-[11px] text-slate-500">
+              <p className="text-xs text-slate-500">
                 Las alertas se calculan con condiciones verificables (sin fecha programada no se marca retraso). Al resolverse
                 desaparecen; lo ocurrido queda en el historial de cada pedido.
               </p>
@@ -334,29 +339,19 @@ export const PedidosTab: React.FC<PedidosTabProps> = ({ lotes, perfilActual }) =
       )}
 
       {/* Secciones */}
-      <div className="flex flex-wrap gap-1 text-xs">
-        {pestañas.map((p) => (
-          <button
-            key={p.id}
-            onClick={() => setVista(p.id)}
-            className={`inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg font-medium border ${
-              vista === p.id ? 'bg-slate-900 text-white border-slate-900 font-bold' : 'bg-white text-slate-600 border-slate-200 hover:text-slate-900'
-            }`}
-          >
-            {p.icono}
-            <span>{p.etiqueta}</span>
-            {p.contador !== undefined && p.contador > 0 && (
-              <span className={`px-1.5 rounded-full text-[11px] ${vista === p.id ? 'bg-white/20' : 'bg-slate-100'}`}>{p.contador}</span>
-            )}
-          </button>
-        ))}
-      </div>
+      <Pestanas
+        items={pestañas.map((p) => ({ id: p.id, etiqueta: p.etiqueta, icono: p.icono }))}
+        activo={vista}
+        onCambio={setVista}
+        idIndicador="secciones-entregas"
+        etiqueta="Secciones de entregas"
+      />
 
       {vista === 'pedidos' && (
         <div className="bg-white rounded-xl border border-slate-200 shadow-xs">
           <div className="px-4 py-3 border-b border-slate-100 space-y-2 text-xs">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="font-bold text-slate-800">{DEFINICION_INDICADOR[indicador].etiqueta}</span>
+              <span className="font-semibold text-slate-800">{DEFINICION_INDICADOR[indicador].etiqueta}</span>
               {indicador !== 'total' && (
                 <button onClick={() => setIndicador('total')} className="text-sky-700 underline">ver todos</button>
               )}
@@ -364,7 +359,7 @@ export const PedidosTab: React.FC<PedidosTabProps> = ({ lotes, perfilActual }) =
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
               <label className="relative col-span-2 md:col-span-1">
-                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
+                <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-3" />
                 <input className={campo + ' w-full pl-8'} placeholder="Pedido o cliente" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
               </label>
               <select className={campo} value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value as any)}>
@@ -389,13 +384,30 @@ export const PedidosTab: React.FC<PedidosTabProps> = ({ lotes, perfilActual }) =
           </div>
 
           {cargando ? (
-            <div className="py-10 text-center text-xs text-slate-500">Cargando órdenes...</div>
+            <div className="p-4"><EsqueletoTarjetas cantidad={4} alto="h-[88px]" /></div>
           ) : ordenesFiltradas.length === 0 ? (
-            <div className="py-10 text-center text-xs text-slate-500">No hay pedidos con estos filtros.</div>
+            <div className="py-10 text-center">
+              <p className="text-sm font-semibold text-slate-800">Ningún pedido coincide con estos filtros.</p>
+              <p className="text-sm text-slate-600 mt-1">Quita algún filtro o cambia las fechas.</p>
+              <button
+                type="button"
+                onClick={() => {
+                  setFiltroEstado('');
+                  setFiltroCliente('');
+                  setFiltroRepartidor('');
+                  setDesde('');
+                  setHasta('');
+                  setBusqueda('');
+                }}
+                className="mt-4 inline-flex items-center justify-center min-h-11 px-4 rounded-md border border-slate-300 bg-white hover:bg-slate-50 text-slate-800 text-sm font-semibold transition-colors"
+              >
+                Limpiar filtros
+              </button>
+            </div>
           ) : (
             <div className="text-xs">
               {/* Encabezado (pantallas medianas en adelante) */}
-              <div className="hidden xl:grid grid-cols-[1.3fr_1.3fr_0.9fr_0.8fr_1fr_repeat(4,0.7fr)_1fr_0.2fr] gap-2 px-4 py-2 bg-slate-50 text-[11px] uppercase text-slate-500 font-semibold">
+              <div className="hidden xl:grid grid-cols-[1.3fr_1.3fr_0.9fr_0.8fr_1fr_repeat(4,0.7fr)_1fr_0.2fr] gap-2 px-4 py-2 bg-slate-50 text-xs uppercase text-slate-500 font-semibold">
                 <span>Pedido</span>
                 <span>Cliente</span>
                 <span>Creación</span>
@@ -409,10 +421,10 @@ export const PedidosTab: React.FC<PedidosTabProps> = ({ lotes, perfilActual }) =
                 <span />
               </div>
               <div className="divide-y divide-slate-100">
-                {ordenesFiltradas.map((o) => {
+                {ordenesFiltradas.map((o, i) => {
                   const expandida = abierta === o.id;
                   return (
-                    <div key={o.id}>
+                    <div key={o.id} className={escalon(i, primerMontaje).className} style={escalon(i, primerMontaje).style}>
                       <button
                         onClick={() => {
                           setAbierta(expandida ? null : o.id);
@@ -420,20 +432,20 @@ export const PedidosTab: React.FC<PedidosTabProps> = ({ lotes, perfilActual }) =
                         }}
                         className="w-full px-4 py-3 grid grid-cols-2 xl:grid-cols-[1.3fr_1.3fr_0.9fr_0.8fr_1fr_repeat(4,0.7fr)_1fr_0.2fr] gap-x-2 gap-y-1 items-center text-left hover:bg-slate-50"
                       >
-                        <span className="font-mono font-bold text-slate-900">
+                        <span className="font-mono font-semibold text-slate-900">
                           {o.id}
                           {ordenesConAlerta.has(o.id) && <Bell className="inline w-3 h-3 ml-1 text-orange-500" />}
                         </span>
                         <span className="text-slate-700 truncate">{o.clienteNombre}</span>
                         <span className="text-slate-500"><span className="xl:hidden">Creada </span>{formatearFechaColombia(o.creadoEn)}</span>
-                        <span className="text-slate-500"><span className="xl:hidden">Programada </span>{o.fechaProgramada || '—'}</span>
+                        <span className="text-slate-500"><span className="xl:hidden">Programada </span>{o.fechaProgramada || 'Sin dato'}</span>
                         <span className="text-slate-600 truncate">{o.repartidorNombre || 'Sin repartidor'}</span>
-                        <span className="xl:text-right"><span className="xl:hidden text-slate-400">Solic. </span>{num(o.cantidadSolicitada)}</span>
-                        <span className="xl:text-right"><span className="xl:hidden text-slate-400">Autor. </span>{num(o.cantidadAutorizada)}</span>
-                        <span className="xl:text-right"><span className="xl:hidden text-slate-400">Entreg. </span>{num(o.cantidadEntregada)}</span>
-                        <span className="xl:text-right font-semibold"><span className="xl:hidden text-slate-400 font-normal">Pend. </span>{num(cantidadPendiente(o))} {o.unidad}</span>
+                        <span className="xl:text-right"><span className="xl:hidden text-slate-500">Solic. </span>{num(o.cantidadSolicitada)}</span>
+                        <span className="xl:text-right"><span className="xl:hidden text-slate-500">Autor. </span>{num(o.cantidadAutorizada)}</span>
+                        <span className="xl:text-right"><span className="xl:hidden text-slate-500">Entreg. </span>{num(o.cantidadEntregada)}</span>
+                        <span className="xl:text-right font-semibold"><span className="xl:hidden text-slate-500 font-normal">Pend. </span>{num(cantidadPendiente(o))} {o.unidad}</span>
                         <span><EstadoOrdenBadge estado={o.estado} /></span>
-                        <span className="hidden xl:flex justify-end text-slate-400">
+                        <span className="hidden xl:flex justify-end text-slate-500">
                           {expandida ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                         </span>
                       </button>
@@ -487,10 +499,10 @@ export const PedidosTab: React.FC<PedidosTabProps> = ({ lotes, perfilActual }) =
         <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-x-auto">
           <div className="px-5 py-3 border-b border-slate-100 flex items-center space-x-2 text-xs">
             <Layers className="w-4 h-4 text-sky-600" />
-            <span className="font-bold text-slate-800">Producción registrada, reservas y disponibilidad por lote</span>
+            <span className="font-semibold text-slate-800">Producción registrada, reservas y disponibilidad por lote</span>
           </div>
           <table className="w-full text-xs text-left min-w-[760px]">
-            <thead className="bg-slate-50 text-[11px] uppercase text-slate-500">
+            <thead className="bg-slate-50 text-xs uppercase text-slate-500">
               <tr>
                 <th className="px-4 py-2">Lote</th>
                 <th className="px-4 py-2">Piscina</th>
@@ -510,9 +522,9 @@ export const PedidosTab: React.FC<PedidosTabProps> = ({ lotes, perfilActual }) =
                 const vinculadas = ordenesPorLote[lote.codigo] || [];
                 return (
                   <tr key={lote.codigo} className="align-top">
-                    <td className="px-4 py-2 font-mono font-bold">
+                    <td className="px-4 py-2 font-mono font-semibold">
                       {lote.codigo}
-                      <span className="block text-[11px] font-sans font-normal text-slate-400">
+                      <span className="block text-xs font-sans font-normal text-slate-500">
                         {lote.estado === 'cerrado' ? 'sellado' : 'activo'}
                       </span>
                     </td>
@@ -524,27 +536,27 @@ export const PedidosTab: React.FC<PedidosTabProps> = ({ lotes, perfilActual }) =
                           <span className="block text-slate-500">{num(lote.resumen.biomasaCosechadaKg)} kg</span>
                         </>
                       ) : (
-                        <span className="text-slate-400">Sin cosecha registrada</span>
+                        <span className="text-slate-500">Sin cosecha registrada</span>
                       )}
                     </td>
-                    <td className="px-4 py-2">{inv ? inv.unidad : <span className="text-slate-400">Sin reservas</span>}</td>
+                    <td className="px-4 py-2">{inv ? inv.unidad : <span className="text-slate-500">Sin reservas</span>}</td>
                     <td className="px-4 py-2 text-right">{num(disp.reservado)}</td>
                     <td className="px-4 py-2 text-right">{num(disp.entregado)}</td>
-                    <td className="px-4 py-2 text-right font-bold text-emerald-700">
-                      {disp.cosechado > 0 ? `${num(disp.disponible)} ${unidad}` : '—'}
+                    <td className="px-4 py-2 text-right font-semibold text-emerald-700">
+                      {disp.cosechado > 0 ? `${num(disp.disponible)} ${unidad}` : 'Sin dato'}
                     </td>
                     <td className="px-4 py-2">
                       {vinculadas.length === 0 ? (
-                        <span className="text-slate-400">—</span>
+                        <span className="text-slate-500">Sin dato</span>
                       ) : (
-                        <ul className="space-y-0.5">
+                        <ul className="space-y-1">
                           {vinculadas.map(({ orden, cantidad }) => (
                             <li key={orden.id}>
                               <button onClick={() => abrirOrden(orden.id)} className="font-mono text-sky-700 hover:underline">
                                 {orden.id}
                               </button>
                               <span className="text-slate-500">
-                                {' '}• {num(cantidad)} {orden.unidad} • {ETIQUETA_ESTADO_ORDEN[orden.estado]}
+                                {' '}· {num(cantidad)} {orden.unidad} · {ETIQUETA_ESTADO_ORDEN[orden.estado]}
                               </span>
                             </li>
                           ))}

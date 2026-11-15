@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { usePresencia } from '../lib/presencia';
 import { X, PlusCircle, AlertCircle, Calendar, Hash, Scale, Building2, FileText } from 'lucide-react';
 import { ConfiguracionGeneral, Lote, UsuarioPerfil } from '../types';
 import { getFechaHoyBogota } from '../utils/constants';
@@ -43,7 +44,8 @@ export const NuevoLoteModal: React.FC<NuevoLoteModalProps> = ({
     }
   }, [config.estanques, estanque]);
 
-  if (!isOpen) return null;
+  const presencia = usePresencia(isOpen);
+  if (!presencia.montado) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -104,7 +106,7 @@ export const NuevoLoteModal: React.FC<NuevoLoteModalProps> = ({
   };
 
   return (
-    <div className="velo fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4 overflow-y-auto">
+    <div role="dialog" aria-modal="true" data-saliendo={presencia.saliendo || undefined} className="velo fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4 overflow-y-auto">
       <div className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-xl w-full overflow-hidden my-6">
         {/* Encabezado */}
         <div className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between">
@@ -112,7 +114,7 @@ export const NuevoLoteModal: React.FC<NuevoLoteModalProps> = ({
             <PlusCircle className="w-5 h-5 text-sky-400" />
             <div>
               <h3 className="font-semibold text-base">Crear nuevo lote productivo</h3>
-              <p className="text-xs text-slate-400">Modalidad Tilapia Pro • Cultivos Loré</p>
+              <p className="text-xs text-slate-500">Modalidad Tilapia Pro · Cultivos Loré</p>
             </div>
           </div>
           <button
@@ -121,7 +123,7 @@ export const NuevoLoteModal: React.FC<NuevoLoteModalProps> = ({
               setCargando(false);
               onClose();
             }}
-            className="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800 transition-colors"
+            className="text-slate-300 hover:text-white p-2 rounded-lg hover:bg-slate-800 transition-colors"
             title="Cerrar ventana"
           >
             <X className="w-5 h-5" />
@@ -130,7 +132,7 @@ export const NuevoLoteModal: React.FC<NuevoLoteModalProps> = ({
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div className="bg-sky-50 border border-sky-200 rounded-lg p-3 text-xs text-sky-900 flex items-start space-x-2">
-            <span className="font-bold text-sky-700 shrink-0">Código Único:</span>
+            <span className="font-semibold text-sky-700 shrink-0">Código Único:</span>
             <span>
               Se generará automáticamente con el formato <code>AAAAMMDD-LETRA-ESTANQUE</code> mediante una transacción atómica protegida contra duplicados.
             </span>
@@ -138,7 +140,7 @@ export const NuevoLoteModal: React.FC<NuevoLoteModalProps> = ({
 
           {!puedeCrear && (
             <div className="p-3 bg-amber-50 border border-amber-300 rounded-lg flex items-start space-x-2 text-amber-900 text-xs">
-              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-amber-600" />
+              <AlertCircle className="w-4 h-4 shrink-0 mt-1 text-amber-600" />
               <span>
                 <strong>Acceso restringido:</strong> Tu usuario ({userEmail}) no tiene autorización para crear lotes. Solicita al administrador habilitar el permiso "Registrar nuevo lote".
               </span>
@@ -147,7 +149,7 @@ export const NuevoLoteModal: React.FC<NuevoLoteModalProps> = ({
 
           {errorMsg && (
             <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-start space-x-2 text-red-700 text-xs">
-              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+              <AlertCircle className="w-4 h-4 shrink-0 mt-1" />
               <span>{errorMsg}</span>
             </div>
           )}
@@ -167,7 +169,7 @@ export const NuevoLoteModal: React.FC<NuevoLoteModalProps> = ({
               >
                 {config.estanques.map((est) => (
                   <option key={est.codigo} value={est.codigo}>
-                    {est.codigo} — {est.nombre} {est.volumenM3 ? `(${est.volumenM3} m³)` : ''}
+                    {est.codigo} · {est.nombre} {est.volumenM3 ? `(${est.volumenM3} m³)` : ''}
                   </option>
                 ))}
               </select>
@@ -179,7 +181,7 @@ export const NuevoLoteModal: React.FC<NuevoLoteModalProps> = ({
                 Fecha de siembra (Bogotá) *
               </label>
               <div className="relative">
-                <Calendar className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                <Calendar className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
                 <input
                   type="date"
                   required
@@ -198,7 +200,7 @@ export const NuevoLoteModal: React.FC<NuevoLoteModalProps> = ({
                 Cantidad sembrada (alevinos) *
               </label>
               <div className="relative">
-                <Hash className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                <Hash className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
                 <input
                   type="number"
                   required
@@ -219,7 +221,7 @@ export const NuevoLoteModal: React.FC<NuevoLoteModalProps> = ({
                 Peso inicial promedio (gramos) *
               </label>
               <div className="relative">
-                <Scale className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                <Scale className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
                 <input
                   type="number"
                   required
@@ -241,7 +243,7 @@ export const NuevoLoteModal: React.FC<NuevoLoteModalProps> = ({
               Proveedor de alevinos (opcional)
             </label>
             <div className="relative">
-              <Building2 className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+              <Building2 className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
               <input
                 type="text"
                 placeholder="ej: Estación Piscícola del Caribe SAS"
@@ -259,7 +261,7 @@ export const NuevoLoteModal: React.FC<NuevoLoteModalProps> = ({
               Observaciones iniciales de siembra (opcional)
             </label>
             <div className="relative">
-              <FileText className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+              <FileText className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
               <textarea
                 rows={2}
                 placeholder="Condiciones de aclimatación, lote de origen, temperatura al recibir..."

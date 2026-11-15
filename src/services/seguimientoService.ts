@@ -351,21 +351,21 @@ export function cambiosDeEvento(e: EventoOrden): string | null {
   const d = e.datos || {};
   const estadoOrden = (v: string) => ETIQUETA_ESTADO_ORDEN[v as EstadoOrden] || v;
   const estadoAtencion = (v: string) => ETIQUETA_ATENCION[v as EstadoAtencion] || v;
-  if (d.de !== undefined && d.a !== undefined) return `${estadoOrden(d.de)} → ${estadoOrden(d.a)}`;
+  if (d.de !== undefined && d.a !== undefined) return `${estadoOrden(d.de)} a ${estadoOrden(d.a)}`;
   if (e.tipo === 'Atención de novedad' && d.estadoAnterior !== undefined) {
-    return `${estadoAtencion(d.estadoAnterior)} → ${estadoAtencion(d.estado)}`;
+    return `${estadoAtencion(d.estadoAnterior)} a ${estadoAtencion(d.estado)}`;
   }
-  if (d.anterior !== undefined && d.nuevo !== undefined && typeof d.anterior === 'string') return `${d.anterior || '—'} → ${d.nuevo}`;
-  if (d.estadoAnterior !== undefined && d.estado !== undefined) return `${d.estadoAnterior} → ${d.estado}`;
+  if (d.anterior !== undefined && d.nuevo !== undefined && typeof d.anterior === 'string') return `${d.anterior || 'Sin dato'} a ${d.nuevo}`;
+  if (d.estadoAnterior !== undefined && d.estado !== undefined) return `${d.estadoAnterior} a ${d.estado}`;
   if (d.cantidadAutorizadaAnterior !== undefined && d.cantidadAutorizada !== undefined) {
-    return `autorizado ${d.cantidadAutorizadaAnterior} → ${d.cantidadAutorizada}`;
+    return `autorizado ${d.cantidadAutorizadaAnterior} a ${d.cantidadAutorizada}`;
   }
   if (d.repartidorAnterior !== undefined && d.repartidor !== undefined && d.repartidorAnterior !== d.repartidor) {
-    return `${d.repartidorAnterior} → ${d.repartidor}`;
+    return `${d.repartidorAnterior} a ${d.repartidor}`;
   }
   if (e.tipo === 'Corrección de entrega' && d.nuevo) {
     const lotes = Array.from(new Set([...Object.keys(d.anterior || {}), ...Object.keys(d.nuevo || {})]));
-    return lotes.map((l) => `${l}: ${(d.anterior || {})[l] ?? 0} → ${(d.nuevo || {})[l] ?? 0}`).join(', ');
+    return lotes.map((l) => `${l}: ${(d.anterior || {})[l] ?? 0} a ${(d.nuevo || {})[l] ?? 0}`).join(', ');
   }
   if (d.entregas) {
     return (

@@ -136,7 +136,7 @@ function estiloTabla(): Record<string, any> {
     alternateRowStyles: { fillColor: C.fondo },
     // Un dato que no se registró se muestra como raya, nunca como "undefined"
     willDrawCell: (d: any) => {
-      if (d.section === 'body' && /undefined|NaN|null/.test(d.cell.text.join(' '))) d.cell.text = ['—'];
+      if (d.section === 'body' && /undefined|NaN|null/.test(d.cell.text.join(' '))) d.cell.text = ['Sin dato'];
     }
   };
 }
@@ -409,7 +409,7 @@ export async function generarLotePdfBlob(
     // Anotaciones aprobadas (e íntegras) que se refieren a esta fase
     const notas = anotacionesAprobadas.filter((a) => a.propuesta.datos.fase === ev.indice).map((a) => a.numero);
     const refNotas = notas.length ? `(ver anotación N.º ${notas.join(', ')})` : '';
-    const contenido = [ev.descripcion, detalleDatos, refNotas].filter(Boolean).join(' — ');
+    const contenido = [ev.descripcion, detalleDatos, refNotas].filter(Boolean).join(' · ');
     return [`#${ev.indice}`, ev.fechaEvento, ev.tipo, contenido || '-', quienRegistro(ev, true), ev.hash.substring(0, 10)];
   });
   currentY = tituloSeccion(doc, 'Historial de fases', currentY);
@@ -660,10 +660,10 @@ export async function generarComprobantePdfBlob(
     body: [[
       `${c.cliente.nombre}\n${c.cliente.direccion || 'Dirección no registrada'}`,
       [
-        `Repartidor: ${c.repartidor || '—'}`,
+        `Repartidor: ${c.repartidor || 'Sin dato'}`,
         `Programada: ${c.fechas.programada || 'sin fecha'}`,
-        `Salida: ${c.fechas.salida ? formatearFechaColombia(c.fechas.salida) : '—'}`,
-        `Llegada: ${c.fechas.llegada ? formatearFechaColombia(c.fechas.llegada) : '—'}`,
+        `Salida: ${c.fechas.salida ? formatearFechaColombia(c.fechas.salida) : 'Sin dato'}`,
+        `Llegada: ${c.fechas.llegada ? formatearFechaColombia(c.fechas.llegada) : 'Sin dato'}`,
         `Confirmación de entrega: ${c.fechas.confirmacion ? formatearFechaColombia(c.fechas.confirmacion) : 'sin confirmar'}`,
         ...(c.fechas.correccion ? [`Entrega corregida: ${formatearFechaColombia(c.fechas.correccion)}`] : [])
       ].join('\n')
@@ -790,7 +790,7 @@ export async function generarComprobantePdfBlob(
     }
   }
 
-  piePaginas(doc, `${c.empresa} · Comprobante de entrega · orden ${c.ordenId}`);
+  piePaginas(doc, `${c.empresa.replace(/\s—\s/g, ' · ')} · Comprobante de entrega · orden ${c.ordenId}`);
 
   if (opciones.preliminar || opciones.anulacion) {
     // Marca de agua en TODAS las páginas, para que ninguna se confunda con un comprobante vigente.

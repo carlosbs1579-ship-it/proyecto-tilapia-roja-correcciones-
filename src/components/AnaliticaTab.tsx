@@ -24,6 +24,7 @@ import {
   Bar
 } from 'recharts';
 import { Lote, ConfiguracionGeneral } from '../types';
+import { ComparativoEstanques } from './ComparativoEstanques';
 
 interface AnaliticaTabProps {
   lotes: Lote[];
@@ -49,7 +50,7 @@ export const AnaliticaTab: React.FC<AnaliticaTabProps> = ({
     return lotes.find((l) => l.codigo === loteSeleccionadoCodigo) || lotes[0] || null;
   }, [lotes, loteSeleccionadoCodigo]);
 
-  // Comparativo E1 vs E2
+  // Comparativo de estanques
   const comparativaEstanques = useMemo(() => {
     const data: Record<string, { totalLotes: number; activos: number; biomasaTotal: number; supervSuma: number; fcaSuma: number; fcaCount: number }> = {};
     for (const est of config.estanques) {
@@ -220,52 +221,19 @@ export const AnaliticaTab: React.FC<AnaliticaTabProps> = ({
         </button>
       </div>
 
-      {/* COMPARATIVA DE ESTANQUES E1 VS E2 */}
+      {/* COMPARATIVO DE ESTANQUES */}
       <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
-        <h2 className="text-sm font-bold text-slate-900 mb-1 flex items-center space-x-2">
-          <BarChart2 className="w-4 h-4 text-sky-600" />
-          <span>Comparativo de Estanques (E1 vs E2)</span>
-        </h2>
-        <p className="text-xs text-slate-500 mb-4">
-          Resumen de eficiencia de biomasa viva y factor de conversión alimenticia por estanque
-        </p>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {comparativaEstanques.map((item) => (
-            <div key={item.estanque} className="p-4 rounded-xl border border-slate-200 bg-slate-50">
-              <div className="flex items-center justify-between mb-2">
-                <span className="font-mono font-bold text-base text-sky-800">
-                  Estanque {item.estanque}
-                </span>
-                <span className="text-xs bg-sky-100 text-sky-700 font-semibold px-2 py-0.5 rounded">
-                  {item.lotesActivos} lotes activos
-                </span>
-              </div>
-              <div className="space-y-1.5 text-xs">
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Biomasa viva en estanque:</span>
-                  <span className="font-bold text-slate-900">{item.biomasaKg.toLocaleString()} kg</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Supervivencia promedio:</span>
-                  <span className="font-bold text-emerald-600">{item.supervivenciaProm}%</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">FCA promedio:</span>
-                  <span className="font-bold text-slate-800">{item.fcaProm || 'N/A'}</span>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+        <h2 className="text-base text-slate-900 mb-1">Comparativo de estanques</h2>
+        <p className="text-sm text-slate-600 mb-4">Biomasa viva, supervivencia y conversión alimenticia de cada estanque.</p>
+        <ComparativoEstanques datos={comparativaEstanques} estanques={config.estanques} />
       </div>
 
       {/* SECCIÓN 1: LOTES EN GESTIÓN (ACTIVOS) */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
-        <div className="px-5 py-3.5 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
+        <div className="px-5 py-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-            <h2 className="text-sm font-bold text-slate-900">Lotes en gestión (activos)</h2>
+            <span className="w-2 h-2 rounded-full bg-emerald-500" />
+            <h2 className="text-sm font-semibold text-slate-900">Lotes en gestión (activos)</h2>
           </div>
           <span className="text-xs font-semibold text-slate-500">
             {lotesActivos.length} lotes
@@ -273,13 +241,13 @@ export const AnaliticaTab: React.FC<AnaliticaTabProps> = ({
         </div>
 
         {lotesActivos.length === 0 ? (
-          <div className="py-8 text-center text-xs text-slate-400">
-            No hay lotes activos en este momento.
+          <div className="py-8 text-center text-xs text-slate-500">
+            Ningún lote está en cultivo ahora. Cuando se registre una siembra, su avance aparece aquí.
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 text-slate-600 font-bold uppercase text-[11px] border-b border-slate-200">
+              <thead className="bg-slate-50 text-slate-600 font-semibold uppercase text-xs border-b border-slate-200">
                 <tr>
                   <th className="px-4 py-3">Código</th>
                   <th className="px-3 py-3">Estanque</th>
@@ -296,16 +264,16 @@ export const AnaliticaTab: React.FC<AnaliticaTabProps> = ({
               <tbody className="divide-y divide-slate-100">
                 {lotesActivos.map((l) => (
                   <tr key={l.codigo} className="hover:bg-slate-50/80">
-                    <td className="px-4 py-3 font-mono font-bold text-slate-900">{l.codigo}</td>
+                    <td className="px-4 py-3 font-mono font-semibold text-slate-900">{l.codigo}</td>
                     <td className="px-3 py-3 font-semibold text-sky-700">{l.estanque}</td>
                     <td className="px-3 py-3 text-slate-600">{l.fechaSiembra}</td>
-                    <td className="px-3 py-3 text-right text-slate-600">{l.resumen.diasDeCultivo} d</td>
-                    <td className="px-3 py-3 text-right font-bold text-emerald-600">{l.resumen.supervivencia}%</td>
+                    <td className="px-3 py-3 text-right text-slate-600">{l.resumen.diasDeCultivo != null ? `${l.resumen.diasDeCultivo} d` : 'Sin dato'}</td>
+                    <td className="px-3 py-3 text-right font-semibold text-emerald-600">{l.resumen.supervivencia}%</td>
                     <td className="px-3 py-3 text-right font-semibold">{l.resumen.pesoPromedioActualG} g</td>
                     <td className="px-3 py-3 text-right font-semibold">{l.resumen.biomasaEstimadaKg} kg</td>
                     <td className="px-3 py-3 text-right font-mono">{l.resumen.FCA ?? '-'}</td>
                     <td className="px-4 py-3 text-center">
-                      <span className="text-[11px] bg-slate-100 px-2 py-0.5 rounded text-slate-600">En cultivo</span>
+                      <span className="text-xs bg-slate-100 px-2 py-1 rounded-md text-slate-600">En cultivo</span>
                     </td>
                     <td className="px-4 py-3 text-right">
                       <button
@@ -325,10 +293,10 @@ export const AnaliticaTab: React.FC<AnaliticaTabProps> = ({
 
       {/* SECCIÓN 2: LOTES CERRADOS */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
-        <div className="px-5 py-3.5 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
+        <div className="px-5 py-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <span className="w-2.5 h-2.5 rounded-full bg-slate-400" />
-            <h2 className="text-sm font-bold text-slate-900">Lotes cerrados (cosechados)</h2>
+            <h2 className="text-sm font-semibold text-slate-900">Lotes cerrados (cosechados)</h2>
           </div>
           <span className="text-xs font-semibold text-slate-500">
             {lotesCerrados.length} lotes
@@ -336,13 +304,13 @@ export const AnaliticaTab: React.FC<AnaliticaTabProps> = ({
         </div>
 
         {lotesCerrados.length === 0 ? (
-          <div className="py-8 text-center text-xs text-slate-400">
-            No hay lotes cerrados en el historial.
+          <div className="py-8 text-center text-xs text-slate-500">
+            Todavía no hay lotes sellados. Al cerrar un lote, su resultado final aparece aquí.
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 text-slate-600 font-bold uppercase text-[11px] border-b border-slate-200">
+              <thead className="bg-slate-50 text-slate-600 font-semibold uppercase text-xs border-b border-slate-200">
                 <tr>
                   <th className="px-4 py-3">Código</th>
                   <th className="px-3 py-3">Estanque</th>
@@ -359,16 +327,16 @@ export const AnaliticaTab: React.FC<AnaliticaTabProps> = ({
               <tbody className="divide-y divide-slate-100">
                 {lotesCerrados.map((l) => (
                   <tr key={l.codigo} className="hover:bg-slate-50/80">
-                    <td className="px-4 py-3 font-mono font-bold text-slate-900">{l.codigo}</td>
+                    <td className="px-4 py-3 font-mono font-semibold text-slate-900">{l.codigo}</td>
                     <td className="px-3 py-3 font-semibold text-sky-700">{l.estanque}</td>
                     <td className="px-3 py-3 text-slate-600">{l.fechaSiembra}</td>
                     <td className="px-3 py-3 text-slate-600">{l.fechaCierre || '-'}</td>
-                    <td className="px-3 py-3 text-right text-slate-600">{l.resumen.diasDeCultivo} d</td>
-                    <td className="px-3 py-3 text-right font-bold text-emerald-600">{l.resumen.supervivencia}%</td>
-                    <td className="px-3 py-3 text-right font-semibold">{l.resumen.biomasaCosechadaKg} kg</td>
+                    <td className="px-3 py-3 text-right text-slate-600">{l.resumen.diasDeCultivo != null ? `${l.resumen.diasDeCultivo} d` : 'Sin dato'}</td>
+                    <td className="px-3 py-3 text-right font-semibold text-emerald-600">{l.resumen.supervivencia}%</td>
+                    <td className="px-3 py-3 text-right font-semibold">{l.resumen.biomasaCosechadaKg != null ? `${l.resumen.biomasaCosechadaKg} kg` : 'Sin dato'}</td>
                     <td className="px-3 py-3 text-right font-mono">{l.resumen.FCA ?? '-'}</td>
                     <td className="px-4 py-3 text-center">
-                      <span className="text-[11px] bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded font-semibold">
+                      <span className="text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-1 rounded-md font-semibold">
                         Disponible
                       </span>
                     </td>
@@ -393,7 +361,7 @@ export const AnaliticaTab: React.FC<AnaliticaTabProps> = ({
         <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-xs space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-200">
             <div>
-              <h2 className="text-base font-bold text-slate-900 flex items-center space-x-2">
+              <h2 className="text-base font-semibold text-slate-900 flex items-center space-x-2">
                 <TrendingUp className="w-5 h-5 text-sky-600" />
                 <span>Gráficos de Trazabilidad: {loteSeleccionado.codigo}</span>
               </h2>
@@ -408,7 +376,7 @@ export const AnaliticaTab: React.FC<AnaliticaTabProps> = ({
               <select
                 value={loteSeleccionadoCodigo}
                 onChange={(e) => setLoteSeleccionadoCodigo(e.target.value)}
-                className="px-3 py-1.5 text-xs font-mono font-medium border border-slate-300 rounded-lg bg-white"
+                className="px-3 py-2 text-xs font-mono font-medium border border-slate-300 rounded-lg bg-white"
               >
                 {lotes.map((l) => (
                   <option key={l.codigo} value={l.codigo}>
@@ -422,20 +390,20 @@ export const AnaliticaTab: React.FC<AnaliticaTabProps> = ({
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Gráfico 1: Peso Promedio (g) y Biomasa (kg) */}
             <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-              <h3 className="text-xs font-bold uppercase text-slate-700 mb-2">
+              <h3 className="text-xs font-semibold uppercase text-slate-700 mb-2">
                 Evolución de Peso Promedio (g) y Biomasa Estimada (kg)
               </h3>
               <div className="h-64 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={seriesCrecimiento}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                    <XAxis dataKey="fecha" stroke="#64748b" fontSize={10} />
-                    <YAxis yAxisId="left" stroke="#0284c7" fontSize={10} label={{ value: 'Peso (g)', angle: -90, position: 'insideLeft', fontSize: 10 }} />
-                    <YAxis yAxisId="right" orientation="right" stroke="#059669" fontSize={10} label={{ value: 'Biomasa (kg)', angle: 90, position: 'insideRight', fontSize: 10 }} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#dfe2e7" />
+                    <XAxis dataKey="fecha" stroke="#5d6470" fontSize={10} />
+                    <YAxis yAxisId="left" stroke="#2c426e" fontSize={10} label={{ value: 'Peso (g)', angle: -90, position: 'insideLeft', fontSize: 10 }} />
+                    <YAxis yAxisId="right" orientation="right" stroke="#225f46" fontSize={10} label={{ value: 'Biomasa (kg)', angle: 90, position: 'insideRight', fontSize: 10 }} />
                     <Tooltip contentStyle={{ fontSize: '11px', borderRadius: '8px' }} />
                     <Legend wrapperStyle={{ fontSize: '11px' }} />
-                    <Line yAxisId="left" type="monotone" dataKey="pesoPromedioG" stroke="#0284c7" strokeWidth={2} name="Peso Prom (g)" dot={{ r: 3 }} />
-                    <Line yAxisId="right" type="monotone" dataKey="biomasaKg" stroke="#059669" strokeWidth={2} name="Biomasa (kg)" dot={{ r: 3 }} />
+                    <Line yAxisId="left" type="monotone" dataKey="pesoPromedioG" stroke="#2c426e" strokeWidth={2} name="Peso Prom (g)" dot={{ r: 3 }} />
+                    <Line yAxisId="right" type="monotone" dataKey="biomasaKg" stroke="#225f46" strokeWidth={2} name="Biomasa (kg)" dot={{ r: 3 }} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
@@ -443,20 +411,20 @@ export const AnaliticaTab: React.FC<AnaliticaTabProps> = ({
 
             {/* Gráfico 2: Alimento Acumulado y Mortalidad */}
             <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-              <h3 className="text-xs font-bold uppercase text-slate-700 mb-2">
+              <h3 className="text-xs font-semibold uppercase text-slate-700 mb-2">
                 Alimento Acumulado (kg) y Mortalidad Acumulada (peces)
               </h3>
               <div className="h-64 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={seriesCrecimiento}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                    <XAxis dataKey="fecha" stroke="#64748b" fontSize={10} />
-                    <YAxis yAxisId="left" stroke="#d97706" fontSize={10} label={{ value: 'Alimento (kg)', angle: -90, position: 'insideLeft', fontSize: 10 }} />
-                    <YAxis yAxisId="right" orientation="right" stroke="#dc2626" fontSize={10} label={{ value: 'Mortalidad', angle: 90, position: 'insideRight', fontSize: 10 }} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#dfe2e7" />
+                    <XAxis dataKey="fecha" stroke="#5d6470" fontSize={10} />
+                    <YAxis yAxisId="left" stroke="#8a6624" fontSize={10} label={{ value: 'Alimento (kg)', angle: -90, position: 'insideLeft', fontSize: 10 }} />
+                    <YAxis yAxisId="right" orientation="right" stroke="#b3261e" fontSize={10} label={{ value: 'Mortalidad', angle: 90, position: 'insideRight', fontSize: 10 }} />
                     <Tooltip contentStyle={{ fontSize: '11px', borderRadius: '8px' }} />
                     <Legend wrapperStyle={{ fontSize: '11px' }} />
-                    <Line yAxisId="left" type="monotone" dataKey="alimentoAcumKg" stroke="#d97706" strokeWidth={2} name="Alimento (kg)" dot={{ r: 3 }} />
-                    <Line yAxisId="right" type="monotone" dataKey="mortalidadAcum" stroke="#dc2626" strokeWidth={2} name="Mortalidad (peces)" dot={{ r: 3 }} />
+                    <Line yAxisId="left" type="monotone" dataKey="alimentoAcumKg" stroke="#8a6624" strokeWidth={2} name="Alimento (kg)" dot={{ r: 3 }} />
+                    <Line yAxisId="right" type="monotone" dataKey="mortalidadAcum" stroke="#b3261e" strokeWidth={2} name="Mortalidad (peces)" dot={{ r: 3 }} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
@@ -464,27 +432,27 @@ export const AnaliticaTab: React.FC<AnaliticaTabProps> = ({
 
             {/* Gráfico 3: Parámetros de Agua - Temperatura y Oxígeno */}
             <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-              <h3 className="text-xs font-bold uppercase text-slate-700 mb-2">
+              <h3 className="text-xs font-semibold uppercase text-slate-700 mb-2">
                 Temperatura (°C) y Oxígeno Disuelto (mg/L)
               </h3>
               {seriesAgua.length === 0 ? (
-                <div className="h-64 flex items-center justify-center text-xs text-slate-400">
+                <div className="h-64 flex items-center justify-center text-xs text-slate-500">
                   No hay mediciones de agua registradas en este lote.
                 </div>
               ) : (
                 <div className="h-64 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={seriesAgua}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                      <XAxis dataKey="fecha" stroke="#64748b" fontSize={10} />
-                      <YAxis stroke="#64748b" fontSize={10} domain={[0, 40]} />
+                      <CartesianGrid strokeDasharray="3 3" stroke="#dfe2e7" />
+                      <XAxis dataKey="fecha" stroke="#5d6470" fontSize={10} />
+                      <YAxis stroke="#5d6470" fontSize={10} domain={[0, 40]} />
                       <Tooltip contentStyle={{ fontSize: '11px', borderRadius: '8px' }} />
                       <Legend wrapperStyle={{ fontSize: '11px' }} />
-                      <ReferenceLine y={config.rangosReferencia.temperaturaMin} stroke="#38bdf8" strokeDasharray="3 3" label={{ value: 'Temp Min', fontSize: 9 }} />
-                      <ReferenceLine y={config.rangosReferencia.temperaturaMax} stroke="#f87171" strokeDasharray="3 3" label={{ value: 'Temp Max', fontSize: 9 }} />
-                      <ReferenceLine y={config.rangosReferencia.oxigenoMin} stroke="#ef4444" strokeDasharray="3 3" label={{ value: 'O₂ Min (4mg/L)', fontSize: 9 }} />
-                      <Line type="monotone" dataKey="temperatura" stroke="#f97316" strokeWidth={2} name="Temp (°C)" dot={{ r: 4 }} />
-                      <Line type="monotone" dataKey="oxigenoDisuelto" stroke="#0ea5e9" strokeWidth={2} name="O₂ (mg/L)" dot={{ r: 4 }} />
+                      <ReferenceLine y={config.rangosReferencia.temperaturaMin} stroke="#8c9cc0" strokeDasharray="3 3" label={{ value: 'Temp Min', fontSize: 9 }} />
+                      <ReferenceLine y={config.rangosReferencia.temperaturaMax} stroke="#df8a82" strokeDasharray="3 3" label={{ value: 'Temp Max', fontSize: 9 }} />
+                      <ReferenceLine y={config.rangosReferencia.oxigenoMin} stroke="#c62828" strokeDasharray="3 3" label={{ value: 'O₂ Min (4mg/L)', fontSize: 9 }} />
+                      <Line type="monotone" dataKey="temperatura" stroke="#a07a2c" strokeWidth={2} name="Temp (°C)" dot={{ r: 4 }} />
+                      <Line type="monotone" dataKey="oxigenoDisuelto" stroke="#3e5584" strokeWidth={2} name="O₂ (mg/L)" dot={{ r: 4 }} />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
@@ -493,27 +461,27 @@ export const AnaliticaTab: React.FC<AnaliticaTabProps> = ({
 
             {/* Gráfico 4: Parámetros de Agua - pH y Secchi */}
             <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-              <h3 className="text-xs font-bold uppercase text-slate-700 mb-2">
+              <h3 className="text-xs font-semibold uppercase text-slate-700 mb-2">
                 pH y Transparencia Secchi (cm)
               </h3>
               {seriesAgua.length === 0 ? (
-                <div className="h-64 flex items-center justify-center text-xs text-slate-400">
+                <div className="h-64 flex items-center justify-center text-xs text-slate-500">
                   No hay mediciones de agua registradas en este lote.
                 </div>
               ) : (
                 <div className="h-64 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={seriesAgua}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                      <XAxis dataKey="fecha" stroke="#64748b" fontSize={10} />
-                      <YAxis yAxisId="ph" stroke="#8b5cf6" domain={[4, 10]} fontSize={10} />
-                      <YAxis yAxisId="secchi" orientation="right" stroke="#10b981" domain={[0, 60]} fontSize={10} />
+                      <CartesianGrid strokeDasharray="3 3" stroke="#dfe2e7" />
+                      <XAxis dataKey="fecha" stroke="#5d6470" fontSize={10} />
+                      <YAxis yAxisId="ph" stroke="#3a4a6b" domain={[4, 10]} fontSize={10} />
+                      <YAxis yAxisId="secchi" orientation="right" stroke="#2f7758" domain={[0, 60]} fontSize={10} />
                       <Tooltip contentStyle={{ fontSize: '11px', borderRadius: '8px' }} />
                       <Legend wrapperStyle={{ fontSize: '11px' }} />
-                      <ReferenceLine yAxisId="ph" y={config.rangosReferencia.phMin} stroke="#c084fc" strokeDasharray="3 3" />
-                      <ReferenceLine yAxisId="ph" y={config.rangosReferencia.phMax} stroke="#c084fc" strokeDasharray="3 3" />
-                      <Line yAxisId="ph" type="monotone" dataKey="ph" stroke="#8b5cf6" strokeWidth={2} name="pH" dot={{ r: 4 }} />
-                      <Line yAxisId="secchi" type="monotone" dataKey="transparenciaSecchi" stroke="#10b981" strokeWidth={2} name="Secchi (cm)" dot={{ r: 4 }} />
+                      <ReferenceLine yAxisId="ph" y={config.rangosReferencia.phMin} stroke="#96a3bd" strokeDasharray="3 3" />
+                      <ReferenceLine yAxisId="ph" y={config.rangosReferencia.phMax} stroke="#96a3bd" strokeDasharray="3 3" />
+                      <Line yAxisId="ph" type="monotone" dataKey="ph" stroke="#3a4a6b" strokeWidth={2} name="pH" dot={{ r: 4 }} />
+                      <Line yAxisId="secchi" type="monotone" dataKey="transparenciaSecchi" stroke="#2f7758" strokeWidth={2} name="Secchi (cm)" dot={{ r: 4 }} />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>

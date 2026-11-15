@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { escalon, usePrimerMontaje } from '../lib/montaje';
 import {
   Fish,
   Layers,
@@ -37,6 +38,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
   puedeBuscar = true,
   puedeDocumentos = true
 }) => {
+  const primerMontaje = usePrimerMontaje();
   const [busquedaRapida, setBusquedaRapida] = useState('');
 
   // Métricas globales calculadas
@@ -75,7 +77,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
       {/* Banner de Bienvenida y Acción Principal */}
       <div className="bg-slate-900 text-white p-6 sm:p-8 border-b-4 border-double border-amber-600 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl sm:text-4xl">Cultivos Loré</h1>
+          <h1 className="text-2xl sm:text-4xl">Cultivos Loré</h1>
           <p className="text-sm text-slate-300 mt-1 max-w-xl">
             Producción de tilapia roja en Turbaco, Bolívar: cada fase queda registrada, firmada y verificable desde su certificado.
           </p>
@@ -84,7 +86,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
         {puedeCrearLote && (
           <button
             onClick={onNuevoLote}
-            className="inline-flex items-center space-x-2 px-5 py-3 bg-slate-50 hover:bg-white text-slate-900 rounded-xl text-sm font-bold transition-colors shrink-0"
+            className="inline-flex items-center space-x-2 px-5 py-3 bg-slate-50 hover:bg-white text-slate-900 rounded-xl text-sm font-semibold transition-colors shrink-0"
           >
             <Plus className="w-5 h-5" />
             <span>Registrar Nuevo Lote</span>
@@ -100,7 +102,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
             <span className="text-xs font-semibold uppercase">Lotes en Cultivo</span>
           </div>
           <div className="flex items-baseline space-x-2">
-            <span className="text-3xl font-extrabold text-slate-900">{lotesActivos.length}</span>
+            <span className="text-2xl font-semibold text-slate-900">{lotesActivos.length}</span>
             <span className="text-xs text-slate-500 font-medium">activos</span>
           </div>
           <div className="mt-2 text-xs text-slate-500 flex items-center space-x-2">
@@ -114,7 +116,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
             <span className="text-xs font-semibold uppercase">Biomasa Viva Total</span>
           </div>
           <div className="flex items-baseline space-x-2">
-            <span className="text-3xl font-extrabold text-slate-900">
+            <span className="text-2xl font-semibold text-slate-900">
               {biomasaTotalCultivoKg.toLocaleString()}
             </span>
             <span className="text-xs text-slate-500 font-medium">kg</span>
@@ -132,13 +134,13 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
           <div className="flex items-center space-x-4 mt-1">
             {config.estanques.map((est) => (
               <div key={est.codigo}>
-                <span className="text-xs font-bold text-slate-500">{est.codigo}: </span>
-                <span className="text-xl font-bold text-slate-900">{conteoEstanques[est.codigo] || 0}</span>
-                <span className="text-[11px] text-slate-400 block">{est.nombre.split(' ')[0]}</span>
+                <span className="text-xs font-semibold text-slate-500">{est.codigo}: </span>
+                <span className="text-2xl font-semibold text-slate-900">{conteoEstanques[est.codigo] || 0}</span>
+                <span className="text-xs text-slate-500 block">{est.nombre.split(' ')[0]}</span>
               </div>
             ))}
           </div>
-          <p className="mt-2 text-[11px] text-slate-400">Turbaco, Bolívar</p>
+          <p className="mt-2 text-xs text-slate-500">Turbaco, Bolívar</p>
         </div>
 
         {/* Alertas de Calidad de Agua */}
@@ -147,7 +149,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
             <span className="text-xs font-semibold uppercase">Alertas Fisicoquímicas</span>
           </div>
           <div className="flex items-baseline space-x-2">
-            <span className={`text-3xl font-extrabold ${totalAlertasAgua > 0 ? 'text-amber-600' : 'text-slate-900'}`}>
+            <span className={`text-2xl font-semibold ${totalAlertasAgua > 0 ? 'text-amber-600' : 'text-slate-900'}`}>
               {totalAlertasAgua}
             </span>
             <span className="text-xs text-slate-500 font-medium">acumuladas</span>
@@ -162,20 +164,20 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
       <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
         <div className="p-5 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h2 className="text-base font-bold text-slate-900">Últimos lotes modificados</h2>
+            <h2 className="text-base font-semibold text-slate-900">Últimos lotes modificados</h2>
             <p className="text-xs text-slate-500">
               Accede directamente al historial o continúa registrando fases
             </p>
           </div>
 
           <div className={`relative max-w-xs w-full ${puedeBuscar ? '' : 'hidden'}`}>
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+            <Search className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
             <input
               type="text"
               placeholder="Buscar por código..."
               value={busquedaRapida}
               onChange={(e) => setBusquedaRapida(e.target.value)}
-              className="w-full pl-9 pr-3 py-1.5 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500 bg-slate-50 focus:bg-white"
+              className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500 bg-slate-50 focus:bg-white"
             />
           </div>
         </div>
@@ -183,15 +185,30 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
         {lotesFiltrados.length === 0 ? (
           <div className="py-16 text-center">
             <Fish className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-            <h3 className="text-sm font-semibold text-slate-700">No se encontraron lotes</h3>
-            <p className="text-xs text-slate-400 mt-1">
-              Comienza registrando el primer lote de siembra con el botón "Registrar Nuevo Lote".
+            <h3 className="text-sm font-semibold text-slate-800">
+              {busquedaRapida ? 'Ningún lote coincide con la búsqueda.' : 'Aún no hay lotes registrados.'}
+            </h3>
+            <p className="text-sm text-slate-600 mt-1">
+              {busquedaRapida
+                ? 'Revisa el código o borra la búsqueda para ver los últimos lotes.'
+                : 'Registra la siembra del primer lote y su trazabilidad empieza a construirse desde ahí.'}
             </p>
+            {busquedaRapida ? (
+              <button type="button" onClick={() => setBusquedaRapida('')} className="mt-4 inline-flex items-center justify-center min-h-11 px-4 rounded-md border border-slate-300 bg-white hover:bg-slate-50 text-slate-800 text-sm font-semibold transition-colors">
+                Borrar la búsqueda
+              </button>
+            ) : (
+              puedeCrearLote && (
+                <button type="button" onClick={onNuevoLote} className="mt-4 inline-flex items-center justify-center min-h-11 px-4 rounded-md bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold transition-colors">
+                  Registrar el primer lote
+                </button>
+              )
+            )}
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 text-slate-600 uppercase font-bold text-[11px] border-b border-slate-200">
+              <thead className="bg-slate-50 text-slate-600 uppercase font-semibold text-xs border-b border-slate-200">
                 <tr>
                   <th className="px-5 py-3">Código Lote</th>
                   <th className="px-4 py-3">Estanque</th>
@@ -204,59 +221,68 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {lotesFiltrados.slice(0, 8).map((lote) => (
+                {lotesFiltrados.slice(0, 8).map((lote, i) => (
                   <tr
                     key={lote.codigo}
-                    className="hover:bg-slate-50/80 transition-colors cursor-pointer"
+                    className={`hover:bg-slate-50/80 transition-colors cursor-pointer ${escalon(i, primerMontaje).className}`}
+                    style={escalon(i, primerMontaje).style}
                     onClick={() => onSeleccionarLote(lote)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        onSeleccionarLote(lote);
+                      }
+                    }}
+                    tabIndex={0}
+                    aria-label={`Abrir el lote ${lote.codigo}`}
                   >
-                    <td className="px-5 py-3.5">
+                    <td className="px-5 py-4">
                       <div className="flex items-center space-x-2">
                         <span className="font-serif text-base text-slate-900 tabular-nums">
                           {lote.codigo}
                         </span>
                       </div>
                     </td>
-                    <td className="px-4 py-3.5">
+                    <td className="px-4 py-4">
                       <span className="font-serif text-sm text-slate-900">
                         {lote.estanque}
                       </span>
                     </td>
-                    <td className="px-4 py-3.5 text-slate-600">
+                    <td className="px-4 py-4 text-slate-600">
                       <div>{lote.fechaSiembra}</div>
-                      {lote.resumen.diasDeCultivo != null && <div className="text-[11px] text-slate-500">{lote.resumen.diasDeCultivo} días</div>}
+                      {lote.resumen.diasDeCultivo != null && <div className="text-xs text-slate-500">{lote.resumen.diasDeCultivo} días</div>}
                     </td>
-                    <td className="px-4 py-3.5 text-right font-medium">
-                      <span className={lote.resumen.supervivencia >= 85 ? 'text-slate-900 font-bold' : 'text-amber-700 font-bold'}>
+                    <td className="px-4 py-4 text-right font-medium">
+                      <span className={lote.resumen.supervivencia >= 85 ? 'text-slate-900 font-semibold' : 'text-amber-700 font-semibold'}>
                         {lote.resumen.supervivencia}%
                       </span>
                     </td>
-                    <td className="px-4 py-3.5 text-right font-semibold text-slate-800">
+                    <td className="px-4 py-4 text-right font-semibold text-slate-800">
                       {lote.resumen.pesoPromedioActualG} g
                     </td>
-                    <td className="px-4 py-3.5 text-right font-semibold text-slate-800">
+                    <td className="px-4 py-4 text-right font-semibold text-slate-800">
                       {lote.resumen.biomasaEstimadaKg.toLocaleString()} kg
                     </td>
-                    <td className="px-4 py-3.5 text-center">
+                    <td className="px-4 py-4 text-center">
                       <span
                         className={`rotulo ${lote.estado === 'activo' ? 'text-emerald-700' : 'text-slate-600'}`}
                       >
                         {lote.estado}
                       </span>
                     </td>
-                    <td className="px-5 py-3.5 text-right space-x-2" onClick={(e) => e.stopPropagation()}>
+                    <td className="px-5 py-4 text-right space-x-2" onClick={(e) => e.stopPropagation()}>
                       {puedeDocumentos && (
                         <button
                           onClick={() => onAbrirQr(lote)}
                           title="Ver Código QR"
-                          className="p-1.5 text-slate-500 hover:text-sky-600 hover:bg-slate-100 rounded-md transition-colors inline-flex"
+                          className="p-2 text-slate-500 hover:text-sky-600 hover:bg-slate-100 rounded-md transition-colors inline-flex"
                         >
                           <QrCode className="w-4 h-4" />
                         </button>
                       )}
                       <button
                         onClick={() => onSeleccionarLote(lote)}
-                        className="px-3 py-1.5 text-xs font-semibold text-white bg-sky-600 hover:bg-sky-700 rounded-md transition-colors inline-flex items-center space-x-1"
+                        className="px-3 py-2 text-xs font-semibold text-white bg-sky-600 hover:bg-sky-700 rounded-md transition-colors inline-flex items-center space-x-1"
                       >
                         <span>Detalle</span>
                         <ExternalLink className="w-3 h-3" />

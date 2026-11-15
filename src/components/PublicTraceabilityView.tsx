@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { quienRegistro } from '../services/usuariosService';
+import { LogoLore } from './LogoLore';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase/firebaseConfig';
 import { Lote, ConfiguracionGeneral } from '../types';
@@ -255,9 +256,12 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
       {/* BARRA SUPERIOR FIJA */}
       <header className="bg-slate-900 text-white sticky top-0 z-30 border-b-4 border-double border-amber-600">
         <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div>
+          <div className="flex items-center gap-3">
+            <LogoLore className="w-10 h-8 text-amber-400" />
+            <div>
             <h1 className="text-xl leading-tight">Cultivos Loré</h1>
             <p className="rotulo text-slate-300">Turbaco, Bolívar · Colombia</p>
+            </div>
           </div>
 
           <div className="flex items-center space-x-2">

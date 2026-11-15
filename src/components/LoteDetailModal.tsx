@@ -244,7 +244,7 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
 
   return (
     <>
-      <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/55 p-3 md:p-6 overflow-y-auto">
+      <div className="velo fixed inset-0 z-40 flex items-center justify-center bg-slate-950/55 p-3 md:p-6 overflow-y-auto">
         <div className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-5xl w-full max-h-[92dvh] flex flex-col overflow-hidden">
           {/* BARRA SUPERIOR DEL LOTE */}
           <div className="bg-slate-900 text-white px-6 py-4 flex flex-wrap items-center justify-between gap-3 shrink-0">
@@ -344,7 +344,7 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
                   </span>
                   {lote.fechaCierre && <span className="rotulo text-amber-300">{formatearFechaColombia(lote.fechaCierre)}</span>}
                 </p>
-                <p className="text-sm text-slate-200 border-t-[3px] border-double border-amber-500 pt-3">
+                <p className="trazo-acta text-sm text-slate-200">
                   El ciclo de producción terminó y el registro quedó sellado: no admite cambios ni fases nuevas. La consulta, los certificados y la
                   verificación de la cadena siguen disponibles.
                 </p>
@@ -737,7 +737,7 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
       )}
 
       {modalEditarSiembraOpen && lote.estado === 'activo' && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4 overflow-y-auto">
+        <div className="velo fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4 overflow-y-auto">
           <div className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-lg w-full overflow-hidden my-6">
             <div className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between">
               <div className="flex items-center space-x-2">

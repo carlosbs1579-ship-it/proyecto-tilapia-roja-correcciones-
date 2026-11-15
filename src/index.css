@@ -90,6 +90,9 @@
   --color-red-800: #6f1712;
   --color-red-900: #52110d;
 
+  /* Curvas de movimiento (salida fuerte para entradas de interfaz) */
+  --ease-salida: cubic-bezier(0.23, 1, 0.32, 1);
+
   /* Esquinas pequeñas y sombras mínimas */
   --radius-md: 0.25rem;
   --radius-lg: 0.3125rem;
@@ -220,12 +223,70 @@
   }
 }
 
+/*
+ * Movimiento: pocas entradas, cortas y con propósito.
+ * - Ventanas: el velo aparece y la ventana sube un poco desde 97 % (no surge de la nada).
+ * - Cambio de pestaña: solo un fundido breve, porque se usa muchas veces al día.
+ * - Aviso inferior: entra desde abajo, por donde se va.
+ * - Lote sellado: el doble filete se traza de izquierda a derecha una sola vez.
+ */
+.velo {
+  transition: opacity 200ms var(--ease-salida);
+}
+.velo > * {
+  transition:
+    opacity 240ms var(--ease-salida),
+    transform 240ms var(--ease-salida);
+}
+.aparece,
+.animate-fadeIn {
+  transition: opacity 160ms ease-out;
+}
+.aviso-inferior {
+  transition:
+    opacity 300ms var(--ease-salida),
+    transform 300ms var(--ease-salida);
+}
+.trazo-acta {
+  position: relative;
+  padding-top: 0.75rem;
+}
+.trazo-acta::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  border-top: 3px double var(--color-amber-500);
+  transform-origin: left center;
+  transition: transform 520ms var(--ease-salida) 120ms;
+}
+@starting-style {
+  .velo,
+  .aparece,
+  .animate-fadeIn {
+    opacity: 0;
+  }
+  .velo > * {
+    opacity: 0;
+    transform: translateY(6px) scale(0.97);
+  }
+  .aviso-inferior {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+  .trazo-acta::before {
+    transform: scaleX(0);
+  }
+}
+
+/* Con movimiento reducido se conservan los fundidos y se quitan los desplazamientos */
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+  @starting-style {
+    .velo > *,
+    .aviso-inferior {
+      transform: none;
+    }
+    .trazo-acta::before {
+      transform: none;
+    }
   }
 }

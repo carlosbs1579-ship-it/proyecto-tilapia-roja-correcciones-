@@ -247,7 +247,7 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4 overflow-y-auto">
+    <div className="velo fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4 overflow-y-auto">
       <div className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-2xl w-full overflow-hidden my-6">
         {/* Cabecera */}
         <div className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between">

@@ -10,6 +10,7 @@ import {
   Factory
 } from 'lucide-react';
 import { User } from 'firebase/auth';
+import { LogoLore } from './LogoLore';
 import { RolFuncional, UsuarioPerfil } from '../types';
 import { ETIQUETA_ROL, esAdminMaestro, nombreFuncion, veePestana } from '../services/usuariosService';
 
@@ -130,7 +131,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         <div className="flex items-center justify-between h-16">
           {/* Nombre de la granja */}
           <button type="button" className="flex items-center space-x-3 shrink-0 text-left" onClick={() => setTabActiva(tabInicial)}>
-            <Fish className="w-6 h-6 text-amber-400" strokeWidth={1.5} aria-hidden="true" />
+            <LogoLore className="w-10 h-8 text-amber-400" />
             <span>
               <span className="block font-serif text-xl leading-tight">Cultivos Loré</span>
               <span className="rotulo hidden sm:block text-slate-300">Trazabilidad Tilapia Pro · Turbaco, Bolívar</span>

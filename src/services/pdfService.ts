@@ -54,9 +54,19 @@ const ETIQUETA_DATO: Record<string, string> = {
   proveedorAlevinos: 'Proveedor de alevinos',
   observacionesIniciales: 'Observaciones iniciales',
   pctProteina: 'Proteína (%)',
-  numeroRaciones: 'Número de raciones'
+  numeroRaciones: 'Número de raciones',
+  pesoInicialG: 'Peso inicial (g)'
 };
 const OMITIR_DATO = new Set(['ambito']);
+
+// Doble filete dorado bajo los encabezados (rasgo de acta del diseño)
+function dobleFilete(doc: any, x1: number, x2: number, y: number) {
+  doc.setDrawColor(138, 102, 36);
+  doc.setLineWidth(0.3);
+  doc.line(x1, y, x2, y);
+  doc.line(x1, y + 0.9, x2, y + 0.9);
+  doc.setLineWidth(0.2);
+}
 
 function depurar(valor: any): any {
   if (typeof valor === 'string') return textoPdf(valor);
@@ -119,42 +129,43 @@ export async function generarLotePdfBlob(
   let currentY = 14;
 
   // --- 1. ENCABEZADO Y BRANDING ---
-  doc.setFillColor(3, 105, 161); // Tailwind sky-700
+  doc.setFillColor(22, 33, 58); // tinta
   doc.rect(10, currentY, pageWidth - 20, 24, 'F');
 
   doc.setTextColor(255, 255, 255);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(16);
-  doc.text('CULTIVOS LORÉ — TILAPIA PRO', 16, currentY + 9);
+  doc.setFont('times', 'normal');
+  doc.setFontSize(19);
+  doc.text(textoPdf('Cultivos Loré'), 16, currentY + 9.5);
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9.5);
-  doc.text('Trazabilidad Integral Inalterable de Lote • Acuicultura Sostenible', 16, currentY + 16);
+  doc.text(textoPdf('Certificado de trazabilidad del lote · Tilapia roja'), 16, currentY + 16);
   doc.text(`Turbaco, Bolívar, Colombia • Generado: ${getFechaHoyBogota()}`, 16, currentY + 21);
 
-  currentY += 28;
+  dobleFilete(doc, 10, pageWidth - 10, currentY + 25.2);
+  currentY += 29;
 
   // --- 2. RESUMEN DE IDENTIDAD DEL LOTE & CÓDIGO QR ---
   const boxHeight = 44;
-  doc.setFillColor(248, 250, 252);
-  doc.setDrawColor(203, 213, 225);
+  doc.setFillColor(246, 247, 249);
+  doc.setDrawColor(197, 202, 211);
   doc.rect(10, currentY, pageWidth - 20, boxHeight, 'FD');
 
   // Insertar QR a la derecha
   try {
     doc.addImage(qrDataUrl, 'PNG', pageWidth - 48, currentY + 3, 34, 34);
     doc.setFontSize(7.5);
-    doc.setTextColor(100, 116, 139);
+    doc.setTextColor(93, 100, 112);
     doc.text('Escanear trazabilidad', pageWidth - 48 + 17, currentY + 40, { align: 'center' });
   } catch (err) {
     console.warn('No se pudo incrustar QR en el PDF:', err);
   }
 
   // Textos del lote
-  doc.setTextColor(15, 23, 42);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(13);
-  doc.text(`LOTE: ${lote.codigo}`, 14, currentY + 7);
+  doc.setTextColor(22, 33, 58);
+  doc.setFont('times', 'bold');
+  doc.setFontSize(15);
+  doc.text(`Lote ${lote.codigo}`, 14, currentY + 7.5);
 
   doc.setFontSize(8.5);
   doc.setFont('helvetica', 'bold');
@@ -196,12 +207,16 @@ export async function generarLotePdfBlob(
     margin: { left: 10, right: 10 },
     theme: 'grid',
     headStyles: {
-      fillColor: [3, 105, 161],
+      fillColor: [22, 33, 58],
       fontSize: 8.5,
       halign: 'left',
       fontStyle: 'bold'
     },
-    bodyStyles: { fontSize: 8, textColor: [15, 23, 42] },
+    bodyStyles: { fontSize: 8, textColor: [22, 33, 58] },
+    // Un dato que no se registró se muestra como raya, nunca como "undefined"
+    didParseCell: (d: any) => {
+      if (/undefined|NaN|null/.test(d.cell.text.join(' '))) d.cell.text = ['—'];
+    },
     head: [['INDICADOR PRODUCTIVO', 'VALOR REGISTRADO', 'INDICADOR PRODUCTIVO', 'VALOR REGISTRADO']],
     body: [
       [
@@ -276,7 +291,7 @@ export async function generarLotePdfBlob(
       startY: currentY,
       margin: { left: 10, right: 10 },
       theme: 'striped',
-      headStyles: { fillColor: [8, 145, 178], fontSize: 8, fontStyle: 'bold' },
+      headStyles: { fillColor: [44, 66, 110], fontSize: 8, fontStyle: 'bold' },
       bodyStyles: { fontSize: 7.5 },
       head: [['Fecha', 'Temp', 'O2 Dis.', 'pH', 'Amonio', 'Nitritos', 'Secchi', 'Estado', 'Operario']],
       body: filasAgua
@@ -308,7 +323,7 @@ export async function generarLotePdfBlob(
       startY: currentY,
       margin: { left: 10, right: 10 },
       theme: 'grid',
-      headStyles: { fillColor: [15, 118, 110], fontSize: 8, fontStyle: 'bold' },
+      headStyles: { fillColor: [34, 95, 70], fontSize: 8, fontStyle: 'bold' },
       bodyStyles: { fontSize: 7.5 },
       head: [['Fecha', 'Etapa', 'Detalle Técnico / Parámetros', 'Registrado Por']],
       body: filasPost
@@ -333,7 +348,7 @@ export async function generarLotePdfBlob(
       startY: currentY,
       margin: { left: 10, right: 10 },
       theme: 'grid',
-      headStyles: { fillColor: [30, 64, 175], fontSize: 8, fontStyle: 'bold' },
+      headStyles: { fillColor: [58, 74, 107], fontSize: 8, fontStyle: 'bold' },
       bodyStyles: { fontSize: 7.5 },
       head: [['Fecha', 'Tipo de Manejo', 'Producto / Dosis / Aplicación', 'Registrado Por']],
       body: filasSan
@@ -368,7 +383,7 @@ export async function generarLotePdfBlob(
     startY: currentY,
     margin: { left: 10, right: 10 },
     theme: 'striped',
-    headStyles: { fillColor: [51, 65, 85], fontSize: 8, fontStyle: 'bold' },
+    headStyles: { fillColor: [54, 61, 75], fontSize: 8, fontStyle: 'bold' },
     bodyStyles: { fontSize: 7.5 },
     columnStyles: {
       0: { cellWidth: 10 },
@@ -390,7 +405,7 @@ export async function generarLotePdfBlob(
       margin: { left: 10, right: 10 },
       theme: 'grid',
       styles: { fontSize: 7, cellPadding: 1.5 },
-      headStyles: { fillColor: [2, 132, 199], textColor: [255, 255, 255], fontStyle: 'bold' },
+      headStyles: { fillColor: [44, 66, 110], textColor: [255, 255, 255], fontStyle: 'bold' },
       columnStyles: { 0: { cellWidth: 12 }, 1: { cellWidth: 22 }, 2: { cellWidth: 46 }, 3: { cellWidth: 52 }, 4: { cellWidth: 36 } },
       head: [
         [{ content: 'ANOTACIONES POSTERIORES AL CIERRE (aprobadas; el registro sellado no se modificó)', colSpan: 6 }],
@@ -428,7 +443,7 @@ export async function generarLotePdfBlob(
     startY: currentY,
     margin: { left: 10, right: 10 },
     theme: 'plain',
-    headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontSize: 8, fontStyle: 'bold' },
+    headStyles: { fillColor: [238, 240, 243], textColor: [22, 33, 58], fontSize: 8, fontStyle: 'bold' },
     bodyStyles: { fontSize: 7.5 },
     head: [[`FICHA NUTRICIONAL REFERENCIAL (por cada ${fn.porcionG} g de tilapia cruda)`]],
     body: [
@@ -448,12 +463,12 @@ export async function generarLotePdfBlob(
     currentY = 15;
   }
 
-  doc.setFillColor(241, 245, 249);
+  doc.setFillColor(238, 240, 243);
   doc.rect(10, currentY, pageWidth - 20, 24, 'F');
 
   doc.setFontSize(7.5);
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(15, 23, 42);
+  doc.setTextColor(22, 33, 58);
   doc.text('VERIFICACIÓN CRIPTOGRÁFICA DE INTEGRIDAD (REGISTRO TIPO BLOCKCHAIN · SHA-256):', 13, currentY + 5);
 
   doc.setFont('helvetica', 'normal');
@@ -466,19 +481,19 @@ export async function generarLotePdfBlob(
     currentY + 10
   );
 
-  doc.setTextColor(71, 85, 105);
+  doc.setTextColor(74, 81, 96);
   doc.setFont('helvetica', 'normal');
   doc.text(`Hash final: ${lote.resumen.hashFinal || 'N/A'}`, 13, currentY + 14);
   if (datosAnotaciones?.registros?.length) {
     doc.setTextColor(verifAnotaciones.integra ? 22 : 185, verifAnotaciones.integra ? 101 : 28, verifAnotaciones.integra ? 52 : 28);
     doc.text(textoPdf(`Anotaciones: ${verifAnotaciones.mensaje}`), 13, currentY + 17);
-    doc.setTextColor(71, 85, 105);
+    doc.setTextColor(74, 81, 96);
   }
 
   // NOTA OBLIGATORIA
   doc.setFont('helvetica', 'italic');
   doc.setFontSize(7);
-  doc.setTextColor(100, 116, 139);
+  doc.setTextColor(93, 100, 112);
   doc.text(
     'Nota de inocuidad: Este registro documenta cómo se produjo y manejó el lote; no reemplaza los controles de inocuidad.',
     13,
@@ -545,12 +560,12 @@ export async function generarComprobantePdfBlob(
   let y = 14;
 
   // Encabezado con la misma identidad del certificado del lote
-  doc.setFillColor(3, 105, 161);
+  doc.setFillColor(22, 33, 58);
   doc.rect(10, y, pageWidth - 20, 26, 'F');
   doc.setTextColor(255, 255, 255);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(15);
-  doc.text(c.empresa.toUpperCase(), 16, y + 9);
+  doc.setFont('times', 'normal');
+  doc.setFontSize(18);
+  doc.text(textoPdf(c.empresa), 16, y + 9.5);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(10);
   doc.text(opciones.preliminar ? 'COMPROBANTE DE ENTREGA — PRELIMINAR' : 'COMPROBANTE DE ENTREGA', 16, y + 16);
@@ -565,11 +580,12 @@ export async function generarComprobantePdfBlob(
     const qr = await generarQrDataUrl(construirUrlConsultaEntrega(c.tokenConsulta));
     doc.addImage(qr, 'PNG', pageWidth - 44, y + 1, 24, 24);
   }
+  dobleFilete(doc, 10, pageWidth - 10, y + 27.2);
   y += 32;
 
   // Estado de la entrega (una parcial nunca se presenta como completa)
   doc.setFillColor(
-    ...((opciones.anulacion ? [185, 28, 28] : opciones.preliminar ? [100, 116, 139] : parcial ? [217, 119, 6] : [5, 150, 105]) as [number, number, number])
+    ...((opciones.anulacion ? [179, 38, 30] : opciones.preliminar ? [93, 100, 112] : parcial ? [138, 102, 36] : [34, 95, 70]) as [number, number, number])
   );
   doc.rect(10, y, pageWidth - 20, 9, 'F');
   doc.setTextColor(255, 255, 255);
@@ -588,12 +604,12 @@ export async function generarComprobantePdfBlob(
   );
   y += 14;
 
-  doc.setTextColor(15, 23, 42);
+  doc.setTextColor(22, 33, 58);
   autoTable(doc, {
     startY: y,
     theme: 'grid',
     styles: { fontSize: 8.5, cellPadding: 2 },
-    headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42] },
+    headStyles: { fillColor: [238, 240, 243], textColor: [22, 33, 58] },
     // Columnas de igual ancho: un nombre de cliente largo no estrecha la de logística
     columnStyles: { 0: { cellWidth: (pageWidth - 28) / 2 }, 1: { cellWidth: (pageWidth - 28) / 2 } },
     head: [['Cliente', 'Logística']],
@@ -615,7 +631,7 @@ export async function generarComprobantePdfBlob(
     startY: y,
     theme: 'grid',
     styles: { fontSize: 8.5, cellPadding: 2, halign: 'right' },
-    headStyles: { fillColor: [3, 105, 161], textColor: [255, 255, 255], halign: 'right' },
+    headStyles: { fillColor: [22, 33, 58], textColor: [255, 255, 255], halign: 'right' },
     head: [['Solicitada', 'Autorizada', 'Entregada', 'Liberada al cerrar', 'Pendiente']],
     body: [[
       cantidadTexto(c.cantidadSolicitada, c.unidad),
@@ -634,7 +650,7 @@ export async function generarComprobantePdfBlob(
     startY: y + 2,
     theme: 'striped',
     styles: { fontSize: 8.5, cellPadding: 2 },
-    headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255] },
+    headStyles: { fillColor: [22, 33, 58], textColor: [255, 255, 255] },
     columnStyles: { 2: { halign: 'right' }, 3: { halign: 'right' } },
     head: [['Lote', 'Piscina', 'Cantidad autorizada', 'Cantidad entregada']],
     body: Object.entries(c.procedencias).map(([lote, p]) => [
@@ -674,7 +690,7 @@ export async function generarComprobantePdfBlob(
       startY: y,
       theme: 'grid',
       styles: { fontSize: 8, cellPadding: 1.8 },
-      headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42] },
+      headStyles: { fillColor: [238, 240, 243], textColor: [22, 33, 58] },
       columnStyles: { 0: { cellWidth: 48 } },
       head: [['Observaciones', 'Detalle']],
       body: observaciones
@@ -687,7 +703,7 @@ export async function generarComprobantePdfBlob(
   const ALTO_LINEA = 3.4;
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7.5);
-  doc.setTextColor(71, 85, 105);
+  doc.setTextColor(74, 81, 96);
   if (opciones.preliminar) {
     if (y + 6 > pageHeight - 10) {
       doc.addPage();
@@ -725,7 +741,7 @@ export async function generarComprobantePdfBlob(
     doc.setFont('helvetica', 'normal');
     doc.text(lineas, 10, y + 4);
     if (lineasAnulacion.length) {
-      doc.setTextColor(185, 28, 28);
+      doc.setTextColor(179, 38, 30);
       doc.text(lineasAnulacion, 10, y + 4 + lineas.length * ALTO_LINEA + 2);
     }
   }
@@ -738,7 +754,7 @@ export async function generarComprobantePdfBlob(
     for (let p = 1; p <= paginas; p++) {
       doc.setPage(p);
       if (anyDoc.GState) anyDoc.setGState(new anyDoc.GState({ opacity: 0.18 }));
-      doc.setTextColor(...((opciones.anulacion ? [220, 38, 38] : [100, 116, 139]) as [number, number, number]));
+      doc.setTextColor(...((opciones.anulacion ? [179, 38, 30] : [93, 100, 112]) as [number, number, number]));
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(64);
       doc.text(opciones.anulacion ? 'ANULADO' : 'PRELIMINAR', pageWidth / 2, 170, { align: 'center', angle: 35 });

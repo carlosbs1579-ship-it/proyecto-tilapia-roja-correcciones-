@@ -101,15 +101,27 @@ export async function descargarQrConEtiqueta(qrDataUrl: string, codigoLote: stri
   ctx.fillRect(0, 0, ancho, alto);
   ctx.fillStyle = '#16213a';
   ctx.fillRect(0, 0, ancho, 104);
-  if (logo) ctx.drawImage(logo, 36, 30, 58, 45);
+  // Logo y nombre centrados como un solo bloque dentro de la banda
   ctx.textAlign = 'left';
+  ctx.font = `400 30px ${serif}`;
+  const anchoNombre = ctx.measureText('Cultivos Loré').width;
+  ctx.font = `600 11px ${sans}`;
+  if ('letterSpacing' in ctx) (ctx as any).letterSpacing = '2px';
+  const anchoSubtitulo = ctx.measureText('TRAZABILIDAD TILAPIA PRO').width;
+  if ('letterSpacing' in ctx) (ctx as any).letterSpacing = '0px';
+  const anchoLogo = logo ? 58 : 0;
+  const separacion = logo ? 14 : 0;
+  const anchoBloque = anchoLogo + separacion + Math.max(anchoNombre, anchoSubtitulo);
+  const xBloque = (ancho - anchoBloque) / 2;
+  const xTexto = xBloque + anchoLogo + separacion;
+  if (logo) ctx.drawImage(logo, xBloque, 30, 58, 45);
   ctx.fillStyle = '#ffffff';
   ctx.font = `400 30px ${serif}`;
-  ctx.fillText('Cultivos Loré', 108, 58);
+  ctx.fillText('Cultivos Loré', xTexto, 58);
   ctx.fillStyle = '#d1ac5c';
   ctx.font = `600 11px ${sans}`;
   if ('letterSpacing' in ctx) (ctx as any).letterSpacing = '2px';
-  ctx.fillText('TRAZABILIDAD TILAPIA PRO', 109, 80);
+  ctx.fillText('TRAZABILIDAD TILAPIA PRO', xTexto + 1, 80);
   if ('letterSpacing' in ctx) (ctx as any).letterSpacing = '0px';
   // Doble filete dorado bajo la banda
   ctx.fillStyle = '#8a6624';

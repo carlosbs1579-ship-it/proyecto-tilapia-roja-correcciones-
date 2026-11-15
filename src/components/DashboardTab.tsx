@@ -236,7 +236,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                     </td>
                     <td className="px-4 py-3.5 text-slate-600">
                       <div>{lote.fechaSiembra}</div>
-                      <div className="text-[11px] text-slate-400">{lote.resumen.diasDeCultivo ?? '—'} días</div>
+                      <div className="text-[11px] text-slate-400">{lote.resumen.diasDeCultivo != null ? `${lote.resumen.diasDeCultivo} días` : '—'}</div>
                     </td>
                     <td className="px-4 py-3.5 text-right font-medium">
                       <span className={lote.resumen.supervivencia >= 85 ? 'text-emerald-600 font-bold' : 'text-amber-600'}>

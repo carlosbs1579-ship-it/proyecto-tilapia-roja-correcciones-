@@ -46,7 +46,7 @@ export const EsqueletoTarjetas: React.FC<{ cantidad?: number; alto?: string; ava
     {Array.from({ length: cantidad }).map((_, i) => (
       <div key={i} className={`bg-white rounded-xl border border-slate-200 px-4 flex items-center gap-4 ${alto}`}>
         {avatar && <Bloque className="h-9 w-9 rounded-full shrink-0" />}
-        <div className="flex-1 space-y-2.5">
+        <div className="flex-1 space-y-3">
           <Bloque className="h-3.5 w-1/2" />
           <Bloque className="h-3 w-3/4" />
         </div>

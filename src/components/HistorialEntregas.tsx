@@ -40,11 +40,11 @@ export const HistorialEntregas: React.FC<{
       && (!hasta || dia <= hasta);
   });
 
-  const campo = 'px-2.5 py-1.5 border border-slate-300 rounded-lg bg-white';
+  const campo = 'px-3 py-2 border border-slate-300 rounded-lg bg-white';
 
   return (
     <div className="bg-white rounded-xl border border-slate-200 shadow-xs p-4 space-y-3 text-xs">
-      <span className="font-bold text-slate-900 flex items-center space-x-1.5">
+      <span className="font-semibold text-slate-900 flex items-center space-x-2">
         <History className="w-4 h-4 text-slate-600" />
         <span>Historial y auditoría de entregas</span>
       </span>
@@ -69,12 +69,12 @@ export const HistorialEntregas: React.FC<{
         <input type="date" className={campo} value={desde} onChange={(e) => setDesde(e.target.value)} title="Desde" />
         <input type="date" className={campo} value={hasta} onChange={(e) => setHasta(e.target.value)} title="Hasta" />
       </div>
-      <p className="text-[11px] text-slate-500">
+      <p className="text-xs text-slate-500">
         {filtrados.length} evento(s). Los eventos no se editan ni se borran; cada cambio agrega uno nuevo.
       </p>
       <div className="overflow-x-auto">
         <table className="w-full text-left min-w-[860px]">
-          <thead className="bg-slate-50 text-[11px] uppercase text-slate-500">
+          <thead className="bg-slate-50 text-xs uppercase text-slate-500">
             <tr>
               <th className="px-2 py-2">Fecha y hora</th>
               <th className="px-2 py-2">Pedido</th>
@@ -88,26 +88,26 @@ export const HistorialEntregas: React.FC<{
           <tbody className="divide-y divide-slate-100 align-top">
             {filtrados.slice(0, limite).map(({ orden, evento }) => (
               <tr key={`${orden.id}-${evento.indice}`}>
-                <td className="px-2 py-1.5 whitespace-nowrap">{formatearFechaColombia(evento.fecha)}</td>
-                <td className="px-2 py-1.5">
+                <td className="px-2 py-2 whitespace-nowrap">{formatearFechaColombia(evento.fecha)}</td>
+                <td className="px-2 py-2">
                   <button onClick={() => onAbrirOrden(orden.id)} className="font-mono text-sky-700 hover:underline">{orden.id}</button>
-                  <span className="block mt-0.5"><EstadoOrdenBadge estado={orden.estado} /></span>
+                  <span className="block mt-1"><EstadoOrdenBadge estado={orden.estado} /></span>
                 </td>
-                <td className="px-2 py-1.5 font-semibold text-slate-800">{evento.tipo}</td>
-                <td className="px-2 py-1.5">
+                <td className="px-2 py-2 font-semibold text-slate-800">{evento.tipo}</td>
+                <td className="px-2 py-2">
                   {quienRegistro(evento)}
                   <span className="block text-slate-500">{evento.funcion ? ETIQUETA_FUNCION[evento.funcion] : 'sin función registrada'}</span>
                 </td>
-                <td className="px-2 py-1.5 text-slate-700">{cambiosDeEvento(evento) || 'Sin dato'}</td>
-                <td className="px-2 py-1.5 text-slate-700">{evento.descripcion || 'Sin dato'}</td>
-                <td className="px-2 py-1.5 font-mono text-[11px] text-slate-400">{evento.eventoId ? evento.eventoId.slice(0, 8) : 'Sin dato'}</td>
+                <td className="px-2 py-2 text-slate-700">{cambiosDeEvento(evento) || 'Sin dato'}</td>
+                <td className="px-2 py-2 text-slate-700">{evento.descripcion || 'Sin dato'}</td>
+                <td className="px-2 py-2 font-mono text-xs text-slate-500">{evento.eventoId ? evento.eventoId.slice(0, 8) : 'Sin dato'}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
       {filtrados.length > limite && (
-        <button onClick={() => setLimite(limite + 100)} className="px-3 py-1.5 bg-slate-100 border border-slate-200 rounded-lg font-semibold">
+        <button onClick={() => setLimite(limite + 100)} className="px-3 py-2 bg-slate-100 border border-slate-200 rounded-lg font-semibold">
           Ver 100 más
         </button>
       )}

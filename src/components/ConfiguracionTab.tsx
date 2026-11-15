@@ -200,7 +200,7 @@ export const ConfiguracionTab: React.FC<ConfiguracionTabProps> = ({
         <div>
           <h1 className="text-2xl text-slate-900"><span>Configuración de granja y estanques</span>
           </h1>
-          <p className="text-xs text-slate-500 mt-0.5">
+          <p className="text-xs text-slate-500 mt-1">
             Administración de piscinas/estanques, umbrales de agua en Turbaco y ficha nutricional
           </p>
         </div>
@@ -208,7 +208,7 @@ export const ConfiguracionTab: React.FC<ConfiguracionTabProps> = ({
         <button
           onClick={handleGuardarTodo}
           disabled={guardando}
-          className="inline-flex items-center space-x-2 px-5 py-2.5 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-xs font-bold shadow-xs transition-colors disabled:opacity-50 shrink-0"
+          className="inline-flex items-center space-x-2 px-5 py-3 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors disabled:opacity-50 shrink-0"
         >
           {guardando ? (
             <>
@@ -244,12 +244,12 @@ export const ConfiguracionTab: React.FC<ConfiguracionTabProps> = ({
           <div>
             <div className="flex items-center space-x-2">
               <Waves className="w-5 h-5 text-sky-600" />
-              <h2 className="text-base font-bold text-slate-900">1. Estanques y piscinas de cultivo</h2>
+              <h2 className="text-base font-semibold text-slate-900">1. Estanques y piscinas de cultivo</h2>
             </div>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="text-xs text-slate-500 mt-1">
               {estanques.length === 1 ? '1 estanque registrado' : `${estanques.length} estanques registrados`}
             </p>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="text-xs text-slate-500 mt-1">
               Configura tus estanques (E1, E2, E3...). Cualquier estanque agregado aquí queda disponible de inmediato para crear nuevos lotes y registrar mediciones.
             </p>
           </div>
@@ -258,9 +258,9 @@ export const ConfiguracionTab: React.FC<ConfiguracionTabProps> = ({
         {/* LISTA DE ESTANQUES ACTUALES */}
         {estanques.length === 0 ? (
           <div className="p-6 bg-slate-50 border border-dashed border-slate-300 rounded-xl text-center space-y-1">
-            <Waves className="w-8 h-8 mx-auto text-slate-400" />
+            <Waves className="w-8 h-8 mx-auto text-slate-500" />
             <p className="text-xs font-semibold text-slate-700">No hay estanques configurados actualmente</p>
-            <p className="text-[11px] text-slate-500">Agrega uno abajo usando el formulario (ej: E1, E2, E3...)</p>
+            <p className="text-xs text-slate-500">Agrega uno abajo usando el formulario (ej: E1, E2, E3...)</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -271,7 +271,7 @@ export const ConfiguracionTab: React.FC<ConfiguracionTabProps> = ({
               return (
                 <div
                   key={est.codigo}
-                  className={`p-3.5 rounded-xl border transition-all ${
+                  className={`p-4 rounded-xl border transition-colors ${
                     isDeleting
                       ? 'bg-red-50/70 border-red-300 ring-2 ring-red-300/40'
                       : isEditing
@@ -283,7 +283,7 @@ export const ConfiguracionTab: React.FC<ConfiguracionTabProps> = ({
                     /* Modo edición inline */
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
-                        <span className="font-mono font-bold text-xs bg-sky-200 text-sky-900 px-2 py-0.5 rounded">
+                        <span className="font-mono font-semibold text-xs bg-sky-200 text-sky-900 px-2 py-1 rounded">
                           {est.codigo}
                         </span>
                         <div className="flex items-center space-x-1">
@@ -298,7 +298,7 @@ export const ConfiguracionTab: React.FC<ConfiguracionTabProps> = ({
                           <button
                             type="button"
                             onClick={() => setEditandoCodigo(null)}
-                            className="p-1 text-slate-400 hover:bg-slate-200 rounded"
+                            className="p-1 text-slate-500 hover:bg-slate-200 rounded"
                             title="Cancelar"
                           >
                             <X className="w-4 h-4" />
@@ -306,7 +306,7 @@ export const ConfiguracionTab: React.FC<ConfiguracionTabProps> = ({
                         </div>
                       </div>
                       <div>
-                        <label className="text-[11px] text-slate-500 block">Nombre</label>
+                        <label className="text-xs text-slate-500 block">Nombre</label>
                         <input
                           type="text"
                           value={editNombre}
@@ -315,7 +315,7 @@ export const ConfiguracionTab: React.FC<ConfiguracionTabProps> = ({
                         />
                       </div>
                       <div>
-                        <label className="text-[11px] text-slate-500 block">Volumen (m³)</label>
+                        <label className="text-xs text-slate-500 block">Volumen (m³)</label>
                         <input
                           type="number"
                           value={editVolumen}
@@ -327,11 +327,11 @@ export const ConfiguracionTab: React.FC<ConfiguracionTabProps> = ({
                   ) : isDeleting ? (
                     /* Confirmación inline de eliminación (sin window.confirm) */
                     <div className="space-y-2">
-                      <div className="flex items-center space-x-1.5 text-red-700">
+                      <div className="flex items-center space-x-2 text-red-700">
                         <AlertCircle className="w-4 h-4 shrink-0" />
-                        <span className="text-xs font-bold">¿Eliminar estanque {est.codigo}?</span>
+                        <span className="text-xs font-semibold">¿Eliminar estanque {est.codigo}?</span>
                       </div>
-                      <p className="text-[11px] text-slate-600">
+                      <p className="text-xs text-slate-600">
                         Se retirará de la lista.
                       </p>
                       <div className="flex items-center space-x-2 pt-1">
@@ -339,7 +339,7 @@ export const ConfiguracionTab: React.FC<ConfiguracionTabProps> = ({
                           type="button"
                           onClick={() => handleConfirmarEliminar(est.codigo)}
                           disabled={guardando}
-                          className="px-3 py-1 bg-red-600 hover:bg-red-500 text-white rounded text-xs font-bold transition-colors shadow-xs"
+                          className="px-3 py-1 bg-red-600 hover:bg-red-500 text-white rounded text-xs font-semibold transition-colors shadow-xs"
                         >
                           Sí, eliminar
                         </button>
@@ -357,12 +357,12 @@ export const ConfiguracionTab: React.FC<ConfiguracionTabProps> = ({
                     <div className="flex items-start justify-between">
                       <div>
                         <div className="flex items-center space-x-2">
-                          <span className="font-mono font-bold text-sm bg-sky-100 text-sky-800 px-2.5 py-0.5 rounded-lg border border-sky-200">
+                          <span className="font-mono font-semibold text-sm bg-sky-100 text-sky-800 px-3 py-1 rounded-lg border border-sky-200">
                             {est.codigo}
                           </span>
-                          <span className="text-xs font-bold text-slate-900">{est.nombre}</span>
+                          <span className="text-xs font-semibold text-slate-900">{est.nombre}</span>
                         </div>
-                        <p className="text-[11px] text-slate-500 mt-1.5 flex items-center space-x-1">
+                        <p className="text-xs text-slate-500 mt-2 flex items-center space-x-1">
                           <span className="font-semibold text-slate-700">Volumen:</span>
                           <span>{est.volumenM3 ? `${est.volumenM3} m³` : '250 m³'}</span>
                         </p>
@@ -373,7 +373,7 @@ export const ConfiguracionTab: React.FC<ConfiguracionTabProps> = ({
                           <button
                             type="button"
                             onClick={() => handleIniciarEdicion(est)}
-                            className="text-slate-400 hover:text-sky-600 p-1 rounded hover:bg-slate-200/60 transition-colors"
+                            className="text-slate-500 hover:text-sky-600 p-1 rounded hover:bg-slate-200/60 transition-colors"
                             title="Editar estanque"
                           >
                             <Edit2 className="w-3.5 h-3.5" />
@@ -381,7 +381,7 @@ export const ConfiguracionTab: React.FC<ConfiguracionTabProps> = ({
                           <button
                             type="button"
                             onClick={() => handleSolicitarEliminar(est.codigo)}
-                            className="text-slate-400 hover:text-red-500 p-1 rounded hover:bg-slate-200/60 transition-colors"
+                            className="text-slate-500 hover:text-red-500 p-1 rounded hover:bg-slate-200/60 transition-colors"
                             title="Eliminar estanque"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -403,14 +403,14 @@ export const ConfiguracionTab: React.FC<ConfiguracionTabProps> = ({
             className="pt-4 border-t border-slate-100 bg-sky-50/40 p-4 rounded-xl border border-sky-100 flex flex-wrap items-end gap-3"
           >
             <div className="w-full sm:w-auto">
-              <span className="text-sm font-semibold text-sky-950 mb-2 inline-flex items-center gap-1.5">
+              <span className="text-sm font-semibold text-sky-950 mb-2 inline-flex items-center gap-2">
                 <Plus className="w-4 h-4" strokeWidth={1.75} aria-hidden="true" />
                 Añadir estanque o piscina
               </span>
             </div>
 
             <div>
-              <label className="block text-[11px] font-bold text-slate-700 mb-1">
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
                 Código Único * (ej: E3)
               </label>
               <input
@@ -419,12 +419,12 @@ export const ConfiguracionTab: React.FC<ConfiguracionTabProps> = ({
                 placeholder="Ej: E3"
                 value={nuevoCodigo}
                 onChange={(e) => setNuevoCodigo(e.target.value)}
-                className="w-24 px-3 py-1.5 text-xs font-mono font-bold border border-slate-300 rounded-lg uppercase bg-white focus:outline-none focus:ring-2 focus:ring-sky-500"
+                className="w-24 px-3 py-2 text-xs font-mono font-semibold border border-slate-300 rounded-lg uppercase bg-white focus:outline-none focus:ring-2 focus:ring-sky-500"
               />
             </div>
 
             <div className="flex-1 min-w-[200px]">
-              <label className="block text-[11px] font-bold text-slate-700 mb-1">
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
                 Nombre Descriptivo
               </label>
               <input
@@ -432,12 +432,12 @@ export const ConfiguracionTab: React.FC<ConfiguracionTabProps> = ({
                 placeholder="Ej: Estanque 3 (Geomembrana Circular)"
                 value={nuevoNombre}
                 onChange={(e) => setNuevoNombre(e.target.value)}
-                className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-sky-500"
+                className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-sky-500"
               />
             </div>
 
             <div>
-              <label className="block text-[11px] font-bold text-slate-700 mb-1">
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
                 Volumen (m³)
               </label>
               <input
@@ -446,21 +446,21 @@ export const ConfiguracionTab: React.FC<ConfiguracionTabProps> = ({
                 placeholder="Ej: 250"
                 value={nuevoVolumen}
                 onChange={(e) => setNuevoVolumen(e.target.value === '' ? '' : Number(e.target.value))}
-                className="w-24 px-3 py-1.5 text-xs border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-sky-500"
+                className="w-24 px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-sky-500"
               />
             </div>
 
             <button
               type="submit"
               disabled={guardando}
-              className="px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-xs font-bold inline-flex items-center space-x-1.5 shadow-xs transition-colors disabled:opacity-50"
+              className="px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-xs font-semibold inline-flex items-center space-x-2 shadow-xs transition-colors disabled:opacity-50"
             >
               <Plus className="w-4 h-4" />
               <span>Agregar y Guardar Estanque</span>
             </button>
           </form>
         ) : (
-          <p className="text-xs text-slate-400 italic">
+          <p className="text-xs text-slate-500 italic">
             Para crear o modificar estanques requieres el permiso "Crear piscinas / estanques" otorgado por el administrador.
           </p>
         )}
@@ -469,146 +469,146 @@ export const ConfiguracionTab: React.FC<ConfiguracionTabProps> = ({
       {/* 2. SECCIÓN: RANGOS DE REFERENCIA DE CALIDAD DEL AGUA */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-xs p-6 space-y-4">
         <div>
-          <h2 className="text-base font-bold text-slate-900 flex items-center space-x-2">
+          <h2 className="text-base font-semibold text-slate-900 flex items-center space-x-2">
             <Droplets className="w-5 h-5 text-sky-600" />
             <span>2. Rangos de Referencia para Calidad del Agua</span>
           </h2>
-          <p className="text-xs text-slate-500 mt-0.5">
+          <p className="text-xs text-slate-500 mt-1">
             Valores estándar para la cuenca de Turbaco (Bolívar). Mediciones registradas fuera de estos límites disparan alertas técnicas automáticas.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {/* Temperatura */}
-          <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
-            <span className="text-xs font-bold text-slate-800 block">Temperatura del Agua (°C)</span>
+          <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+            <span className="text-xs font-semibold text-slate-800 block">Temperatura del Agua (°C)</span>
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="text-[11px] text-slate-500">Mínimo</label>
+                <label className="text-xs text-slate-500">Mínimo</label>
                 <input
                   type="number"
                   step="0.5"
                   disabled={!puedeConfig}
                   value={rangos.temperaturaMin}
                   onChange={(e) => setRangos({ ...rangos, temperaturaMin: Number(e.target.value) })}
-                  className="w-full px-2.5 py-1 text-xs border border-slate-300 rounded-lg bg-white"
+                  className="w-full px-3 py-1 text-xs border border-slate-300 rounded-lg bg-white"
                 />
               </div>
               <div>
-                <label className="text-[11px] text-slate-500">Máximo</label>
+                <label className="text-xs text-slate-500">Máximo</label>
                 <input
                   type="number"
                   step="0.5"
                   disabled={!puedeConfig}
                   value={rangos.temperaturaMax}
                   onChange={(e) => setRangos({ ...rangos, temperaturaMax: Number(e.target.value) })}
-                  className="w-full px-2.5 py-1 text-xs border border-slate-300 rounded-lg bg-white"
+                  className="w-full px-3 py-1 text-xs border border-slate-300 rounded-lg bg-white"
                 />
               </div>
             </div>
           </div>
 
           {/* Oxígeno Disuelto */}
-          <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
-            <span className="text-xs font-bold text-slate-800 block">Oxígeno Disuelto (mg/L)</span>
+          <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+            <span className="text-xs font-semibold text-slate-800 block">Oxígeno Disuelto (mg/L)</span>
             <div>
-              <label className="text-[11px] text-slate-500">Mínimo Crítico Recomendado</label>
+              <label className="text-xs text-slate-500">Mínimo Crítico Recomendado</label>
               <input
                 type="number"
                 step="0.1"
                 disabled={!puedeConfig}
                 value={rangos.oxigenoMin}
                 onChange={(e) => setRangos({ ...rangos, oxigenoMin: Number(e.target.value) })}
-                className="w-full px-2.5 py-1 text-xs border border-slate-300 rounded-lg bg-white"
+                className="w-full px-3 py-1 text-xs border border-slate-300 rounded-lg bg-white"
               />
             </div>
           </div>
 
           {/* pH */}
-          <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
-            <span className="text-xs font-bold text-slate-800 block">pH</span>
+          <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+            <span className="text-xs font-semibold text-slate-800 block">pH</span>
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="text-[11px] text-slate-500">Mínimo</label>
+                <label className="text-xs text-slate-500">Mínimo</label>
                 <input
                   type="number"
                   step="0.1"
                   disabled={!puedeConfig}
                   value={rangos.phMin}
                   onChange={(e) => setRangos({ ...rangos, phMin: Number(e.target.value) })}
-                  className="w-full px-2.5 py-1 text-xs border border-slate-300 rounded-lg bg-white"
+                  className="w-full px-3 py-1 text-xs border border-slate-300 rounded-lg bg-white"
                 />
               </div>
               <div>
-                <label className="text-[11px] text-slate-500">Máximo</label>
+                <label className="text-xs text-slate-500">Máximo</label>
                 <input
                   type="number"
                   step="0.1"
                   disabled={!puedeConfig}
                   value={rangos.phMax}
                   onChange={(e) => setRangos({ ...rangos, phMax: Number(e.target.value) })}
-                  className="w-full px-2.5 py-1 text-xs border border-slate-300 rounded-lg bg-white"
+                  className="w-full px-3 py-1 text-xs border border-slate-300 rounded-lg bg-white"
                 />
               </div>
             </div>
           </div>
 
           {/* Amonio total */}
-          <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
-            <span className="text-xs font-bold text-slate-800 block">Amonio Total (mg/L)</span>
+          <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+            <span className="text-xs font-semibold text-slate-800 block">Amonio Total (mg/L)</span>
             <div>
-              <label className="text-[11px] text-slate-500">Máximo Permitido</label>
+              <label className="text-xs text-slate-500">Máximo Permitido</label>
               <input
                 type="number"
                 step="0.1"
                 disabled={!puedeConfig}
                 value={rangos.amonioMax}
                 onChange={(e) => setRangos({ ...rangos, amonioMax: Number(e.target.value) })}
-                className="w-full px-2.5 py-1 text-xs border border-slate-300 rounded-lg bg-white"
+                className="w-full px-3 py-1 text-xs border border-slate-300 rounded-lg bg-white"
               />
             </div>
           </div>
 
           {/* Nitritos */}
-          <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
-            <span className="text-xs font-bold text-slate-800 block">Nitritos (mg/L)</span>
+          <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+            <span className="text-xs font-semibold text-slate-800 block">Nitritos (mg/L)</span>
             <div>
-              <label className="text-[11px] text-slate-500">Máximo Permitido (Tóxico)</label>
+              <label className="text-xs text-slate-500">Máximo Permitido (Tóxico)</label>
               <input
                 type="number"
                 step="0.01"
                 disabled={!puedeConfig}
                 value={rangos.nitritosMax}
                 onChange={(e) => setRangos({ ...rangos, nitritosMax: Number(e.target.value) })}
-                className="w-full px-2.5 py-1 text-xs border border-slate-300 rounded-lg bg-white"
+                className="w-full px-3 py-1 text-xs border border-slate-300 rounded-lg bg-white"
               />
             </div>
           </div>
 
           {/* Transparencia Secchi */}
-          <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
-            <span className="text-xs font-bold text-slate-800 block">Transparencia Disco Secchi (cm)</span>
+          <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+            <span className="text-xs font-semibold text-slate-800 block">Transparencia Disco Secchi (cm)</span>
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="text-[11px] text-slate-500">Mínimo</label>
+                <label className="text-xs text-slate-500">Mínimo</label>
                 <input
                   type="number"
                   step="1"
                   disabled={!puedeConfig}
                   value={rangos.secchiMin}
                   onChange={(e) => setRangos({ ...rangos, secchiMin: Number(e.target.value) })}
-                  className="w-full px-2.5 py-1 text-xs border border-slate-300 rounded-lg bg-white"
+                  className="w-full px-3 py-1 text-xs border border-slate-300 rounded-lg bg-white"
                 />
               </div>
               <div>
-                <label className="text-[11px] text-slate-500">Máximo</label>
+                <label className="text-xs text-slate-500">Máximo</label>
                 <input
                   type="number"
                   step="1"
                   disabled={!puedeConfig}
                   value={rangos.secchiMax}
                   onChange={(e) => setRangos({ ...rangos, secchiMax: Number(e.target.value) })}
-                  className="w-full px-2.5 py-1 text-xs border border-slate-300 rounded-lg bg-white"
+                  className="w-full px-3 py-1 text-xs border border-slate-300 rounded-lg bg-white"
                 />
               </div>
             </div>
@@ -619,100 +619,100 @@ export const ConfiguracionTab: React.FC<ConfiguracionTabProps> = ({
       {/* 3. SECCIÓN: FICHA NUTRICIONAL REFERENCIAL */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-xs p-6 space-y-4">
         <div>
-          <h2 className="text-base font-bold text-slate-900 flex items-center space-x-2">
+          <h2 className="text-base font-semibold text-slate-900 flex items-center space-x-2">
             <Apple className="w-5 h-5 text-emerald-600" />
             <span>3. Ficha Nutricional (por 100 g de tilapia cruda)</span>
           </h2>
-          <p className="text-xs text-slate-500 mt-0.5">
+          <p className="text-xs text-slate-500 mt-1">
             Aparece impresa en el certificado PDF oficial de cada lote como respaldo para restaurantes y distribuidores.
           </p>
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           <div>
-            <label className="block text-[11px] font-bold text-slate-700 mb-1">Energía (kcal)</label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Energía (kcal)</label>
             <input
               type="number"
               disabled={!puedeConfig}
               value={ficha.energiaKcal}
               onChange={(e) => setFicha({ ...ficha, energiaKcal: Number(e.target.value) })}
-              className="w-full px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg bg-white"
+              className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white"
             />
           </div>
           <div>
-            <label className="block text-[11px] font-bold text-slate-700 mb-1">Proteína (g)</label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Proteína (g)</label>
             <input
               type="number"
               step="0.1"
               disabled={!puedeConfig}
               value={ficha.proteinaG}
               onChange={(e) => setFicha({ ...ficha, proteinaG: Number(e.target.value) })}
-              className="w-full px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg bg-white"
+              className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white"
             />
           </div>
           <div>
-            <label className="block text-[11px] font-bold text-slate-700 mb-1">Grasa total (g)</label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Grasa total (g)</label>
             <input
               type="number"
               step="0.1"
               disabled={!puedeConfig}
               value={ficha.grasaTotalG}
               onChange={(e) => setFicha({ ...ficha, grasaTotalG: Number(e.target.value) })}
-              className="w-full px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg bg-white"
+              className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white"
             />
           </div>
           <div>
-            <label className="block text-[11px] font-bold text-slate-700 mb-1">Carbohidratos (g)</label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Carbohidratos (g)</label>
             <input
               type="number"
               step="0.1"
               disabled={!puedeConfig}
               value={ficha.carbohidratosG}
               onChange={(e) => setFicha({ ...ficha, carbohidratosG: Number(e.target.value) })}
-              className="w-full px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg bg-white"
+              className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white"
             />
           </div>
           <div>
-            <label className="block text-[11px] font-bold text-slate-700 mb-1">Colesterol (mg)</label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Colesterol (mg)</label>
             <input
               type="number"
               disabled={!puedeConfig}
               value={ficha.colesterolMg}
               onChange={(e) => setFicha({ ...ficha, colesterolMg: Number(e.target.value) })}
-              className="w-full px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg bg-white"
+              className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white"
             />
           </div>
           <div>
-            <label className="block text-[11px] font-bold text-slate-700 mb-1">Sodio (mg)</label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Sodio (mg)</label>
             <input
               type="number"
               disabled={!puedeConfig}
               value={ficha.sodioMg}
               onChange={(e) => setFicha({ ...ficha, sodioMg: Number(e.target.value) })}
-              className="w-full px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg bg-white"
+              className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white"
             />
           </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
           <div>
-            <label className="block text-[11px] font-bold text-slate-700 mb-1">Fuente Referencial</label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Fuente Referencial</label>
             <input
               type="text"
               disabled={!puedeConfig}
               value={ficha.fuente}
               onChange={(e) => setFicha({ ...ficha, fuente: e.target.value })}
-              className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-lg bg-white"
+              className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white"
             />
           </div>
           <div>
-            <label className="block text-[11px] font-bold text-slate-700 mb-1">Notas al pie</label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Notas al pie</label>
             <input
               type="text"
               disabled={!puedeConfig}
               value={ficha.notas}
               onChange={(e) => setFicha({ ...ficha, notas: e.target.value })}
-              className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-lg bg-white"
+              className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white"
             />
           </div>
         </div>

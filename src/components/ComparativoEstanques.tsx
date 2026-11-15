@@ -46,7 +46,7 @@ export const ComparativoEstanques: React.FC<{ datos: DatoComparativo[]; estanque
                 type="button"
                 aria-pressed={activo}
                 onClick={() => alternar(d.estanque)}
-                className={`inline-flex items-center gap-1.5 min-h-10 px-3 rounded-md border text-sm transition-colors duration-150 active:scale-[0.97] ${
+                className={`inline-flex items-center gap-2 min-h-10 px-3 rounded-md border text-sm transition-colors duration-150 active:scale-[0.97] ${
                   activo ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-300 bg-white text-slate-700 hover:border-slate-500'
                 }`}
               >
@@ -75,9 +75,9 @@ export const ComparativoEstanques: React.FC<{ datos: DatoComparativo[]; estanque
           <tbody>
             {FILAS.map((f) => (
               <tr key={f.clave} className="border-b border-slate-200">
-                <th scope="row" className="text-left font-normal text-slate-600 py-2.5 pr-4">{f.etiqueta}</th>
+                <th scope="row" className="text-left font-normal text-slate-600 py-3 pr-4">{f.etiqueta}</th>
                 {columnas.map((c) => (
-                  <td key={c.estanque} className="text-right py-2.5 px-4 font-semibold text-slate-900 tabular-nums">
+                  <td key={c.estanque} className="text-right py-3 px-4 font-semibold text-slate-900 tabular-nums">
                     {f.formato(c[f.clave])}
                   </td>
                 ))}
@@ -91,7 +91,7 @@ export const ComparativoEstanques: React.FC<{ datos: DatoComparativo[]; estanque
       <div className="md:hidden space-y-3">
         {columnas.map((c) => (
           <section key={c.estanque} className="border border-slate-200 rounded-lg p-4">
-            <h3 className="font-serif text-lg text-slate-900">{nombre(c.estanque)}</h3>
+            <h3 className="font-serif text-base text-slate-900">{nombre(c.estanque)}</h3>
             <p className="text-xs text-slate-500 mb-2">Código {c.estanque}</p>
             <dl className="divide-y divide-slate-200 text-sm">
               {FILAS.map((f) => (

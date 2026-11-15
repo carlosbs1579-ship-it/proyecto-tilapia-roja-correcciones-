@@ -42,7 +42,7 @@ export const FotosEntregaOrden: React.FC<{ orden: OrdenEntrega }> = ({ orden: o 
                 <img src={foto.datos} alt="Foto de la entrega" className="w-24 h-24 object-cover rounded border border-slate-200" />
               </button>
             ) : (
-              <div className="w-24 h-24 rounded border border-dashed border-slate-300 flex items-center justify-center text-slate-400">
+              <div className="w-24 h-24 rounded border border-dashed border-slate-300 flex items-center justify-center text-slate-500">
                 <Camera className="w-6 h-6" />
               </div>
             )}
@@ -59,7 +59,7 @@ export const FotosEntregaOrden: React.FC<{ orden: OrdenEntrega }> = ({ orden: o 
                   La imagen ya no está disponible (se conserva {DIAS_RETENCION_FOTOS} días). Queda el registro de la foto en el historial.
                 </span>
               )}
-              <span className="block font-mono text-[11px] text-slate-400 break-all">SHA-256: {ref.hash}</span>
+              <span className="block font-mono text-xs text-slate-500 break-all">SHA-256: {ref.hash}</span>
               {foto && (
                 <button
                   type="button"
@@ -67,7 +67,7 @@ export const FotosEntregaOrden: React.FC<{ orden: OrdenEntrega }> = ({ orden: o 
                     const ok = await verificarFoto(foto, ref.hash);
                     setVerificacion((prev) => ({ ...prev, [ref.id]: ok }));
                   }}
-                  className="px-1.5 py-0.5 rounded border border-slate-300 hover:bg-slate-100"
+                  className="px-2 py-1 rounded border border-slate-300 hover:bg-slate-100"
                 >
                   Verificar foto
                 </button>

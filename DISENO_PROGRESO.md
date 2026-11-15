@@ -12,7 +12,7 @@ Sistema visual vigente: `DESIGN.md` (paleta tinta, verde solo íntegro, oro viej
 - [x] Fase 4. Pestañas
 - [x] Fase 5. Personal y permisos
 - [x] Fase 6. Pantalla de inicio de sesión
-- [ ] Fase 7. Pulido general
+- [x] Fase 7. Pulido general
 - [ ] Verificación final
 
 ## Hallazgos de la fase 0
@@ -89,3 +89,14 @@ Sistema visual vigente: `DESIGN.md` (paleta tinta, verde solo íntegro, oro viej
 - Campos con etiqueta encima, anillo de foco en 150 ms, error con temblor de 4 px una vez y mensaje debajo del campo, botón para mostrar u ocultar la contraseña, botón con carga interna sin cambiar de tamaño, recuperar contraseña, crear cuenta y Google.
 - Al ingresar, el formulario se desvanece en 180 ms y la app entra con fundido y 12 px en 320 ms. Entrada de la pantalla escalonada a 80 ms.
 - Lógica: el rol elegido es solo una preferencia. Se aplica con la lógica existente de funciones (`funcionesDisponibles`, `guardarFuncion`): si la cuenta tiene esa función entra con ella; un administrador que elige Operador entra como administrador; si no la tiene, entra con sus funciones y ve un aviso. Las reglas de la base de datos no cambian.
+
+## Fase 7 hecha
+
+- Escala tipográfica de 5 tamaños: 12, 14, 16, 24 y 36 px (11 px pasa a 12; 18 a 16; 20 y 30 a 24). Rótulos a 12 px.
+- Pesos: regular, medio y seminegrita (las negritas pasan a seminegrita).
+- Espaciados en múltiplos de 4 px (los medios pasos de 2 px suben al siguiente múltiplo: 400 cambios).
+- Un solo radio (6 px) para tarjetas, botones y campos.
+- Contraste: el gris claro sobre fondo claro pasa a uno más oscuro (104 cambios); sobre fondo oscuro pasa a gris claro legible.
+- `transition-all` reemplazado por transiciones de color.
+- Hover solo con puntero: Tailwind 4 ya lo limita a `@media (hover: hover)`; la fila de Personal usa además `(pointer: fine)`.
+- Estados vacíos con texto útil y acción: Inicio (registrar el primer lote o borrar la búsqueda), Lotes y Entregas (limpiar filtros), Repartidor (ver mis entregas por hacer), Analítica, Personal (ver a todos).

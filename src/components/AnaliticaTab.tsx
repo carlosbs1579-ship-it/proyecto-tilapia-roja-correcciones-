@@ -223,17 +223,17 @@ export const AnaliticaTab: React.FC<AnaliticaTabProps> = ({
 
       {/* COMPARATIVO DE ESTANQUES */}
       <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
-        <h2 className="text-lg text-slate-900 mb-1">Comparativo de estanques</h2>
+        <h2 className="text-base text-slate-900 mb-1">Comparativo de estanques</h2>
         <p className="text-sm text-slate-600 mb-4">Biomasa viva, supervivencia y conversión alimenticia de cada estanque.</p>
         <ComparativoEstanques datos={comparativaEstanques} estanques={config.estanques} />
       </div>
 
       {/* SECCIÓN 1: LOTES EN GESTIÓN (ACTIVOS) */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
-        <div className="px-5 py-3.5 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
+        <div className="px-5 py-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-            <h2 className="text-sm font-bold text-slate-900">Lotes en gestión (activos)</h2>
+            <h2 className="text-sm font-semibold text-slate-900">Lotes en gestión (activos)</h2>
           </div>
           <span className="text-xs font-semibold text-slate-500">
             {lotesActivos.length} lotes
@@ -241,13 +241,13 @@ export const AnaliticaTab: React.FC<AnaliticaTabProps> = ({
         </div>
 
         {lotesActivos.length === 0 ? (
-          <div className="py-8 text-center text-xs text-slate-400">
-            No hay lotes activos en este momento.
+          <div className="py-8 text-center text-xs text-slate-500">
+            Ningún lote está en cultivo ahora. Cuando se registre una siembra, su avance aparece aquí.
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 text-slate-600 font-bold uppercase text-[11px] border-b border-slate-200">
+              <thead className="bg-slate-50 text-slate-600 font-semibold uppercase text-xs border-b border-slate-200">
                 <tr>
                   <th className="px-4 py-3">Código</th>
                   <th className="px-3 py-3">Estanque</th>
@@ -264,16 +264,16 @@ export const AnaliticaTab: React.FC<AnaliticaTabProps> = ({
               <tbody className="divide-y divide-slate-100">
                 {lotesActivos.map((l) => (
                   <tr key={l.codigo} className="hover:bg-slate-50/80">
-                    <td className="px-4 py-3 font-mono font-bold text-slate-900">{l.codigo}</td>
+                    <td className="px-4 py-3 font-mono font-semibold text-slate-900">{l.codigo}</td>
                     <td className="px-3 py-3 font-semibold text-sky-700">{l.estanque}</td>
                     <td className="px-3 py-3 text-slate-600">{l.fechaSiembra}</td>
                     <td className="px-3 py-3 text-right text-slate-600">{l.resumen.diasDeCultivo} d</td>
-                    <td className="px-3 py-3 text-right font-bold text-emerald-600">{l.resumen.supervivencia}%</td>
+                    <td className="px-3 py-3 text-right font-semibold text-emerald-600">{l.resumen.supervivencia}%</td>
                     <td className="px-3 py-3 text-right font-semibold">{l.resumen.pesoPromedioActualG} g</td>
                     <td className="px-3 py-3 text-right font-semibold">{l.resumen.biomasaEstimadaKg} kg</td>
                     <td className="px-3 py-3 text-right font-mono">{l.resumen.FCA ?? '-'}</td>
                     <td className="px-4 py-3 text-center">
-                      <span className="text-[11px] bg-slate-100 px-2 py-0.5 rounded text-slate-600">En cultivo</span>
+                      <span className="text-xs bg-slate-100 px-2 py-1 rounded text-slate-600">En cultivo</span>
                     </td>
                     <td className="px-4 py-3 text-right">
                       <button
@@ -293,10 +293,10 @@ export const AnaliticaTab: React.FC<AnaliticaTabProps> = ({
 
       {/* SECCIÓN 2: LOTES CERRADOS */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
-        <div className="px-5 py-3.5 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
+        <div className="px-5 py-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <span className="w-2.5 h-2.5 rounded-full bg-slate-400" />
-            <h2 className="text-sm font-bold text-slate-900">Lotes cerrados (cosechados)</h2>
+            <h2 className="text-sm font-semibold text-slate-900">Lotes cerrados (cosechados)</h2>
           </div>
           <span className="text-xs font-semibold text-slate-500">
             {lotesCerrados.length} lotes
@@ -304,13 +304,13 @@ export const AnaliticaTab: React.FC<AnaliticaTabProps> = ({
         </div>
 
         {lotesCerrados.length === 0 ? (
-          <div className="py-8 text-center text-xs text-slate-400">
-            No hay lotes cerrados en el historial.
+          <div className="py-8 text-center text-xs text-slate-500">
+            Todavía no hay lotes sellados. Al cerrar un lote, su resultado final aparece aquí.
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 text-slate-600 font-bold uppercase text-[11px] border-b border-slate-200">
+              <thead className="bg-slate-50 text-slate-600 font-semibold uppercase text-xs border-b border-slate-200">
                 <tr>
                   <th className="px-4 py-3">Código</th>
                   <th className="px-3 py-3">Estanque</th>
@@ -327,16 +327,16 @@ export const AnaliticaTab: React.FC<AnaliticaTabProps> = ({
               <tbody className="divide-y divide-slate-100">
                 {lotesCerrados.map((l) => (
                   <tr key={l.codigo} className="hover:bg-slate-50/80">
-                    <td className="px-4 py-3 font-mono font-bold text-slate-900">{l.codigo}</td>
+                    <td className="px-4 py-3 font-mono font-semibold text-slate-900">{l.codigo}</td>
                     <td className="px-3 py-3 font-semibold text-sky-700">{l.estanque}</td>
                     <td className="px-3 py-3 text-slate-600">{l.fechaSiembra}</td>
                     <td className="px-3 py-3 text-slate-600">{l.fechaCierre || '-'}</td>
                     <td className="px-3 py-3 text-right text-slate-600">{l.resumen.diasDeCultivo} d</td>
-                    <td className="px-3 py-3 text-right font-bold text-emerald-600">{l.resumen.supervivencia}%</td>
+                    <td className="px-3 py-3 text-right font-semibold text-emerald-600">{l.resumen.supervivencia}%</td>
                     <td className="px-3 py-3 text-right font-semibold">{l.resumen.biomasaCosechadaKg} kg</td>
                     <td className="px-3 py-3 text-right font-mono">{l.resumen.FCA ?? '-'}</td>
                     <td className="px-4 py-3 text-center">
-                      <span className="text-[11px] bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded font-semibold">
+                      <span className="text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-1 rounded font-semibold">
                         Disponible
                       </span>
                     </td>
@@ -361,7 +361,7 @@ export const AnaliticaTab: React.FC<AnaliticaTabProps> = ({
         <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-xs space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-200">
             <div>
-              <h2 className="text-base font-bold text-slate-900 flex items-center space-x-2">
+              <h2 className="text-base font-semibold text-slate-900 flex items-center space-x-2">
                 <TrendingUp className="w-5 h-5 text-sky-600" />
                 <span>Gráficos de Trazabilidad: {loteSeleccionado.codigo}</span>
               </h2>
@@ -376,7 +376,7 @@ export const AnaliticaTab: React.FC<AnaliticaTabProps> = ({
               <select
                 value={loteSeleccionadoCodigo}
                 onChange={(e) => setLoteSeleccionadoCodigo(e.target.value)}
-                className="px-3 py-1.5 text-xs font-mono font-medium border border-slate-300 rounded-lg bg-white"
+                className="px-3 py-2 text-xs font-mono font-medium border border-slate-300 rounded-lg bg-white"
               >
                 {lotes.map((l) => (
                   <option key={l.codigo} value={l.codigo}>
@@ -390,7 +390,7 @@ export const AnaliticaTab: React.FC<AnaliticaTabProps> = ({
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Gráfico 1: Peso Promedio (g) y Biomasa (kg) */}
             <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-              <h3 className="text-xs font-bold uppercase text-slate-700 mb-2">
+              <h3 className="text-xs font-semibold uppercase text-slate-700 mb-2">
                 Evolución de Peso Promedio (g) y Biomasa Estimada (kg)
               </h3>
               <div className="h-64 w-full">
@@ -411,7 +411,7 @@ export const AnaliticaTab: React.FC<AnaliticaTabProps> = ({
 
             {/* Gráfico 2: Alimento Acumulado y Mortalidad */}
             <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-              <h3 className="text-xs font-bold uppercase text-slate-700 mb-2">
+              <h3 className="text-xs font-semibold uppercase text-slate-700 mb-2">
                 Alimento Acumulado (kg) y Mortalidad Acumulada (peces)
               </h3>
               <div className="h-64 w-full">
@@ -432,11 +432,11 @@ export const AnaliticaTab: React.FC<AnaliticaTabProps> = ({
 
             {/* Gráfico 3: Parámetros de Agua - Temperatura y Oxígeno */}
             <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-              <h3 className="text-xs font-bold uppercase text-slate-700 mb-2">
+              <h3 className="text-xs font-semibold uppercase text-slate-700 mb-2">
                 Temperatura (°C) y Oxígeno Disuelto (mg/L)
               </h3>
               {seriesAgua.length === 0 ? (
-                <div className="h-64 flex items-center justify-center text-xs text-slate-400">
+                <div className="h-64 flex items-center justify-center text-xs text-slate-500">
                   No hay mediciones de agua registradas en este lote.
                 </div>
               ) : (
@@ -461,11 +461,11 @@ export const AnaliticaTab: React.FC<AnaliticaTabProps> = ({
 
             {/* Gráfico 4: Parámetros de Agua - pH y Secchi */}
             <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-              <h3 className="text-xs font-bold uppercase text-slate-700 mb-2">
+              <h3 className="text-xs font-semibold uppercase text-slate-700 mb-2">
                 pH y Transparencia Secchi (cm)
               </h3>
               {seriesAgua.length === 0 ? (
-                <div className="h-64 flex items-center justify-center text-xs text-slate-400">
+                <div className="h-64 flex items-center justify-center text-xs text-slate-500">
                   No hay mediciones de agua registradas en este lote.
                 </div>
               ) : (

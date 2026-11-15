@@ -36,7 +36,7 @@ export const CorreccionEntrega: React.FC<{ orden: OrdenEntrega; procesando: bool
       <button
         type="button"
         onClick={abrir}
-        className="px-3 py-1.5 border border-slate-300 rounded-lg bg-white text-slate-700 hover:bg-slate-100 font-semibold"
+        className="px-3 py-2 border border-slate-300 rounded-lg bg-white text-slate-700 hover:bg-slate-100 font-semibold"
       >
         Corregir cantidades entregadas
       </button>
@@ -79,7 +79,7 @@ export const CorreccionEntrega: React.FC<{ orden: OrdenEntrega; procesando: bool
         onChange={(e) => setMotivo(e.target.value)}
         className="w-full px-2 py-1 border border-slate-300 rounded"
       />
-      <p className="text-[11px] text-slate-500">
+      <p className="text-xs text-slate-500">
         Si esta orden tiene un comprobante vigente con los datos anteriores, anúlalo en "Documentación de entrega" y emite uno nuevo después de corregir.
       </p>
       {(motivo.trim().length < 10 || iguales || total <= 0) && (
@@ -102,11 +102,11 @@ export const CorreccionEntrega: React.FC<{ orden: OrdenEntrega; procesando: bool
               setAbierto(false);
             }, `Entrega de ${o.id} corregida. Ya puedes emitir el comprobante con los datos corregidos.`)
           }
-          className="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded-lg font-bold disabled:opacity-40"
+          className="px-3 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg font-semibold disabled:opacity-40"
         >
           Guardar corrección
         </button>
-        <button type="button" onClick={() => setAbierto(false)} className="px-3 py-1.5 border border-slate-300 rounded-lg">
+        <button type="button" onClick={() => setAbierto(false)} className="px-3 py-2 border border-slate-300 rounded-lg">
           Cancelar
         </button>
       </div>

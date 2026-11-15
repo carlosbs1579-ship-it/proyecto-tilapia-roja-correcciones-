@@ -33,7 +33,7 @@ const SelectorRapidoFuncion: React.FC<{
   compacto?: boolean;
 }> = ({ funciones, activa, onElegir, compacto }) => (
   <LayoutGroup id={compacto ? 'funcion-movil' : 'funcion-escritorio'}>
-  <div className="flex items-center rounded-lg bg-slate-800 p-0.5" role="group" aria-label="Cambiar de función">
+  <div className="flex items-center rounded-lg bg-slate-800 p-1" role="group" aria-label="Cambiar de función">
     {funciones.map((f) => (
       <button
         key={f}
@@ -41,7 +41,7 @@ const SelectorRapidoFuncion: React.FC<{
         onClick={() => f !== activa && onElegir(f)}
         aria-pressed={f === activa}
         title={f === activa ? `Trabajando como ${ETIQUETA_ROL[f]}` : `Cambiar a ${ETIQUETA_ROL[f]}`}
-        className={`pestana relative flex items-center rounded-md font-semibold ${compacto ? 'min-h-10 px-3 text-xs' : 'min-h-9 px-2.5 text-xs'} ${
+        className={`pestana relative flex items-center rounded-md font-semibold ${compacto ? 'min-h-10 px-3 text-xs' : 'min-h-9 px-3 text-xs'} ${
           f === activa ? 'text-slate-900' : 'text-slate-300 hover:text-white'
         }`}
       >
@@ -141,7 +141,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           <button type="button" className="flex items-center space-x-3 shrink-0 text-left" onClick={() => setTabActiva(tabInicial)}>
             <LogoLore className="w-10 h-8 text-amber-400" />
             <span>
-              <span className="block font-serif text-xl leading-tight">Cultivos Loré</span>
+              <span className="block font-serif text-2xl leading-tight">Cultivos Loré</span>
               <span className="rotulo hidden sm:block text-slate-300">Trazabilidad Tilapia Pro · Turbaco, Bolívar</span>
             </span>
           </button>
@@ -172,7 +172,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   </div>
                   <div className="hidden lg:block text-left text-xs">
                     <p className="font-semibold text-slate-200 truncate max-w-[150px]" title={usuario.email || undefined}>{perfilUsuario?.displayName || usuario.email}</p>
-                    <p className={`text-[11px] flex items-center truncate max-w-[150px] ${
+                    <p className={`text-xs flex items-center truncate max-w-[150px] ${
                       funcionActiva ? 'text-slate-300 font-semibold' : 'text-slate-300'
                     }`}>
                       {funcionActiva ? (
@@ -206,7 +206,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             ) : (
               <button
                 onClick={onAbrirAuth}
-                className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 text-sm font-semibold rounded-md bg-slate-50 hover:bg-white text-slate-900 transition-colors"
+                className="inline-flex items-center space-x-2 px-4 py-2 text-sm font-semibold rounded-md bg-slate-50 hover:bg-white text-slate-900 transition-colors"
               >
                 <LogIn className="w-4 h-4" />
                 <span>Ingresar</span>
@@ -217,8 +217,8 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Cambio de función en el celular */}
         {usuario && funciones.length > 1 && funcionActiva && !eligiendoFuncion && (
-          <div className="md:hidden flex items-center justify-between border-t border-slate-800 py-1.5">
-            <span className="text-[11px] text-slate-400">Función:</span>
+          <div className="md:hidden flex items-center justify-between border-t border-slate-800 py-2">
+            <span className="text-xs text-slate-300">Función:</span>
             <SelectorRapidoFuncion funciones={funciones} activa={funcionActiva} onElegir={onSeleccionarFuncion} compacto />
           </div>
         )}

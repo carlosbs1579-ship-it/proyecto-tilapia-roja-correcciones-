@@ -293,29 +293,29 @@ export const DetalleEntregaRepartidor: React.FC<DetalleEntregaRepartidorProps> =
           ? 'bg-emerald-50 border-emerald-300 text-emerald-900'
           : habilitado
           ? 'bg-sky-600 border-sky-600 text-white hover:bg-sky-500'
-          : 'bg-slate-50 border-slate-200 text-slate-400'
+          : 'bg-slate-50 border-slate-200 text-slate-500'
       }`}
     >
       <span
-        className={`w-9 h-9 rounded-full flex items-center justify-center font-bold shrink-0 ${
+        className={`w-9 h-9 rounded-full flex items-center justify-center font-semibold shrink-0 ${
           hecho ? 'bg-emerald-600 text-white' : habilitado ? 'bg-white text-sky-700' : 'bg-slate-200 text-slate-500'
         }`}
       >
         {hecho ? <CheckCircle className="w-5 h-5" /> : numero}
       </span>
       <span className="flex-1">
-        <span className="flex items-center space-x-2 text-base font-bold">
+        <span className="flex items-center space-x-2 text-base font-semibold">
           {icono}
           <span>{texto}</span>
         </span>
-        {detalle && <span className="block text-xs font-normal mt-0.5 opacity-90">{detalle}</span>}
+        {detalle && <span className="block text-xs font-normal mt-1 opacity-90">{detalle}</span>}
       </span>
     </button>
   );
 
   return (
     <div className="max-w-3xl mx-auto space-y-4">
-      <button onClick={onVolver} className="inline-flex items-center space-x-1.5 text-sm text-sky-700 font-semibold">
+      <button onClick={onVolver} className="inline-flex items-center space-x-2 text-sm text-sky-700 font-semibold">
         <ArrowLeft className="w-4 h-4" />
         <span>Volver a mis entregas</span>
       </button>
@@ -330,17 +330,17 @@ export const DetalleEntregaRepartidor: React.FC<DetalleEntregaRepartidorProps> =
       {/* Cliente */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-xs p-5 space-y-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h1 className="text-lg font-bold text-slate-900">{orden.clienteNombre}</h1>
+          <h1 className="text-base font-semibold text-slate-900">{orden.clienteNombre}</h1>
           <span className="rotulo text-sky-800 border-b border-sky-600">{etiquetaEstado}</span>
         </div>
         <p className="text-xs text-slate-500 font-mono">{orden.id}</p>
         <p className="flex items-start space-x-2 text-sm text-slate-800">
-          <MapPin className="w-4 h-4 mt-0.5 text-slate-400 shrink-0" />
+          <MapPin className="w-4 h-4 mt-1 text-slate-500 shrink-0" />
           <span>{orden.clienteDireccion || 'Sin dirección registrada (consulta con el operador)'}</span>
         </p>
         {orden.clienteContacto && (
           <p className="flex items-center space-x-2 text-sm text-slate-800">
-            <Phone className="w-4 h-4 text-slate-400 shrink-0" />
+            <Phone className="w-4 h-4 text-slate-500 shrink-0" />
             <span>{orden.clienteContacto}</span>
           </p>
         )}
@@ -356,7 +356,7 @@ export const DetalleEntregaRepartidor: React.FC<DetalleEntregaRepartidorProps> =
 
       {/* Cantidades */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-xs p-5 space-y-3">
-        <h2 className="text-sm font-bold text-slate-900">Qué debes entregar</h2>
+        <h2 className="text-sm font-semibold text-slate-900">Qué debes entregar</h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
           {[
             ['Solicitado', orden.cantidadSolicitada],
@@ -365,15 +365,15 @@ export const DetalleEntregaRepartidor: React.FC<DetalleEntregaRepartidorProps> =
             ['Por entregar', cantidadPendiente(orden)]
           ].map(([t, v]) => (
             <div key={t as string} className="bg-slate-50 border border-slate-200 rounded-lg p-2">
-              <span className="block text-[11px] text-slate-500">{t}</span>
+              <span className="block text-xs text-slate-500">{t}</span>
               <strong className="text-base text-slate-900">{num(v as number)}</strong>
-              <span className="block text-[11px] text-slate-500">{orden.unidad}</span>
+              <span className="block text-xs text-slate-500">{orden.unidad}</span>
             </div>
           ))}
         </div>
         <div>
-          <span className="block text-xs font-bold text-slate-700 mb-1">Distribución autorizada (no se puede modificar aquí)</span>
-          <div className="space-y-1.5">
+          <span className="block text-xs font-semibold text-slate-700 mb-1">Distribución autorizada (no se puede modificar aquí)</span>
+          <div className="space-y-2">
             {lotes.map(([codigo, p]) => (
               <div key={codigo} className="flex flex-wrap items-center justify-between gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm">
                 <span>
@@ -395,7 +395,7 @@ export const DetalleEntregaRepartidor: React.FC<DetalleEntregaRepartidorProps> =
       {/* Pasos de la entrega */}
       {!['entregado', 'cancelado'].includes(orden.estado) && (
         <div className="bg-white rounded-xl border border-slate-200 shadow-xs p-5 space-y-3">
-          <h2 className="text-sm font-bold text-slate-900">Pasos de la entrega</h2>
+          <h2 className="text-sm font-semibold text-slate-900">Pasos de la entrega</h2>
           {orden.estado === 'entrega_parcial' ? (
             <p className="text-sm text-amber-900 bg-amber-50 border border-amber-200 rounded-lg p-3">
               Entregaste una parte. Faltan <strong>{num(cantidadPendiente(orden))} {orden.unidad}</strong>: el operador decidirá si
@@ -451,7 +451,7 @@ export const DetalleEntregaRepartidor: React.FC<DetalleEntregaRepartidorProps> =
 
           {panel === 'entrega' && (
             <div className="border-2 border-sky-200 rounded-xl p-4 space-y-3 bg-sky-50/40">
-              <p className="text-sm font-bold text-slate-900">¿Cuánto entregaste de cada lote?</p>
+              <p className="text-sm font-semibold text-slate-900">¿Cuánto entregaste de cada lote?</p>
               {lotes.map(([codigo, p]) => (
                 <label key={codigo} className="flex flex-wrap items-center justify-between gap-2 text-sm">
                   <span>
@@ -513,7 +513,7 @@ export const DetalleEntregaRepartidor: React.FC<DetalleEntregaRepartidorProps> =
               />
               {errorMsg && <p className="text-sm text-red-700">{errorMsg}</p>}
               <div className="flex flex-col sm:flex-row gap-2">
-                <button onClick={confirmarEntrega} disabled={procesandoFoto} className="flex-1 px-4 py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-md font-bold">
+                <button onClick={confirmarEntrega} disabled={procesandoFoto} className="flex-1 px-4 py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-md font-semibold">
                   Confirmar entrega
                 </button>
                 <button onClick={() => setPanel(null)} className="px-4 py-3 bg-slate-100 text-slate-700 rounded-xl font-semibold">
@@ -534,7 +534,7 @@ export const DetalleEntregaRepartidor: React.FC<DetalleEntregaRepartidorProps> =
                 setErrorMsg(null);
                 setPanel(panel === 'novedad' ? null : 'novedad');
               }}
-              className="flex items-center justify-center space-x-2 p-4 rounded-xl border-2 border-amber-300 bg-amber-50 text-amber-900 font-bold"
+              className="flex items-center justify-center space-x-2 p-4 rounded-xl border-2 border-amber-300 bg-amber-50 text-amber-900 font-semibold"
             >
               <AlertTriangle className="w-5 h-5" />
               <span>Registrar novedad</span>
@@ -543,7 +543,7 @@ export const DetalleEntregaRepartidor: React.FC<DetalleEntregaRepartidorProps> =
           {puedeAjuste && (
             <button
               onClick={() => (panel === 'ajuste' ? setPanel(null) : abrirAjuste())}
-              className="flex items-center justify-center space-x-2 p-4 rounded-xl border-2 border-indigo-300 bg-indigo-50 text-indigo-900 font-bold"
+              className="flex items-center justify-center space-x-2 p-4 rounded-xl border-2 border-indigo-300 bg-indigo-50 text-indigo-900 font-semibold"
             >
               <Repeat className="w-5 h-5" />
               <span>Solicitar ajuste de cantidades</span>
@@ -554,7 +554,7 @@ export const DetalleEntregaRepartidor: React.FC<DetalleEntregaRepartidorProps> =
 
       {panel === 'novedad' && (
         <div className="bg-white rounded-xl border-2 border-amber-200 p-4 space-y-3">
-          <p className="text-sm font-bold text-slate-900">Novedades</p>
+          <p className="text-sm font-semibold text-slate-900">Novedades</p>
           <select
             value={categoria}
             onChange={(e) => setCategoria(e.target.value as CategoriaNovedad)}
@@ -572,9 +572,9 @@ export const DetalleEntregaRepartidor: React.FC<DetalleEntregaRepartidorProps> =
             onChange={(e) => setDescripcionNovedad(e.target.value)}
             className="w-full px-3 py-2 text-base border border-slate-300 rounded-lg"
           />
-          <p className="text-[11px] text-slate-500">Por ahora las novedades se registran solo con texto (sin fotos).</p>
+          <p className="text-xs text-slate-500">Por ahora las novedades se registran solo con texto (sin fotos).</p>
           {errorMsg && <p className="text-sm text-red-700">{errorMsg}</p>}
-          <button onClick={registrarNovedad} className="w-full px-4 py-3 bg-amber-600 hover:bg-amber-500 text-white rounded-xl font-bold">
+          <button onClick={registrarNovedad} className="w-full px-4 py-3 bg-amber-600 hover:bg-amber-500 text-white rounded-xl font-semibold">
             Guardar novedad
           </button>
         </div>
@@ -582,7 +582,7 @@ export const DetalleEntregaRepartidor: React.FC<DetalleEntregaRepartidorProps> =
 
       {panel === 'ajuste' && (
         <div className="bg-white rounded-xl border-2 border-indigo-200 p-4 space-y-3">
-          <p className="text-sm font-bold text-slate-900">Solicitud de ajuste</p>
+          <p className="text-sm font-semibold text-slate-900">Solicitud de ajuste</p>
           <p className="text-xs text-slate-600">
             Propón las nuevas cantidades. El operador debe aprobarlas: mientras tanto sigue vigente la distribución autorizada.
           </p>
@@ -630,7 +630,7 @@ export const DetalleEntregaRepartidor: React.FC<DetalleEntregaRepartidorProps> =
             className="w-full px-3 py-2 text-base border border-slate-300 rounded-lg"
           />
           {errorMsg && <p className="text-sm text-red-700">{errorMsg}</p>}
-          <button onClick={enviarAjuste} className="w-full px-4 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold">
+          <button onClick={enviarAjuste} className="w-full px-4 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-semibold">
             Enviar solicitud al operador
           </button>
         </div>
@@ -639,7 +639,7 @@ export const DetalleEntregaRepartidor: React.FC<DetalleEntregaRepartidorProps> =
       {/* Solicitudes de ajuste */}
       {ajustes.length > 0 && (
         <div className="bg-white rounded-xl border border-slate-200 shadow-xs p-5 space-y-2">
-          <h2 className="text-sm font-bold text-slate-900">Mis solicitudes de ajuste</h2>
+          <h2 className="text-sm font-semibold text-slate-900">Mis solicitudes de ajuste</h2>
           {ajustes.map((a) => (
             <div key={a.id} className="border border-slate-200 rounded-lg p-3 text-sm space-y-1">
               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -665,7 +665,7 @@ export const DetalleEntregaRepartidor: React.FC<DetalleEntregaRepartidorProps> =
       {/* Acciones guardadas en el teléfono */}
       {acciones.length > 0 && (
         <div className="bg-white rounded-xl border border-slate-200 shadow-xs p-5 space-y-2">
-          <h2 className="text-sm font-bold text-slate-900 flex items-center space-x-1.5">
+          <h2 className="text-sm font-semibold text-slate-900 flex items-center space-x-2">
             <Smartphone className="w-4 h-4" />
             <span>Mis acciones en este teléfono</span>
           </h2>
@@ -675,14 +675,14 @@ export const DetalleEntregaRepartidor: React.FC<DetalleEntregaRepartidorProps> =
             .map((a) => (
               <div key={a.id} className={`border rounded-lg px-3 py-2 text-xs ${ESTILO_ACCION[a.estado]}`}>
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="font-bold">{a.tipo}</span>
+                  <span className="font-semibold">{a.tipo}</span>
                   <span className="flex items-center space-x-1">
                     {a.estado === 'conflicto' ? <XCircle className="w-3.5 h-3.5" /> : a.estado === 'guardada' ? <Clock className="w-3.5 h-3.5" /> : <CheckCircle className="w-3.5 h-3.5" />}
                     <span>{ETIQUETA_ESTADO_ACCION[a.estado]}</span>
                   </span>
                 </div>
                 <span className="block opacity-80">{formatearFechaColombia(a.registradaEn)}</span>
-                {a.mensaje && <span className="block mt-0.5">{a.mensaje}</span>}
+                {a.mensaje && <span className="block mt-1">{a.mensaje}</span>}
                 {a.estado === 'conflicto' && (
                   <button onClick={() => descartarAccion(uid, a.id)} className="mt-1 font-semibold underline">
                     Entendido, quitar de la lista
@@ -695,11 +695,11 @@ export const DetalleEntregaRepartidor: React.FC<DetalleEntregaRepartidorProps> =
 
       {/* Historial */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-xs p-5 space-y-2">
-        <h2 className="text-sm font-bold text-slate-900 flex items-center space-x-1.5">
+        <h2 className="text-sm font-semibold text-slate-900 flex items-center space-x-2">
           <History className="w-4 h-4" />
           <span>Historial del pedido</span>
         </h2>
-        <ol className="space-y-1.5">
+        <ol className="space-y-2">
           {orden.historial.map((ev) => (
             <li key={ev.indice} className="text-xs border-l-2 border-slate-200 pl-3">
               <span className="font-semibold text-slate-800">{ev.tipo}</span>

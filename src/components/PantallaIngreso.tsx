@@ -152,7 +152,7 @@ export const PantallaIngreso: React.FC<{ onRolElegido: (rol: RolIngreso) => void
 
           {/* Rol: control segmentado con indicador deslizante */}
           <fieldset>
-            <legend className="text-sm font-medium text-slate-800 mb-1.5">Ingresar como</legend>
+            <legend className="text-sm font-medium text-slate-800 mb-2">Ingresar como</legend>
             <LayoutGroup id="rol-ingreso">
               <div role="radiogroup" className="grid grid-cols-2 rounded-md bg-slate-100 p-1">
                 {ROLES.map((r) => {
@@ -186,7 +186,7 @@ export const PantallaIngreso: React.FC<{ onRolElegido: (rol: RolIngreso) => void
           </fieldset>
 
           <div>
-            <label htmlFor="ingreso-correo" className="block text-sm font-medium text-slate-800 mb-1.5">
+            <label htmlFor="ingreso-correo" className="block text-sm font-medium text-slate-800 mb-2">
               Correo
             </label>
             <input
@@ -202,14 +202,14 @@ export const PantallaIngreso: React.FC<{ onRolElegido: (rol: RolIngreso) => void
               className={`${anillo} ${error?.campo === 'email' ? 'border-red-500' : 'border-slate-300'}`}
             />
             {error?.campo === 'email' && (
-              <p id="error-correo" className="text-sm text-red-700 mt-1.5">
+              <p id="error-correo" className="text-sm text-red-700 mt-2">
                 {error.texto}
               </p>
             )}
           </div>
 
           <div>
-            <div className="flex items-baseline justify-between mb-1.5">
+            <div className="flex items-baseline justify-between mb-2">
               <label htmlFor="ingreso-clave" className="text-sm font-medium text-slate-800">
                 Contraseña
               </label>
@@ -241,23 +241,23 @@ export const PantallaIngreso: React.FC<{ onRolElegido: (rol: RolIngreso) => void
               </button>
             </div>
             {error?.campo === 'password' ? (
-              <p id="error-clave" className="text-sm text-red-700 mt-1.5">
+              <p id="error-clave" className="text-sm text-red-700 mt-2">
                 {error.texto}
               </p>
             ) : (
-              registro && <p className="text-sm text-slate-600 mt-1.5">Mínimo 6 caracteres.</p>
+              registro && <p className="text-sm text-slate-600 mt-2">Mínimo 6 caracteres.</p>
             )}
           </div>
 
           {error?.campo === 'general' && (
             <p id="error-ingreso" role="alert" className="flex items-start gap-2 text-sm text-red-700">
-              <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" strokeWidth={1.75} />
+              <AlertCircle className="w-4 h-4 mt-1 shrink-0" strokeWidth={1.75} />
               {error.texto}
             </p>
           )}
           {aviso && (
             <p role="status" className="flex items-start gap-2 text-sm text-emerald-700">
-              <CheckCircle className="w-4 h-4 mt-0.5 shrink-0" strokeWidth={1.75} />
+              <CheckCircle className="w-4 h-4 mt-1 shrink-0" strokeWidth={1.75} />
               {aviso}
             </p>
           )}

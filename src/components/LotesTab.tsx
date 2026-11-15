@@ -93,30 +93,30 @@ export const LotesTab: React.FC<LotesTabProps> = ({
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
           {/* Buscador parcial */}
           <div className="lg:col-span-2">
-            <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+            <label className="block text-xs font-semibold text-slate-600 mb-1">
               Buscar por Código
             </label>
             <div className="relative">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+              <Search className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
               <input
                 type="text"
                 placeholder="ej: 20261023, E1, A-E2..."
                 value={busqueda}
                 onChange={(e) => setBusqueda(e.target.value)}
-                className="w-full pl-9 pr-3 py-1.5 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
+                className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
               />
             </div>
           </div>
 
           {/* Filtro Estanque */}
           <div>
-            <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+            <label className="block text-xs font-semibold text-slate-600 mb-1">
               Estanque
             </label>
             <select
               value={filtroEstanque}
               onChange={(e) => setFiltroEstanque(e.target.value)}
-              className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500 bg-white"
+              className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500 bg-white"
             >
               <option value="todos">Todos los estanques</option>
               {config.estanques.map((e) => (
@@ -129,13 +129,13 @@ export const LotesTab: React.FC<LotesTabProps> = ({
 
           {/* Filtro Estado */}
           <div>
-            <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+            <label className="block text-xs font-semibold text-slate-600 mb-1">
               Estado del Lote
             </label>
             <select
               value={filtroEstado}
               onChange={(e) => setFiltroEstado(e.target.value)}
-              className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500 bg-white"
+              className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500 bg-white"
             >
               <option value="todos">Todos los estados</option>
               <option value="activo">Solo Activos (en cultivo)</option>
@@ -146,25 +146,25 @@ export const LotesTab: React.FC<LotesTabProps> = ({
           {/* Fechas de siembra */}
           <div className="flex space-x-2">
             <div className="flex-1">
-              <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+              <label className="block text-xs font-semibold text-slate-600 mb-1">
                 Desde
               </label>
               <input
                 type="date"
                 value={fechaDesde}
                 onChange={(e) => setFechaDesde(e.target.value)}
-                className="w-full px-2 py-1 text-[11px] border border-slate-300 rounded-lg"
+                className="w-full px-2 py-1 text-xs border border-slate-300 rounded-lg"
               />
             </div>
             <div className="flex-1">
-              <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+              <label className="block text-xs font-semibold text-slate-600 mb-1">
                 Hasta
               </label>
               <input
                 type="date"
                 value={fechaHasta}
                 onChange={(e) => setFechaHasta(e.target.value)}
-                className="w-full px-2 py-1 text-[11px] border border-slate-300 rounded-lg"
+                className="w-full px-2 py-1 text-xs border border-slate-300 rounded-lg"
               />
             </div>
           </div>
@@ -193,25 +193,38 @@ export const LotesTab: React.FC<LotesTabProps> = ({
         {lotesFiltrados.length === 0 ? (
           <div className="py-20 text-center">
             <Fish className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-            <h3 className="text-sm font-semibold text-slate-700">No se encontraron lotes con estos criterios</h3>
-            <p className="text-xs text-slate-400 mt-1">Prueba ajustando los filtros de búsqueda.</p>
+            <h3 className="text-sm font-semibold text-slate-800">Ningún lote coincide con estos filtros.</h3>
+            <p className="text-sm text-slate-600 mt-1">Quita algún filtro o la fecha para ver más lotes.</p>
+            <button
+              type="button"
+              onClick={() => {
+                setBusqueda('');
+                setFiltroEstanque('todos');
+                setFiltroEstado('todos');
+                setFechaDesde('');
+                setFechaHasta('');
+              }}
+              className="mt-4 inline-flex items-center justify-center min-h-11 px-4 rounded-md border border-slate-300 bg-white hover:bg-slate-50 text-slate-800 text-sm font-semibold transition-colors"
+            >
+              Limpiar filtros
+            </button>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 text-slate-600 uppercase font-bold text-[11px] border-b border-slate-200">
+              <thead className="bg-slate-50 text-slate-600 uppercase font-semibold text-xs border-b border-slate-200">
                 <tr>
-                  <th className="px-5 py-3.5">Código Lote</th>
-                  <th className="px-4 py-3.5">Estanque</th>
-                  <th className="px-4 py-3.5">Fecha Siembra</th>
-                  <th className="px-4 py-3.5 text-right">Días</th>
-                  <th className="px-4 py-3.5 text-right">Peces Vivos</th>
-                  <th className="px-4 py-3.5 text-right">Supervivencia</th>
-                  <th className="px-4 py-3.5 text-right">Peso Prom</th>
-                  <th className="px-4 py-3.5 text-right">Biomasa Viva</th>
-                  <th className="px-4 py-3.5 text-right">FCA</th>
-                  <th className="px-4 py-3.5 text-center">Estado</th>
-                  <th className="px-5 py-3.5 text-right">Acciones</th>
+                  <th className="px-5 py-4">Código Lote</th>
+                  <th className="px-4 py-4">Estanque</th>
+                  <th className="px-4 py-4">Fecha Siembra</th>
+                  <th className="px-4 py-4 text-right">Días</th>
+                  <th className="px-4 py-4 text-right">Peces Vivos</th>
+                  <th className="px-4 py-4 text-right">Supervivencia</th>
+                  <th className="px-4 py-4 text-right">Peso Prom</th>
+                  <th className="px-4 py-4 text-right">Biomasa Viva</th>
+                  <th className="px-4 py-4 text-right">FCA</th>
+                  <th className="px-4 py-4 text-center">Estado</th>
+                  <th className="px-5 py-4 text-right">Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -230,62 +243,62 @@ export const LotesTab: React.FC<LotesTabProps> = ({
                     tabIndex={0}
                     aria-label={`Abrir el lote ${lote.codigo}`}
                   >
-                    <td className="px-5 py-3.5">
+                    <td className="px-5 py-4">
                       <div className="font-serif text-base text-slate-900 tabular-nums">
                         {lote.codigo}
                       </div>
-                      <div className="text-[11px] text-slate-400">
+                      <div className="text-xs text-slate-500">
                         {lote.eventos?.length || 0} fases
                       </div>
                     </td>
-                    <td className="px-4 py-3.5">
+                    <td className="px-4 py-4">
                       <span className="font-serif text-sm text-slate-900">
                         {lote.estanque}
                       </span>
                     </td>
-                    <td className="px-4 py-3.5 text-slate-700">
+                    <td className="px-4 py-4 text-slate-700">
                       {lote.fechaSiembra}
                     </td>
-                    <td className="px-4 py-3.5 text-right font-medium text-slate-600">
+                    <td className="px-4 py-4 text-right font-medium text-slate-600">
                       {lote.resumen.diasDeCultivo != null ? `${lote.resumen.diasDeCultivo} d` : 'Sin dato'}
                     </td>
-                    <td className="px-4 py-3.5 text-right text-slate-800">
+                    <td className="px-4 py-4 text-right text-slate-800">
                       {lote.resumen.pecesVivos.toLocaleString()}
                     </td>
-                    <td className="px-4 py-3.5 text-right font-medium">
-                      <span className={lote.resumen.supervivencia >= 85 ? 'text-slate-900 font-bold' : 'text-amber-700 font-bold'}>
+                    <td className="px-4 py-4 text-right font-medium">
+                      <span className={lote.resumen.supervivencia >= 85 ? 'text-slate-900 font-semibold' : 'text-amber-700 font-semibold'}>
                         {lote.resumen.supervivencia}%
                       </span>
                     </td>
-                    <td className="px-4 py-3.5 text-right font-semibold text-slate-800">
+                    <td className="px-4 py-4 text-right font-semibold text-slate-800">
                       {lote.resumen.pesoPromedioActualG} g
                     </td>
-                    <td className="px-4 py-3.5 text-right font-semibold text-slate-800">
+                    <td className="px-4 py-4 text-right font-semibold text-slate-800">
                       {lote.resumen.biomasaEstimadaKg.toLocaleString()} kg
                     </td>
-                    <td className="px-4 py-3.5 text-right font-mono font-semibold text-slate-700">
+                    <td className="px-4 py-4 text-right font-mono font-semibold text-slate-700">
                       {lote.resumen.FCA ?? '-'}
                     </td>
-                    <td className="px-4 py-3.5 text-center">
+                    <td className="px-4 py-4 text-center">
                       <span
                         className={`rotulo ${lote.estado === 'activo' ? 'text-emerald-700' : 'text-slate-600'}`}
                       >
                         {lote.estado}
                       </span>
                     </td>
-                    <td className="px-5 py-3.5 text-right space-x-1.5" onClick={(e) => e.stopPropagation()}>
+                    <td className="px-5 py-4 text-right space-x-2" onClick={(e) => e.stopPropagation()}>
                       {puedeDocumentos && (
                         <button
                           onClick={() => onAbrirQr(lote)}
                           title="Ver Código QR"
-                          className="p-1.5 text-slate-500 hover:text-sky-600 hover:bg-slate-100 rounded-md transition-colors inline-flex"
+                          className="p-2 text-slate-500 hover:text-sky-600 hover:bg-slate-100 rounded-md transition-colors inline-flex"
                         >
                           <QrCode className="w-4 h-4" />
                         </button>
                       )}
                       <button
                         onClick={() => onSeleccionarLote(lote)}
-                        className="px-3 py-1.5 text-xs font-semibold text-white bg-sky-600 hover:bg-sky-700 rounded-md transition-colors inline-flex items-center space-x-1"
+                        className="px-3 py-2 text-xs font-semibold text-white bg-sky-600 hover:bg-sky-700 rounded-md transition-colors inline-flex items-center space-x-1"
                       >
                         <span>Abrir</span>
                         <ExternalLink className="w-3 h-3" />

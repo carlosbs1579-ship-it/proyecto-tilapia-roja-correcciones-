@@ -30,12 +30,12 @@ export const SupervisionRepartidores: React.FC<{
   return (
     <div className="space-y-3 text-xs">
       <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-x-auto">
-        <div className="px-4 py-3 border-b border-slate-100 flex items-center space-x-1.5">
+        <div className="px-4 py-3 border-b border-slate-100 flex items-center space-x-2">
           <Truck className="w-4 h-4 text-violet-600" />
-          <span className="font-bold text-slate-900">Supervisión de repartidores</span>
+          <span className="font-semibold text-slate-900">Supervisión de repartidores</span>
         </div>
         <table className="w-full text-left min-w-[720px]">
-          <thead className="bg-slate-50 text-[11px] uppercase text-slate-500">
+          <thead className="bg-slate-50 text-xs uppercase text-slate-500">
             <tr>
               <th className="px-3 py-2">Repartidor</th>
               <th className="px-3 py-2">Cargo visible</th>
@@ -60,7 +60,7 @@ export const SupervisionRepartidores: React.FC<{
               >
                 <td className="px-3 py-2 font-semibold text-slate-900">
                   {r.nombre}
-                  {!r.activo && <span className="block text-[11px] font-normal text-slate-400">ya no figura como repartidor activo</span>}
+                  {!r.activo && <span className="block text-xs font-normal text-slate-500">ya no figura como repartidor activo</span>}
                 </td>
                 <td className="px-3 py-2 text-slate-600">{r.cargo || 'Sin dato'}</td>
                 <td className="px-3 py-2 text-right">{r.asignados}</td>
@@ -75,7 +75,7 @@ export const SupervisionRepartidores: React.FC<{
           </tbody>
         </table>
       </div>
-      <p className="flex items-center space-x-1 text-[11px] text-slate-500">
+      <p className="flex items-center space-x-1 text-xs text-slate-500">
         <Info className="w-3.5 h-3.5" />
         <span>La actividad corresponde solo a las acciones que registra cada repartidor; la plataforma no usa ubicación GPS.</span>
       </p>
@@ -83,12 +83,12 @@ export const SupervisionRepartidores: React.FC<{
       {sel && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
           <div className="bg-white rounded-xl border border-slate-200 shadow-xs p-4 space-y-2">
-            <span className="font-bold text-slate-900">Pedidos de {sel.nombre} ({ordenesSel.length})</span>
+            <span className="font-semibold text-slate-900">Pedidos de {sel.nombre} ({ordenesSel.length})</span>
             {ordenesSel.length === 0 && <p className="text-slate-500">Sin pedidos asignados.</p>}
             {ordenesSel.map((o) => (
               <button key={o.id} onClick={() => onAbrirOrden(o.id)} className="w-full text-left border border-slate-200 rounded-lg p-2 hover:border-sky-400">
                 <span className="flex items-center justify-between gap-2">
-                  <span className="font-mono font-bold">{o.id}</span>
+                  <span className="font-mono font-semibold">{o.id}</span>
                   <EstadoOrdenBadge estado={o.estado} />
                 </span>
                 <span className="block text-slate-600">
@@ -98,7 +98,7 @@ export const SupervisionRepartidores: React.FC<{
             ))}
           </div>
           <div className="bg-white rounded-xl border border-slate-200 shadow-xs p-4 space-y-2">
-            <span className="font-bold text-slate-900">Actividad registrada (últimas 50)</span>
+            <span className="font-semibold text-slate-900">Actividad registrada (últimas 50)</span>
             {actividadSel.length === 0 && <p className="text-slate-500">Todavía no ha registrado acciones.</p>}
             <ol className="space-y-1">
               {actividadSel.map(({ o, e }) => (

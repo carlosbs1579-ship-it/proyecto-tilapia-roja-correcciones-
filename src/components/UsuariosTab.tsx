@@ -552,7 +552,7 @@ export const UsuariosTab: React.FC<UsuariosTabProps> = ({
                         >
                           <span className="flex flex-wrap items-baseline gap-x-2">
                             <span className="font-medium text-slate-900 [overflow-wrap:anywhere]">{nombre}</span>
-                            <span className="text-xs border border-slate-300 rounded-sm px-1.5 text-slate-600 whitespace-nowrap">
+                            <span className="text-xs border border-slate-300 rounded-sm px-2 text-slate-600 whitespace-nowrap">
                               {esElAdmin ? 'Administrador principal' : funciones}
                             </span>
                           </span>
@@ -606,7 +606,7 @@ export const UsuariosTab: React.FC<UsuariosTabProps> = ({
                             className="px-4 pb-5 sm:pl-17 space-y-6"
                           >
                             {!editable && (
-                              <p className="text-sm text-slate-600 flex items-center gap-1.5">
+                              <p className="text-sm text-slate-600 flex items-center gap-2">
                                 <Lock className="w-4 h-4 shrink-0" strokeWidth={1.75} />
                                 {u.uid === perfilActual?.uid
                                   ? 'No puedes modificar tus propias funciones ni permisos.'
@@ -656,7 +656,7 @@ export const UsuariosTab: React.FC<UsuariosTabProps> = ({
                                         />
                                       </div>
                                       {asignado && (
-                                        <div className="space-y-1.5">
+                                        <div className="space-y-2">
                                           <input
                                             type="text"
                                             disabled={!editable || esGuardando}
@@ -674,7 +674,7 @@ export const UsuariosTab: React.FC<UsuariosTabProps> = ({
                                                   key={s.valor}
                                                   type="button"
                                                   onClick={() => handleCambioCargo(u.uid, rol, s.valor)}
-                                                  className="min-h-9 px-2.5 rounded-md border border-slate-300 text-xs text-slate-700 hover:bg-slate-50"
+                                                  className="min-h-9 px-3 rounded-md border border-slate-300 text-xs text-slate-700 hover:bg-slate-50"
                                                 >
                                                   {s.etiqueta}
                                                 </button>
@@ -709,7 +709,7 @@ export const UsuariosTab: React.FC<UsuariosTabProps> = ({
                                         key={p.id}
                                         type="button"
                                         onClick={() => aplicarPreset(u.uid, p.id)}
-                                        className="min-h-9 px-2.5 rounded-md border border-slate-300 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                                        className="min-h-9 px-3 rounded-md border border-slate-300 text-xs font-medium text-slate-700 hover:bg-slate-50"
                                       >
                                         {p.etiqueta}
                                       </button>
@@ -749,7 +749,7 @@ export const UsuariosTab: React.FC<UsuariosTabProps> = ({
                                           ...(g.ver ? [{ clave: g.ver, etiqueta: 'Ver la pestaña', detalle: 'Consultar la información, sin modificarla' }] : []),
                                           ...g.acciones
                                         ].map((a) => (
-                                          <div key={a.clave} className="flex items-start justify-between gap-4 py-2.5 border-b border-slate-100">
+                                          <div key={a.clave} className="flex items-start justify-between gap-4 py-3 border-b border-slate-100">
                                             <div className="min-w-0">
                                               <p className="text-sm text-slate-900">{a.etiqueta}</p>
                                               <p className="text-xs text-slate-600">{a.detalle}</p>
@@ -807,11 +807,11 @@ export const UsuariosTab: React.FC<UsuariosTabProps> = ({
         <div className="bg-white rounded-xl border border-slate-200 shadow-xs p-6 space-y-4">
           <div className="flex items-center justify-between pb-3 border-b border-slate-100">
             <div>
-              <h2 className="text-base font-bold text-slate-900">Tu estado operativo en Cultivos Loré</h2>
+              <h2 className="text-base font-semibold text-slate-900">Tu estado operativo en Cultivos Loré</h2>
               <p className="text-xs text-slate-500">{userEmail}</p>
             </div>
             <span
-              className={`text-xs font-bold px-3 py-1 rounded-full uppercase ${
+              className={`text-xs font-semibold px-3 py-1 rounded-full uppercase ${
                 perfilActual?.estado === 'activo'
                   ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
                   : 'bg-amber-100 text-amber-800 border border-amber-300'
@@ -824,9 +824,9 @@ export const UsuariosTab: React.FC<UsuariosTabProps> = ({
           <div>
             <span className="text-xs text-slate-500 font-medium block">Funciones asignadas por el administrador:</span>
             {funcionesDisponibles(perfilActual).length === 0 ? (
-              <p className="text-sm font-bold text-slate-900 mt-0.5">Sin funciones asignadas todavía</p>
+              <p className="text-sm font-semibold text-slate-900 mt-1">Sin funciones asignadas todavía</p>
             ) : (
-              <ul className="mt-1 space-y-0.5">
+              <ul className="mt-1 space-y-1">
                 {funcionesDisponibles(perfilActual).map((f) => (
                   <li key={f} className="text-sm text-slate-900">
                     <strong>{nombreFuncion(perfilActual, f)}</strong>
@@ -838,58 +838,58 @@ export const UsuariosTab: React.FC<UsuariosTabProps> = ({
           </div>
 
           <div>
-            <span className="text-xs text-slate-700 font-bold block mb-2">Tus permisos de producción (función de operador):</span>
+            <span className="text-xs text-slate-700 font-semibold block mb-2">Tus permisos de producción (función de operador):</span>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 text-xs">
               <div
-                className={`p-2.5 rounded-lg border ${
+                className={`p-3 rounded-lg border ${
                   perfilActual?.permisos?.crearLotes
                     ? 'bg-emerald-50 text-emerald-900 border-emerald-300 font-semibold'
-                    : 'bg-slate-50 text-slate-400 border-slate-200'
+                    : 'bg-slate-50 text-slate-500 border-slate-200'
                 }`}
               >
                 {perfilActual?.permisos?.crearLotes ? 'Autorizado' : 'Sin permiso'}: Añadir nuevos lotes
               </div>
               <div
-                className={`p-2.5 rounded-lg border ${
+                className={`p-3 rounded-lg border ${
                   perfilActual?.permisos?.registrarEventos
                     ? 'bg-emerald-50 text-emerald-900 border-emerald-300 font-semibold'
-                    : 'bg-slate-50 text-slate-400 border-slate-200'
+                    : 'bg-slate-50 text-slate-500 border-slate-200'
                 }`}
               >
                 {perfilActual?.permisos?.registrarEventos ? 'Autorizado' : 'Sin permiso'}: Registrar eventos
               </div>
               <div
-                className={`p-2.5 rounded-lg border ${
+                className={`p-3 rounded-lg border ${
                   perfilActual?.permisos?.cerrarLotes
                     ? 'bg-emerald-50 text-emerald-900 border-emerald-300 font-semibold'
-                    : 'bg-slate-50 text-slate-400 border-slate-200'
+                    : 'bg-slate-50 text-slate-500 border-slate-200'
                 }`}
               >
                 {perfilActual?.permisos?.cerrarLotes ? 'Autorizado' : 'Sin permiso'}: Cerrar lotes y PDF
               </div>
               <div
-                className={`p-2.5 rounded-lg border ${
+                className={`p-3 rounded-lg border ${
                   perfilActual?.permisos?.gestionarEstanques
                     ? 'bg-emerald-50 text-emerald-900 border-emerald-300 font-semibold'
-                    : 'bg-slate-50 text-slate-400 border-slate-200'
+                    : 'bg-slate-50 text-slate-500 border-slate-200'
                 }`}
               >
                 {perfilActual?.permisos?.gestionarEstanques ? 'Autorizado' : 'Sin permiso'}: Crear piscinas/estanques
               </div>
               <div
-                className={`p-2.5 rounded-lg border ${
+                className={`p-3 rounded-lg border ${
                   perfilActual?.permisos?.gestionarConfiguracion
                     ? 'bg-emerald-50 text-emerald-900 border-emerald-300 font-semibold'
-                    : 'bg-slate-50 text-slate-400 border-slate-200'
+                    : 'bg-slate-50 text-slate-500 border-slate-200'
                 }`}
               >
                 {perfilActual?.permisos?.gestionarConfiguracion ? 'Autorizado' : 'Sin permiso'}: Modificar configuración
               </div>
               <div
-                className={`p-2.5 rounded-lg border ${
+                className={`p-3 rounded-lg border ${
                   perfilActual?.permisos?.gestionarPedidos
                     ? 'bg-emerald-50 text-emerald-900 border-emerald-300 font-semibold'
-                    : 'bg-slate-50 text-slate-400 border-slate-200'
+                    : 'bg-slate-50 text-slate-500 border-slate-200'
                 }`}
               >
                 {perfilActual?.permisos?.gestionarPedidos ? 'Autorizado' : 'Sin permiso'}: Gestionar pedidos
@@ -898,7 +898,7 @@ export const UsuariosTab: React.FC<UsuariosTabProps> = ({
           </div>
 
           <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start space-x-2 text-amber-900 text-xs">
-            <Lock className="w-4 h-4 shrink-0 mt-0.5 text-amber-600" />
+            <Lock className="w-4 h-4 shrink-0 mt-1 text-amber-600" />
             <span>
               Solo el administrador tiene privilegios para autorizar cuentas, actualizar cargos o conceder permisos en Cultivos Loré.
             </span>

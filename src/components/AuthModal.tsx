@@ -147,7 +147,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
           </div>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-white p-1 rounded transition-colors"
+            className="text-slate-500 hover:text-white p-1 rounded transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -160,7 +160,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
 
           {errorMsg && (
             <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start space-x-2 text-red-700 text-xs">
-              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+              <AlertCircle className="w-4 h-4 shrink-0 mt-1" />
               <span>{errorMsg}</span>
             </div>
           )}
@@ -177,7 +177,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
             type="button"
             onClick={handleGoogleLogin}
             disabled={cargando}
-            className="w-full flex items-center justify-center space-x-2.5 py-2 px-4 border border-slate-300 rounded-lg text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 shadow-xs transition-colors disabled:opacity-50 mb-4"
+            className="w-full flex items-center justify-center space-x-3 py-2 px-4 border border-slate-300 rounded-lg text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 shadow-xs transition-colors disabled:opacity-50 mb-4"
           >
             <svg className="w-4 h-4" viewBox="0 0 24 24">
               <path
@@ -202,12 +202,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
 
           <div className="relative flex items-center justify-center my-3">
             <div className="border-t border-slate-200 w-full" />
-            <span className="bg-white px-2 text-[11px] uppercase tracking-wider text-slate-400 font-semibold absolute">
+            <span className="bg-white px-2 text-xs uppercase tracking-wider text-slate-500 font-semibold absolute">
               o con correo de operario
             </span>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-3.5">
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="block text-xs font-medium text-slate-700">
@@ -215,7 +215,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                 </label>
               </div>
               <div className="relative">
-                <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                <Mail className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
                 <input
                   type="email"
                   required
@@ -237,14 +237,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                     type="button"
                     onClick={handleRecuperarContrasena}
                     disabled={cargando}
-                    className="text-[11px] text-sky-600 hover:text-sky-800 font-medium disabled:opacity-50"
+                    className="text-xs text-sky-600 hover:text-sky-800 font-medium disabled:opacity-50"
                   >
                     ¿Olvidaste tu contraseña?
                   </button>
                 )}
               </div>
               <div className="relative">
-                <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
                 <input
                   type="password"
                   required
@@ -259,7 +259,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
             <button
               type="submit"
               disabled={cargando}
-              className="w-full py-2.5 px-4 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold shadow-xs transition-colors disabled:opacity-50"
+              className="w-full py-3 px-4 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors disabled:opacity-50"
             >
               {cargando
                 ? 'Verificando credenciales...'

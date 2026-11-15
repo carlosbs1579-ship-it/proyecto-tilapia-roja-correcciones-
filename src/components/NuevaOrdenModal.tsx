@@ -174,7 +174,7 @@ export const NuevaOrdenModal: React.FC<NuevaOrdenModalProps> = ({
               {ordenEditar ? `Modificar borrador ${ordenEditar.id}` : 'Nueva orden de entrega'}
             </h3>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-white p-1 rounded transition-colors">
+          <button onClick={onClose} className="text-slate-500 hover:text-white p-1 rounded transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -182,7 +182,7 @@ export const NuevaOrdenModal: React.FC<NuevaOrdenModalProps> = ({
         <div className="p-6 space-y-5 text-xs">
           {errorMsg && (
             <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-start space-x-2 text-red-700">
-              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+              <AlertCircle className="w-4 h-4 shrink-0 mt-1" />
               <span>{errorMsg}</span>
             </div>
           )}
@@ -190,7 +190,7 @@ export const NuevaOrdenModal: React.FC<NuevaOrdenModalProps> = ({
           {/* 1. Cliente */}
           <div>
             <div className="flex items-center justify-between mb-1">
-              <label className="font-bold text-slate-700">1. Cliente *</label>
+              <label className="font-semibold text-slate-700">1. Cliente *</label>
               <button
                 type="button"
                 onClick={() => setNuevoCliente(!nuevoCliente)}
@@ -248,14 +248,14 @@ export const NuevaOrdenModal: React.FC<NuevaOrdenModalProps> = ({
           {/* 2. Cantidad y unidad */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
-              <label className="font-bold text-slate-700 block mb-1">2. Unidad de medida</label>
-              <div className="px-3 py-1.5 rounded-lg border border-slate-300 bg-slate-50 font-semibold text-sky-700">
+              <label className="font-semibold text-slate-700 block mb-1">2. Unidad de medida</label>
+              <div className="px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 font-semibold text-sky-700">
                 {unidad === 'kg' ? 'Kilogramos (kg)' : 'Peces (orden anterior)'}
               </div>
-              <p className="text-[11px] text-slate-400 mt-1">Los pedidos se registran y reparten en kilogramos.</p>
+              <p className="text-xs text-slate-500 mt-1">Los pedidos se registran y reparten en kilogramos.</p>
             </div>
             <div>
-              <label className="font-bold text-slate-700 block mb-1">Cantidad solicitada ({unidad}) *</label>
+              <label className="font-semibold text-slate-700 block mb-1">Cantidad solicitada ({unidad}) *</label>
               <input
                 type="number"
                 min={0}
@@ -266,7 +266,7 @@ export const NuevaOrdenModal: React.FC<NuevaOrdenModalProps> = ({
               />
             </div>
             <div>
-              <label className="font-bold text-slate-700 block mb-1">Fecha programada de entrega</label>
+              <label className="font-semibold text-slate-700 block mb-1">Fecha programada de entrega</label>
               <input
                 type="date"
                 min={getFechaHoyBogota()}
@@ -279,10 +279,10 @@ export const NuevaOrdenModal: React.FC<NuevaOrdenModalProps> = ({
 
           {/* 3. Distribución por lote y piscina */}
           <div>
-            <label className="font-bold text-slate-700 block mb-1">
+            <label className="font-semibold text-slate-700 block mb-1">
               3. Distribución por lote y piscina (hasta {MAX_LOTES_POR_ORDEN} lotes)
             </label>
-            <p className="text-[11px] text-slate-400 mb-2">
+            <p className="text-xs text-slate-500 mb-2">
               Disponible = cosecha registrada − reservado − entregado. Cada lote pertenece a una piscina; la procedencia se conserva por lote.
             </p>
             {lotesConCosecha.length === 0 ? (
@@ -292,7 +292,7 @@ export const NuevaOrdenModal: React.FC<NuevaOrdenModalProps> = ({
             ) : (
               <div className="border border-slate-200 rounded-lg overflow-x-auto">
                 <table className="w-full text-left">
-                  <thead className="bg-slate-50 text-[11px] uppercase text-slate-500">
+                  <thead className="bg-slate-50 text-xs uppercase text-slate-500">
                     <tr>
                       <th className="px-3 py-2">Lote</th>
                       <th className="px-3 py-2">Piscina</th>
@@ -308,17 +308,17 @@ export const NuevaOrdenModal: React.FC<NuevaOrdenModalProps> = ({
                       const excede = Number(valor) > disp.disponible;
                       const bloqueado = !disp.compatible || disp.disponible <= 0;
                       return (
-                        <tr key={lote.codigo} className={bloqueado ? 'bg-slate-50 text-slate-400' : ''}>
-                          <td className="px-3 py-2 font-mono font-bold">
+                        <tr key={lote.codigo} className={bloqueado ? 'bg-slate-50 text-slate-500' : ''}>
+                          <td className="px-3 py-2 font-mono font-semibold">
                             {lote.codigo}
-                            <span className="ml-1 text-[11px] font-sans font-normal text-slate-400">
+                            <span className="ml-1 text-xs font-sans font-normal text-slate-500">
                               {lote.estado === 'cerrado' ? 'sellado' : 'activo'}
                             </span>
                           </td>
                           <td className="px-3 py-2">{lote.estanque}</td>
                           <td className="px-3 py-2 text-right">{disp.cosechado.toLocaleString('es-CO')}</td>
                           <td className="px-3 py-2 text-right">{disp.reservado.toLocaleString('es-CO')}</td>
-                          <td className="px-3 py-2 text-right font-bold text-emerald-700">
+                          <td className="px-3 py-2 text-right font-semibold text-emerald-700">
                             {disp.compatible ? disp.disponible.toLocaleString('es-CO') : `Reservado en ${disp.unidadInventario}`}
                           </td>
                           <td className="px-3 py-2 text-right">
@@ -349,13 +349,13 @@ export const NuevaOrdenModal: React.FC<NuevaOrdenModalProps> = ({
               </div>
             )}
             <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-              <span className={totalDistribuido > solicitada ? 'text-red-600 font-bold' : 'text-slate-600'}>
+              <span className={totalDistribuido > solicitada ? 'text-red-600 font-semibold' : 'text-slate-600'}>
                 Distribuido: <strong>{totalDistribuido.toLocaleString('es-CO')}</strong> de{' '}
                 {solicitada.toLocaleString('es-CO')} {unidad} solicitados
                 {solicitada > 0 && totalDistribuido < solicitada && ' (lo autorizado será menor que lo solicitado)'}
               </span>
               {lotesSinCosecha > 0 && (
-                <span className="text-[11px] text-slate-400">
+                <span className="text-xs text-slate-500">
                   {lotesSinCosecha} lote(s) sin cosecha registrada en {unidad} no se muestran.
                 </span>
               )}
@@ -364,7 +364,7 @@ export const NuevaOrdenModal: React.FC<NuevaOrdenModalProps> = ({
 
           {/* 4. Repartidor */}
           <div>
-            <label className="font-bold text-slate-700 block mb-1">4. Repartidor asignado</label>
+            <label className="font-semibold text-slate-700 block mb-1">4. Repartidor asignado</label>
             <select
               value={repartidorUid}
               onChange={(e) => setRepartidorUid(e.target.value)}
@@ -383,7 +383,7 @@ export const NuevaOrdenModal: React.FC<NuevaOrdenModalProps> = ({
 
           {/* 5. Observaciones */}
           <div>
-            <label className="font-bold text-slate-700 block mb-1">5. Observaciones</label>
+            <label className="font-semibold text-slate-700 block mb-1">5. Observaciones</label>
             <textarea
               rows={2}
               maxLength={1000}
@@ -398,7 +398,7 @@ export const NuevaOrdenModal: React.FC<NuevaOrdenModalProps> = ({
               type="button"
               onClick={() => guardar(false)}
               disabled={guardando}
-              className="inline-flex items-center justify-center space-x-1.5 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200 rounded-lg font-semibold disabled:opacity-50"
+              className="inline-flex items-center justify-center space-x-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200 rounded-lg font-semibold disabled:opacity-50"
             >
               <Save className="w-4 h-4" />
               <span>{ordenEditar ? 'Guardar cambios del borrador' : 'Guardar como borrador'}</span>
@@ -408,7 +408,7 @@ export const NuevaOrdenModal: React.FC<NuevaOrdenModalProps> = ({
                 type="button"
                 onClick={() => guardar(true)}
                 disabled={guardando}
-                className="inline-flex items-center justify-center space-x-1.5 px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-lg font-bold shadow-xs disabled:opacity-50"
+                className="inline-flex items-center justify-center space-x-2 px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-lg font-semibold shadow-xs disabled:opacity-50"
               >
                 <Send className="w-4 h-4" />
                 <span>{guardando ? 'Reservando...' : 'Guardar, reservar y asignar'}</span>

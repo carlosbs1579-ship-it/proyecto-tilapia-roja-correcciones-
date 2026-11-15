@@ -28,7 +28,7 @@ export const NovedadTarjeta: React.FC<{
   return (
     <div className="border border-slate-200 rounded-lg p-3 space-y-2 bg-white text-xs">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="font-semibold text-slate-800 flex flex-wrap items-center gap-1.5">
+        <span className="font-semibold text-slate-800 flex flex-wrap items-center gap-2">
           {mostrarOrden && (
             <button onClick={() => onAbrirOrden?.(n.orden.id)} className="font-mono text-sky-700 hover:underline">{n.orden.id}</button>
           )}
@@ -43,7 +43,7 @@ export const NovedadTarjeta: React.FC<{
         {' · '}Evidencias: no adjuntas (las novedades se registran solo con texto)
       </p>
       {n.seguimiento.length > 0 && (
-        <ol className="space-y-0.5 border-l-2 border-slate-200 pl-2">
+        <ol className="space-y-1 border-l-2 border-slate-200 pl-2">
           {n.seguimiento.map((s) => (
             <li key={s.indice} className="text-slate-600">
               <strong>{ETIQUETA_ATENCION[s.datos.estado as EstadoAtencion] || s.datos.estado}</strong> · {quienRegistro(s)} ·{' '}
@@ -54,7 +54,7 @@ export const NovedadTarjeta: React.FC<{
         </ol>
       )}
       <div className="flex flex-col sm:flex-row gap-2">
-        <select value={estado} onChange={(e) => setEstado(e.target.value as EstadoAtencion)} className="px-2.5 py-1.5 border border-slate-300 rounded-lg bg-white">
+        <select value={estado} onChange={(e) => setEstado(e.target.value as EstadoAtencion)} className="px-3 py-2 border border-slate-300 rounded-lg bg-white">
           {ESTADOS.map((e) => (
             <option key={e} value={e}>{ETIQUETA_ATENCION[e]}</option>
           ))}
@@ -65,12 +65,12 @@ export const NovedadTarjeta: React.FC<{
           placeholder="Observación o acción tomada"
           value={observacion}
           onChange={(e) => setObservacion(e.target.value)}
-          className="flex-1 px-3 py-1.5 border border-slate-300 rounded-lg"
+          className="flex-1 px-3 py-2 border border-slate-300 rounded-lg"
         />
         {!n.evento.eventoId ? (
-          <span className="text-[11px] text-amber-800">Esta novedad no tiene identificador y no se puede atender.</span>
+          <span className="text-xs text-amber-800">Esta novedad no tiene identificador y no se puede atender.</span>
         ) : estado === n.atencion && !observacion.trim() ? (
-          <span className="text-[11px] text-amber-800">Cambia el estado o escribe una observación para registrar.</span>
+          <span className="text-xs text-amber-800">Cambia el estado o escribe una observación para registrar.</span>
         ) : null}
         <button
           disabled={procesando || (estado === n.atencion && !observacion.trim()) || !n.evento.eventoId}
@@ -80,7 +80,7 @@ export const NovedadTarjeta: React.FC<{
               `Novedad de ${n.orden.id}: ${ETIQUETA_ATENCION[estado]}.`
             ).then(() => setObservacion(''))
           }
-          className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-semibold disabled:opacity-50"
+          className="px-3 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-semibold disabled:opacity-50"
         >
           Registrar
         </button>
@@ -106,11 +106,11 @@ export const NovedadesIncidencias: React.FC<{
   return (
     <div className="bg-white rounded-xl border border-slate-200 shadow-xs p-4 space-y-3 text-xs">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="font-bold text-slate-900 flex items-center space-x-1.5">
+        <span className="font-semibold text-slate-900 flex items-center space-x-2">
           <AlertTriangle className="w-4 h-4 text-orange-600" />
           <span>Novedades e incidencias</span>
         </span>
-        <select value={filtro} onChange={(e) => setFiltro(e.target.value as any)} className="px-2.5 py-1 border border-slate-300 rounded-lg bg-white">
+        <select value={filtro} onChange={(e) => setFiltro(e.target.value as any)} className="px-3 py-1 border border-slate-300 rounded-lg bg-white">
           <option value="abiertas">Por atender (pendientes y en revisión)</option>
           {ESTADOS.map((e) => (
             <option key={e} value={e}>{ETIQUETA_ATENCION[e]}</option>
@@ -118,7 +118,7 @@ export const NovedadesIncidencias: React.FC<{
           <option value="todas">Todas</option>
         </select>
       </div>
-      <p className="text-[11px] text-slate-500">El estado de atención es interno y no cambia el estado de la orden.</p>
+      <p className="text-xs text-slate-500">El estado de atención es interno y no cambia el estado de la orden.</p>
       {novedades.length === 0 ? (
         <p className="text-slate-500 py-6 text-center">No hay novedades en esta lista.</p>
       ) : (

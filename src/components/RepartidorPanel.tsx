@@ -179,7 +179,16 @@ export const RepartidorPanel: React.FC<RepartidorPanelProps> = ({ perfil }) => {
       ) : filtradas.length === 0 ? (
         <div className="p-4 bg-sky-50 border border-sky-200 rounded-xl flex items-start space-x-2 text-sky-900 text-sm">
           <Info className="w-5 h-5 shrink-0 text-sky-600" />
-          <span>No tienes pedidos en esta lista.</span>
+          <span>
+            {filtro === 'activas'
+              ? 'No tienes entregas por hacer. Cuando te asignen un pedido aparece aquí.'
+              : 'No tienes pedidos en esta lista.'}
+            {filtro !== 'activas' && (
+              <button type="button" onClick={() => setFiltro('activas')} className="block mt-2 font-semibold underline min-h-11">
+                Ver mis entregas por hacer
+              </button>
+            )}
+          </span>
         </div>
       ) : (
         <div className="space-y-3">
@@ -191,19 +200,19 @@ export const RepartidorPanel: React.FC<RepartidorPanelProps> = ({ perfil }) => {
                 key={o.id}
                 onClick={() => setSeleccionada(o.id)}
                 style={escalon(i, primerMontaje).style}
-                className={`w-full text-left bg-white border border-slate-200 rounded-xl p-4 shadow-xs hover:border-sky-400 space-y-1.5 ${escalon(i, primerMontaje).className}`}
+                className={`w-full text-left bg-white border border-slate-200 rounded-xl p-4 shadow-xs hover:border-sky-400 space-y-2 ${escalon(i, primerMontaje).className}`}
               >
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-base font-bold text-slate-900">{o.clienteNombre}</span>
+                  <span className="text-base font-semibold text-slate-900">{o.clienteNombre}</span>
                   <span className="flex items-center space-x-1 shrink-0">
-                    <span className="px-2.5 py-1 rounded-full bg-sky-100 text-sky-800 border border-sky-300 text-xs font-bold">
+                    <span className="px-3 py-1 rounded-full bg-sky-100 text-sky-800 border border-sky-300 text-xs font-semibold">
                       {ETIQUETA_REPARTIDOR[o.estado]}
                     </span>
-                    <ChevronRight className="w-5 h-5 text-slate-400" />
+                    <ChevronRight className="w-5 h-5 text-slate-500" />
                   </span>
                 </div>
-                <p className="flex items-start space-x-1.5 text-sm text-slate-600">
-                  <MapPin className="w-4 h-4 mt-0.5 shrink-0 text-slate-400" />
+                <p className="flex items-start space-x-2 text-sm text-slate-600">
+                  <MapPin className="w-4 h-4 mt-1 shrink-0 text-slate-500" />
                   <span>{o.clienteDireccion || 'Sin dirección registrada'}</span>
                 </p>
                 <p className="text-sm text-slate-800">
@@ -211,16 +220,16 @@ export const RepartidorPanel: React.FC<RepartidorPanelProps> = ({ perfil }) => {
                   {o.estado === 'entregado' ? ' entregados' : ` por entregar de ${num(o.cantidadAutorizada)} autorizados`}
                   <span className="text-slate-500"> · {o.fechaProgramada || 'sin fecha'}</span>
                 </p>
-                <p className="text-[11px] text-slate-400 font-mono">{o.id}</p>
+                <p className="text-xs text-slate-500 font-mono">{o.id}</p>
                 {(pendientesOrden > 0 || solicitudPendiente) && (
-                  <div className="flex flex-wrap gap-1.5 pt-1">
+                  <div className="flex flex-wrap gap-2 pt-1">
                     {pendientesOrden > 0 && (
-                      <span className="px-2 py-0.5 rounded-sm bg-amber-100 text-amber-800 text-[11px] font-semibold">
+                      <span className="px-2 py-1 rounded-sm bg-amber-100 text-amber-800 text-xs font-semibold">
                         {pendientesOrden} acción(es) por enviar
                       </span>
                     )}
                     {solicitudPendiente && (
-                      <span className="px-2 py-0.5 rounded-sm bg-indigo-100 text-indigo-800 text-[11px] font-semibold flex items-center space-x-1">
+                      <span className="px-2 py-1 rounded-sm bg-indigo-100 text-indigo-800 text-xs font-semibold flex items-center space-x-1">
                         <Repeat className="w-3 h-3" />
                         <span>Ajuste pendiente de aprobación</span>
                       </span>
@@ -245,7 +254,7 @@ const EstadoConexion: React.FC<{
 }> = ({ enLinea, desdeServidor, guardadaEn, porEnviar, onEnviar }) => {
   if (enLinea && porEnviar === 0) {
     return (
-      <p className="flex items-center space-x-1.5 text-xs text-emerald-700">
+      <p className="flex items-center space-x-2 text-xs text-emerald-700">
         <Wifi className="w-4 h-4" />
         <span>Conectado · datos al día</span>
       </p>
@@ -264,7 +273,7 @@ const EstadoConexion: React.FC<{
         </span>
       </span>
       {enLinea && porEnviar > 0 && (
-        <button onClick={onEnviar} className="inline-flex items-center space-x-1 px-3 py-1.5 bg-sky-600 text-white rounded-lg text-xs font-bold">
+        <button onClick={onEnviar} className="inline-flex items-center space-x-1 px-3 py-2 bg-sky-600 text-white rounded-lg text-xs font-semibold">
           <RefreshCw className="w-3.5 h-3.5" />
           <span>Enviar ahora</span>
         </button>

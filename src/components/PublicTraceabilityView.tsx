@@ -204,7 +204,7 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
         <div className="bg-slate-900 border-b-4 border-double border-amber-600">
           <div className="max-w-4xl mx-auto px-4 py-3 flex items-center gap-3">
             <LogoLore className="w-10 h-8 text-amber-400" />
-            <span className="font-serif text-xl text-white">Cultivos Loré</span>
+            <span className="font-serif text-2xl text-white">Cultivos Loré</span>
           </div>
         </div>
         <div className="max-w-4xl mx-auto px-4 pt-6 space-y-6">
@@ -239,28 +239,28 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
           <div className="w-14 h-14 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto">
             <AlertTriangle className="w-7 h-7" />
           </div>
-          <h2 className="text-lg font-bold text-slate-900">Lote no disponible</h2>
+          <h2 className="text-base font-semibold text-slate-900">Lote no disponible</h2>
           <p className="text-xs text-slate-600 leading-relaxed">
             {error || `El código de lote "${codigoLote}" no fue encontrado.`}
           </p>
           <div className="pt-2 space-y-2">
             <button
               onClick={() => setReintentos((n) => n + 1)}
-              className="w-full py-2.5 px-4 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-xs font-semibold transition-colors"
+              className="w-full py-3 px-4 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-xs font-semibold transition-colors"
             >
               Reintentar consulta
             </button>
             {onVolverAlPanel ? (
               <button
                 onClick={onVolverAlPanel}
-                className="w-full py-2.5 px-4 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold transition-colors"
+                className="w-full py-3 px-4 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold transition-colors"
               >
                 Volver al Panel Principal
               </button>
             ) : (
               <a
                 href={window.location.origin}
-                className="inline-block w-full py-2.5 px-4 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold transition-colors"
+                className="inline-block w-full py-3 px-4 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold transition-colors"
               >
                 Ir al inicio de Cultivos Loré
               </a>
@@ -282,7 +282,7 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
           <div className="flex items-center gap-3">
             <LogoLore className="w-10 h-8 text-amber-400" />
             <div>
-            <h1 className="text-xl leading-tight">Cultivos Loré</h1>
+            <h1 className="text-2xl leading-tight">Cultivos Loré</h1>
             <p className="rotulo text-slate-300">Turbaco, Bolívar · Colombia</p>
             </div>
           </div>
@@ -290,7 +290,7 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
           <div className="flex items-center space-x-2">
             <button
               onClick={handleCompartir}
-              className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs flex items-center space-x-1 px-2.5"
+              className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs flex items-center space-x-1 px-3"
             >
               {copiado ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Share2 className="w-3.5 h-3.5" />}
               <span className="hidden sm:inline">{copiado ? 'Copiado' : 'Compartir'}</span>
@@ -299,7 +299,7 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
             {onVolverAlPanel && (
               <button
                 onClick={onVolverAlPanel}
-                className="text-xs bg-slate-50 hover:bg-white text-slate-900 font-semibold px-3 py-1.5 rounded-lg flex items-center space-x-1"
+                className="text-xs bg-slate-50 hover:bg-white text-slate-900 font-semibold px-3 py-2 rounded-lg flex items-center space-x-1"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">Panel Operativo</span>
@@ -316,8 +316,8 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
           {/* Identidad del certificado */}
           <div className="bg-slate-900 p-6 text-white">
             <div className="flex flex-wrap items-baseline justify-between gap-3">
-              <h2 className="text-3xl sm:text-4xl tabular-nums">{lote.codigo}</h2>
-              <span className={`rotulo flex items-center gap-1.5 ${esCerrado ? 'text-amber-300' : 'text-emerald-300'}`}>
+              <h2 className="text-2xl sm:text-4xl tabular-nums">{lote.codigo}</h2>
+              <span className={`rotulo flex items-center gap-2 ${esCerrado ? 'text-amber-300' : 'text-emerald-300'}`}>
                 <Award className="w-3.5 h-3.5" aria-hidden="true" />
                 {esCerrado ? 'Certificado · lote sellado' : 'Lote en cultivo'}
               </span>
@@ -356,7 +356,7 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
             <button
               onClick={handleDescargarPdf}
               disabled={descargandoPdf}
-              className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-md text-xs transition-colors disabled:opacity-50"
+              className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 px-5 py-3 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-md text-xs transition-colors disabled:opacity-50"
             >
               <Download className="w-4 h-4" />
               <span>{descargandoPdf ? 'Generando PDF...' : 'Descargar certificado (PDF)'}</span>
@@ -370,7 +370,7 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center space-x-3">
               <div>
-                <h3 className="text-sm font-bold text-slate-900">
+                <h3 className="text-sm font-semibold text-slate-900">
                   Autenticidad verificable
                 </h3>
                 <p className="text-xs text-slate-500">
@@ -399,9 +399,9 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
               }`}
             >
               {resultadoIntegridad.valido ? (
-                <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+                <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-1" />
               ) : (
-                <AlertTriangle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+                <AlertTriangle className="w-5 h-5 text-red-600 shrink-0 mt-1" />
               )}
               <div>
                 <strong className="block text-sm">
@@ -420,10 +420,10 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
 
           {/* Visualización del Hash Final */}
           <div className="bg-slate-50 rounded-xl p-3 border border-slate-200">
-            <span className="text-[11px] uppercase font-bold text-slate-400 block mb-1">
+            <span className="text-xs uppercase font-semibold text-slate-500 block mb-1">
               Sello Hash SHA-256 de Cierre del Lote
             </span>
-            <code className="text-[11px] font-mono text-slate-700 break-all select-all block">
+            <code className="text-xs font-mono text-slate-700 break-all select-all block">
               {r?.hashFinal || (esCerrado ? 'No registrado' : 'En proceso de cultivo')}
             </code>
           </div>
@@ -432,37 +432,37 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
         {/* MÉTRICAS PRODUCTIVAS CLAVE */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs text-center">
-            <span className="text-[11px] text-slate-500 font-medium block">Peces sembrados</span>
-            <strong className="text-lg font-bold text-slate-900 mt-1 block">
+            <span className="text-xs text-slate-500 font-medium block">Peces sembrados</span>
+            <strong className="text-base font-semibold text-slate-900 mt-1 block">
               {lote.cantidadSembrada.toLocaleString()}
             </strong>
-            <span className="text-[11px] text-slate-400">Alevinos iniciales</span>
+            <span className="text-xs text-slate-500">Alevinos iniciales</span>
           </div>
 
           <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs text-center">
-            <span className="text-[11px] text-slate-500 font-medium block">Supervivencia</span>
-            <strong className="text-lg font-bold text-slate-900 mt-1 block">
+            <span className="text-xs text-slate-500 font-medium block">Supervivencia</span>
+            <strong className="text-base font-semibold text-slate-900 mt-1 block">
               {r ? `${r.supervivencia.toFixed(1)}%` : 'Sin dato'}
             </strong>
-            <span className="text-[11px] text-slate-400">
+            <span className="text-xs text-slate-500">
               {r ? `${r.pecesVivos.toLocaleString()} vivos` : ''}
             </span>
           </div>
 
           <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs text-center">
-            <span className="text-[11px] text-slate-500 font-medium block">Peso promedio</span>
-            <strong className="text-lg font-bold text-sky-600 mt-1 block">
+            <span className="text-xs text-slate-500 font-medium block">Peso promedio</span>
+            <strong className="text-base font-semibold text-sky-600 mt-1 block">
               {r ? `${Math.round(r.pesoPromedioActualG)} g` : 'Sin dato'}
             </strong>
-            <span className="text-[11px] text-slate-400">Calibre 450 - 500 g</span>
+            <span className="text-xs text-slate-500">Calibre 450 - 500 g</span>
           </div>
 
           <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs text-center">
-            <span className="text-[11px] text-slate-500 font-medium block">Biomasa total</span>
-            <strong className="text-lg font-bold text-slate-900 mt-1 block">
+            <span className="text-xs text-slate-500 font-medium block">Biomasa total</span>
+            <strong className="text-base font-semibold text-slate-900 mt-1 block">
               {r ? `${(r.biomasaEstimadaKg || 0).toFixed(0)} kg` : 'Sin dato'}
             </strong>
-            <span className="text-[11px] text-slate-400">
+            <span className="text-xs text-slate-500">
               FCA: {r?.FCA ? r.FCA.toFixed(2) : 'sin registro'}
             </span>
           </div>
@@ -472,7 +472,7 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
         <div className="bg-white rounded-2xl shadow-xs border border-slate-200 p-6 space-y-4">
           <div className="flex items-center justify-between pb-3 border-b border-slate-100">
             <div>
-              <h3 className="text-sm font-bold text-slate-900">
+              <h3 className="text-sm font-semibold text-slate-900">
                 Historial del lote, fase por fase
               </h3>
               <p className="text-xs text-slate-500">
@@ -498,7 +498,7 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
             <div className="divide-y divide-slate-200 border-t border-slate-200">
               {(lote.eventos || []).map((ev) => (
                 <div key={ev.id} className="flex items-start gap-3 py-1">
-                  <span className="font-serif text-slate-500 text-sm tabular-nums w-7 shrink-0 pt-2.5 text-right" aria-label={`Fase ${ev.indice + 1}`}>
+                  <span className="font-serif text-slate-500 text-sm tabular-nums w-7 shrink-0 pt-3 text-right" aria-label={`Fase ${ev.indice + 1}`}>
                     {String(ev.indice + 1).padStart(2, '0')}
                   </span>
                   <div
@@ -507,10 +507,10 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
                     }`}
                   >
                     {diagnostico[ev.indice] && diagnostico[ev.indice].estado !== 'integra' && (
-                      <p className="mb-1.5 font-semibold text-red-700">{diagnostico[ev.indice].mensaje}</p>
+                      <p className="mb-2 font-semibold text-red-700">{diagnostico[ev.indice].mensaje}</p>
                     )}
                     <div className="flex flex-wrap items-center justify-between gap-1 mb-1">
-                      <strong className="text-slate-900 font-bold">
+                      <strong className="text-slate-900 font-semibold">
                         {ev.tipo}
                         {anotacionesAprobadas.some((a) => Number(a.propuesta.datos.fase) === ev.indice) && (
                           <span className="ml-2 rotulo text-amber-700 border-b border-amber-600">
@@ -522,7 +522,7 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
                           </span>
                         )}
                       </strong>
-                      <span className="text-[11px] text-slate-500 tabular-nums whitespace-nowrap">{formatearFechaColombia(ev.fechaEvento)}</span>
+                      <span className="text-xs text-slate-500 tabular-nums whitespace-nowrap">{formatearFechaColombia(ev.fechaEvento)}</span>
                     </div>
                     {ev.descripcion && (
                       <p className="text-slate-600 text-xs mb-2">{ev.descripcion}</p>
@@ -530,7 +530,7 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
 
                     {/* Resumen de datos según tipo */}
                     {ev.datos && Object.keys(ev.datos).length > 0 && (
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-[11px] border-l-2 border-slate-200 pl-3">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs border-l-2 border-slate-200 pl-3">
                         {Object.entries(ev.datos).map(([clave, valor]) => (
                           <div key={clave} className="min-w-0 [overflow-wrap:anywhere]">
                             <span className="text-slate-500">{nombreDato(clave)}: </span>
@@ -540,12 +540,12 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
                       </div>
                     )}
 
-                    <div className="mt-2 text-[11px] text-slate-500 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+                    <div className="mt-2 text-xs text-slate-500 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
                       <span className="text-slate-700 min-w-0 [overflow-wrap:anywhere]">
                         <span className="rotulo text-slate-500 mr-2">Registró</span>
                         <span className="firma text-sm">{quienRegistro(ev, true)}</span>
                       </span>
-                      <span className="font-mono text-[11px] whitespace-nowrap" title={ev.hash}>Huella {ev.hash.substring(0, 12)}…</span>
+                      <span className="font-mono text-xs whitespace-nowrap" title={ev.hash}>Huella {ev.hash.substring(0, 12)}…</span>
                     </div>
                   </div>
                 </div>
@@ -557,7 +557,7 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
         {/* ANOTACIONES POSTERIORES AL CIERRE */}
         {(anotacionesAprobadas.length > 0 || anotacionesSinValidez.length > 0) && (
           <div className="bg-white rounded-2xl shadow-xs border border-slate-200 p-6 space-y-3">
-            <h3 className="text-sm font-bold text-slate-900">Anotaciones posteriores al cierre</h3>
+            <h3 className="text-sm font-semibold text-slate-900">Anotaciones posteriores al cierre</h3>
             <p className="text-xs text-slate-500">
               El registro sellado no se modificó. Estas aclaraciones fueron propuestas y aprobadas por personas distintas, con su motivo.
             </p>
@@ -587,7 +587,7 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
                     <p className="flex flex-wrap items-baseline gap-x-5 gap-y-1 pt-1 text-slate-700">
                       <span><span className="rotulo text-slate-500 mr-2">Propuso</span><span className="firma">{quienRegistro(a.propuesta, true)}</span></span>
                       <span><span className="rotulo text-slate-500 mr-2">Aprobó</span><span className="firma">{a.resolucion ? quienRegistro(a.resolucion, true) : 'Sin dato'}</span></span>
-                      <span className="text-[11px] text-slate-500 tabular-nums">{formatearFechaColombia(a.resolucion?.fecha || a.propuesta.fecha)}</span>
+                      <span className="text-xs text-slate-500 tabular-nums">{formatearFechaColombia(a.resolucion?.fecha || a.propuesta.fecha)}</span>
                     </p>
                   </li>
                 );
@@ -605,7 +605,7 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
         <div className="bg-white rounded-2xl shadow-xs border border-slate-200 p-6 space-y-4">
           <div className="flex items-center space-x-2">
             <Apple className="w-5 h-5 text-emerald-600" />
-            <h3 className="text-sm font-bold text-slate-900">
+            <h3 className="text-sm font-semibold text-slate-900">
               Información nutricional (Porción 100 g de filete crudo)
             </h3>
           </div>
@@ -631,7 +631,7 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
 
         {/* NOTA OBLIGATORIA DE INOCUIDAD */}
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start space-x-3 text-xs text-amber-900">
-          <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+          <Info className="w-4 h-4 text-amber-600 shrink-0 mt-1" />
           <p className="leading-relaxed">
             <strong>Nota de inocuidad:</strong> Este registro documenta cómo se produjo y manejó el lote; no reemplaza los controles de inocuidad.
           </p>

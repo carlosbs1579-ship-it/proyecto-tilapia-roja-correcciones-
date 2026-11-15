@@ -73,7 +73,7 @@ export function Pestanas<T extends string>({
               role="tab"
               aria-selected={sel}
               onClick={() => onCambio(it.id)}
-              className={`pestana relative shrink-0 whitespace-nowrap inline-flex items-center gap-1.5 ${
+              className={`pestana relative shrink-0 whitespace-nowrap inline-flex items-center gap-2 ${
                 variante === 'subrayado' ? 'rotulo h-full min-h-11 px-3' : 'min-h-10 px-3 text-sm rounded-md'
               } ${colorTexto(sel)} ${sel && variante === 'pildora' ? 'font-semibold' : ''}`}
             >
@@ -89,7 +89,7 @@ export function Pestanas<T extends string>({
                   }
                 />
               )}
-              <span className="relative inline-flex items-center gap-1.5">
+              <span className="relative inline-flex items-center gap-2">
                 {it.icono}
                 {it.etiqueta}
               </span>

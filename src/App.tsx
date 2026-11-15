@@ -357,9 +357,9 @@ export default function App() {
 
   const accesoRestringido = (
     <div className="max-w-2xl mx-auto bg-white rounded-xl border border-slate-200 shadow-xs p-6 flex items-start space-x-3 text-xs text-slate-700">
-      <Lock className="w-5 h-5 text-slate-400 shrink-0" />
+      <Lock className="w-5 h-5 text-slate-500 shrink-0" />
       <div>
-        <p className="font-bold text-sm text-slate-900">Información productiva restringida</p>
+        <p className="font-semibold text-sm text-slate-900">Información productiva restringida</p>
         <p className="mt-1">
           {!usuario
             ? 'Ingresa al sistema con una cuenta autorizada para consultar los lotes de la granja.'
@@ -463,7 +463,7 @@ export default function App() {
 
       {avisoFuncionPedida && (
         <div role="status" className="bg-amber-50 border-b border-amber-200 text-amber-900 text-sm">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 flex items-start justify-between gap-3">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-start justify-between gap-3">
             <span>{avisoFuncionPedida}</span>
             <button type="button" onClick={() => setAvisoFuncionPedida(null)} className="font-semibold underline shrink-0">
               Entendido
@@ -645,7 +645,7 @@ export default function App() {
       </div>
 
       {/* FOOTER */}
-      <footer className="bg-slate-900 text-slate-400 border-t border-slate-800 py-6 text-xs text-center">
+      <footer className="bg-slate-900 text-slate-300 border-t border-slate-800 py-6 text-xs text-center">
         <div className="max-w-7xl mx-auto px-4">
           <p className="font-semibold text-slate-300">
             Cultivos Loré · Granja de Tilapia Roja en Turbaco (Bolívar, Colombia)
@@ -653,7 +653,7 @@ export default function App() {
           <p className="text-slate-500 mt-1">
             Producto: Tilapia roja entera fresca, limpia (escamada y eviscerada), calibre 450 a 500 g • Modalidad Tilapia Pro
           </p>
-          <p className="text-[11px] text-slate-500 mt-2">
+          <p className="text-xs text-slate-500 mt-2">
             Este registro documenta cómo se produjo y manejó el lote; no reemplaza los controles de inocuidad.
           </p>
         </div>

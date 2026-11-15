@@ -148,7 +148,7 @@ function estiloTabla(): Record<string, any> {
 function marcaDeAgua(doc: any, texto: string, color: RGB) {
   const ancho = doc.internal.pageSize.getWidth();
   const alto = doc.internal.pageSize.getHeight();
-  const angulo = 30;
+  const angulo = 45;
   const rad = (angulo * Math.PI) / 180;
   const tamano = 72;
   const espacio = 4; // mm entre letras

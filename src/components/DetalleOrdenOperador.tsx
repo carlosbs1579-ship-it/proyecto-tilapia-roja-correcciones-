@@ -249,7 +249,8 @@ export const DetalleOrdenOperador: React.FC<{
               ))}
             </select>
             <button
-              disabled={procesando || !nuevoRepartidor}
+              disabled={procesando || !nuevoRepartidor || (o.estado !== 'borrador' && !motivo.trim())}
+              title={o.estado !== 'borrador' && !motivo.trim() ? 'Escribe el motivo del cambio en el campo Motivo.' : undefined}
               onClick={() => {
                 const r = repartidores.find((x) => x.uid === nuevoRepartidor);
                 if (r) correr(() => cambiarRepartidor(o.id, r, motivo), `Repartidor de ${o.id}: ${r.nombre}.`);

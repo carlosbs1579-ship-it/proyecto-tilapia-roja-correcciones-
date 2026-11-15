@@ -135,7 +135,8 @@ export const SolicitudAjusteTarjeta: React.FC<{
                 </button>
               )}
               <button
-                disabled={procesando}
+                disabled={procesando || !respuesta.trim()}
+                title={!respuesta.trim() ? 'Escribe la respuesta al repartidor para rechazar.' : undefined}
                 onClick={() => ejecutar(() => rechazarAjuste(o.id, a.id, respuesta), `Solicitud de ${o.id} rechazada; la distribución no cambió.`)}
                 className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-lg font-semibold disabled:opacity-50"
               >

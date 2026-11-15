@@ -41,6 +41,21 @@ export const AnotacionesLotePanel: React.FC<{
   const datosFase = faseSel ? Object.keys(faseSel.datos || {}).filter((k) => k !== 'ambito') : [];
   const valorRegistrado = faseSel && dato && dato !== '_aclaracion' ? String(faseSel.datos?.[dato] ?? '') : '';
 
+  // Qué falta para poder enviar la propuesta (se le dice al usuario en vez de solo desactivar el botón)
+  const largoMotivo = motivo.trim().length;
+  const faltante =
+    fase < 0
+      ? 'selecciona la fase'
+      : !dato
+      ? 'selecciona el dato (o "Aclaración general")'
+      : dato !== '_aclaracion' && !valorCorrecto.trim()
+      ? 'escribe el valor correcto (el texto gris es solo el valor registrado)'
+      : dato !== '_aclaracion' && valorCorrecto.trim() === valorRegistrado
+      ? 'el valor correcto es igual al registrado'
+      : largoMotivo < 10
+      ? `el motivo necesita al menos 10 caracteres (llevas ${largoMotivo})`
+      : '';
+
   const ejecutar = async (accion: () => Promise<void>, exito: string) => {
     setProcesando(true);
     setMensaje(null);
@@ -158,12 +173,11 @@ export const AnotacionesLotePanel: React.FC<{
               className="mt-1 w-full px-2 py-1.5 border border-slate-300 rounded"
             />
           </label>
+          {faltante && <p className="text-amber-700">Para enviar: {faltante}.</p>}
           <div className="flex gap-2">
             <button
               type="button"
-              disabled={
-                procesando || fase < 0 || !dato || motivo.trim().length < 10 || (dato !== '_aclaracion' && !valorCorrecto.trim())
-              }
+              disabled={procesando || Boolean(faltante)}
               onClick={proponer}
               className="px-3 py-1.5 rounded-lg bg-sky-600 text-white font-semibold disabled:opacity-40"
             >

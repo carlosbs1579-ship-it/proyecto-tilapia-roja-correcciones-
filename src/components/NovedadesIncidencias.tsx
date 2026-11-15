@@ -67,6 +67,11 @@ export const NovedadTarjeta: React.FC<{
           onChange={(e) => setObservacion(e.target.value)}
           className="flex-1 px-3 py-1.5 border border-slate-300 rounded-lg"
         />
+        {!n.evento.eventoId ? (
+          <span className="text-[11px] text-amber-800">Esta novedad no tiene identificador y no se puede atender.</span>
+        ) : estado === n.atencion && !observacion.trim() ? (
+          <span className="text-[11px] text-amber-800">Cambia el estado o escribe una observación para registrar.</span>
+        ) : null}
         <button
           disabled={procesando || (estado === n.atencion && !observacion.trim()) || !n.evento.eventoId}
           onClick={() =>

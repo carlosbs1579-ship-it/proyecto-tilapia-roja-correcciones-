@@ -82,6 +82,16 @@ export const CorreccionEntrega: React.FC<{ orden: OrdenEntrega; procesando: bool
       <p className="text-[10px] text-slate-500">
         Si esta orden tiene un comprobante vigente con los datos anteriores, anúlalo en "Documentación de entrega" y emite uno nuevo después de corregir.
       </p>
+      {(motivo.trim().length < 10 || iguales || total <= 0) && (
+        <p className="text-amber-800 text-xs">
+          Para guardar:{' '}
+          {iguales
+            ? 'cambia al menos una cantidad (son iguales a las registradas).'
+            : total <= 0
+            ? 'el total corregido debe ser mayor que 0.'
+            : `escribe el motivo (${motivo.trim().length}/10 caracteres).`}
+        </p>
+      )}
       <div className="flex gap-2">
         <button
           type="button"

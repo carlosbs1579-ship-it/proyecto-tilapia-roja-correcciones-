@@ -336,14 +336,15 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
           <div className="p-6 overflow-y-auto space-y-6 flex-1 bg-slate-50">
             {/* AVISO DE LOTE SELLADO / CERRADO */}
             {lote.estado === 'cerrado' && (
-              <div className="bg-amber-50 border border-amber-200 rounded-md px-5 py-4 space-y-2">
-                <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-amber-800">
-                  <Lock className="w-4 h-4" aria-hidden="true" />
-                  <span className="font-serif text-lg text-slate-900">Lote sellado</span>
-                  {lote.fechaCierre && <span className="rotulo">{formatearFechaColombia(lote.fechaCierre)}</span>}
-                  <span className="rotulo">· Registros de producción cerrados</span>
+              <div className="bg-slate-900 text-white rounded-md px-6 py-5 space-y-3">
+                <p className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+                  <span className="flex items-center gap-3">
+                    <Lock className="w-5 h-5 text-amber-400" aria-hidden="true" />
+                    <span className="font-serif text-2xl">Lote sellado</span>
+                  </span>
+                  {lote.fechaCierre && <span className="rotulo text-amber-300">{formatearFechaColombia(lote.fechaCierre)}</span>}
                 </p>
-                <p className="text-sm text-slate-700 border-t-[3px] border-double border-amber-300 pt-2">
+                <p className="text-sm text-slate-200 border-t-[3px] border-double border-amber-500 pt-3">
                   El ciclo de producción terminó y el registro quedó sellado: no admite cambios ni fases nuevas. La consulta, los certificados y la
                   verificación de la cadena siguen disponibles.
                 </p>

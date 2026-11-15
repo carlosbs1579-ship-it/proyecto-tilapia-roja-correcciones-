@@ -383,7 +383,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 flex flex-col font-sans">
+    <div className="min-h-screen bg-white flex flex-col font-sans">
       {/* NAVBAR */}
       <Navbar
         tabActiva={tabActiva}

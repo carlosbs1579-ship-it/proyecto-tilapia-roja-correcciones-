@@ -13,7 +13,7 @@ Modo: operate (la consulta pública del QR es read). Usuarios: administrador, op
 
 THESIS: La plataforma se lee como un acta formal: cada registro firmado y fechado, lo sellado declarado en una línea de acta, no en insignias. Rechaza el panel SaaS de tarjetas redondeadas, degradados y pastillas de color.
 
-OWN-WORLD: Papel blanco frío (#FBFBF8), tinta azul (#14213D) para la barra y los títulos, pizarra (#3A4A6B) para lo secundario, verde formal (#225F46) solo para íntegro, oro viejo (#8A6624) solo para detalles de acta, rojo (#B3261E) solo para alteración. Libre Caslon Text para títulos, códigos y firmas; Public Sans para todo lo operativo; versalitas espaciadas para rótulos. Esquinas pequeñas, filetes finos, sombras mínimas, sin vidrio ni degradados.
+OWN-WORLD: Fondo blanco (#FFFFFF), tinta azul (#14213D) para la barra y los títulos, pizarra (#3A4A6B) para lo secundario, verde formal (#225F46) solo para íntegro, oro viejo (#8A6624) solo para detalles de acta, rojo (#B3261E) solo para alteración. Libre Caslon Text para títulos y códigos; Public Sans para todo lo operativo; versalitas espaciadas para rótulos. Esquinas pequeñas, filetes finos, sombras mínimas, sin vidrio ni degradados.
 
 STORY: El operador encuentra todo donde siempre estuvo, pero ahora cada fase muestra quién la firmó; el cliente lee el QR como un certificado serio; la alteración se nota por tipografía y filete rojo, no por alarma.
 
@@ -23,6 +23,6 @@ FORM: Diploma con sello seco (posición 6 de la lista propia de la cuarta tirada
 
 FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance
 
-Gesto propio (signature): la línea de acta (doble filete fino + versalitas: "SELLADO · fecha · CADENA ÍNTEGRA") y las líneas de firma (nombre visible en serif itálica sobre un filete, cargo en versalitas) en cada fase y anotación. Movimiento: transiciones de color cortas; ninguna animación decorativa.
+Gesto propio (signature): la línea de acta (doble filete fino + versalitas: "SELLADO · fecha · CADENA ÍNTEGRA") y las líneas de firma (nombre visible en sans seminegrita sobre un filete, cargo en versalitas) en cada fase y anotación. Movimiento: transiciones de color cortas; ninguna animación decorativa.
 
 Sin resolver: el certificado PDF y el comprobante PDF siguen con su diseño actual hasta una pasada posterior.

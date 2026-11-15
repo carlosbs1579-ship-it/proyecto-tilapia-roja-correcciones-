@@ -533,6 +533,30 @@ describe('Anotaciones posteriores al cierre de un lote', () => {
     await assertSucceeds(rechazo('No corresponde: la báscula estaba bien'));
   });
 
+  test('no se aprueba sobre una cadena alterada (sello cambiado o propuesta desenlazada)', async () => {
+    const sellar = (h1) => env.withSecurityRulesDisabled((ctx) =>
+      updateDoc(doc(ctx.firestore(), 'lotes', 'L-SELLADO'), { eventos: [{ indice: 0, tipo: 'Siembra', hash: 'h0' }, { indice: 1, tipo: 'Cosecha', hash: h1, datos: { biomasaCosechadaKg: 912 } }] })
+    );
+    await sellar('h1');
+    await proponer('operador', {}, { ...propuesta, valorRegistrado: '912' });
+    const d = await leerAnot();
+    const aprobar = () => updateDoc(doc(como('mixto'), 'anotacionesLote', 'L-SELLADO'), {
+      registros: [...d.registros, reg('mixto', 1, 'Aprobación', { propuestaIndice: 0, respuesta: '' }, d.registros[0].hash)],
+      resueltas: { '0': 'aprobada' }
+    });
+    // Sello del lote cambiado después de anotar
+    await sellar('h1-reescrito');
+    await assertFails(aprobar());
+    await sellar('h1');
+    // Propuesta desenlazada de la cadena
+    await env.withSecurityRulesDisabled((ctx) =>
+      updateDoc(doc(ctx.firestore(), 'anotacionesLote', 'L-SELLADO'), { registros: [{ ...d.registros[0], hashAnterior: 'otro' }] })
+    );
+    await assertFails(aprobar());
+    await env.withSecurityRulesDisabled((ctx) => updateDoc(doc(ctx.firestore(), 'anotacionesLote', 'L-SELLADO'), { registros: d.registros }));
+    await assertSucceeds(aprobar());
+  });
+
   test('una fase nueva no se firma con el nombre de otra persona', async () => {
     await env.withSecurityRulesDisabled((ctx) => updateDoc(doc(ctx.firestore(), 'usuarios', 'operador'), { displayName: 'Ana Gómez' }));
     const lote = doc(como('operador'), 'lotes', 'L-ACTIVO');

@@ -513,7 +513,7 @@ export const DetalleEntregaRepartidor: React.FC<DetalleEntregaRepartidorProps> =
               />
               {errorMsg && <p className="text-sm text-red-700">{errorMsg}</p>}
               <div className="flex flex-col sm:flex-row gap-2">
-                <button onClick={confirmarEntrega} disabled={procesandoFoto} className="flex-1 px-4 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold">
+                <button onClick={confirmarEntrega} disabled={procesandoFoto} className="flex-1 px-4 py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-md font-bold">
                   Confirmar entrega
                 </button>
                 <button onClick={() => setPanel(null)} className="px-4 py-3 bg-slate-100 text-slate-700 rounded-xl font-semibold">

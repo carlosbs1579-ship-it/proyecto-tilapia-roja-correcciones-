@@ -333,7 +333,7 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
             <button
               onClick={handleDescargarPdf}
               disabled={descargandoPdf}
-              className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs shadow-md shadow-emerald-700/20 transition-all disabled:opacity-50"
+              className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-md text-xs transition-colors disabled:opacity-50"
             >
               <Download className="w-4 h-4" />
               <span>{descargandoPdf ? 'Generando PDF...' : 'Descargar certificado (PDF)'}</span>
@@ -346,9 +346,6 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
         <div className="bg-white rounded-2xl shadow-xs border border-slate-200 p-6 space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-                <ShieldCheck className="w-6 h-6" />
-              </div>
               <div>
                 <h3 className="text-sm font-bold text-slate-900">
                   Autenticidad verificable
@@ -443,7 +440,7 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
               {r ? `${(r.biomasaEstimadaKg || 0).toFixed(0)} kg` : '—'}
             </strong>
             <span className="text-[11px] text-slate-400">
-              FCA: {r?.FCA ? r.FCA.toFixed(2) : '1.20'}
+              FCA: {r?.FCA ? r.FCA.toFixed(2) : 'sin registro'}
             </span>
           </div>
         </div>
@@ -475,17 +472,15 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
           </div>
 
           {verEventosDetalle && (
-            <div className="space-y-3 relative before:absolute before:inset-0 before:left-3.5 before:w-0.5 before:bg-slate-200 pt-2">
+            <div className="divide-y divide-slate-200 border-t border-slate-200">
               {(lote.eventos || []).map((ev) => (
-                <div key={ev.id} className="relative flex items-start space-x-3 pl-1">
-                  <div className="w-6 h-6 rounded-full bg-sky-600 text-white flex items-center justify-center font-bold text-[11px] shrink-0 z-10 shadow-xs">
-                    {ev.indice + 1}
-                  </div>
+                <div key={ev.id} className="flex items-start gap-3 py-1">
+                  <span className="font-serif text-slate-500 text-sm tabular-nums w-7 shrink-0 pt-2.5 text-right" aria-label={`Fase ${ev.indice + 1}`}>
+                    {String(ev.indice + 1).padStart(2, '0')}
+                  </span>
                   <div
-                    className={`flex-1 min-w-0 rounded-xl p-3 border text-xs ${
-                      diagnostico[ev.indice] && diagnostico[ev.indice].estado !== 'integra'
-                        ? 'bg-red-50 border-red-400'
-                        : 'bg-slate-50 border-slate-200/80'
+                    className={`flex-1 min-w-0 p-3 text-xs ${
+                      diagnostico[ev.indice] && diagnostico[ev.indice].estado !== 'integra' ? 'bg-red-50 ring-1 ring-inset ring-red-300' : ''
                     }`}
                   >
                     {diagnostico[ev.indice] && diagnostico[ev.indice].estado !== 'integra' && (
@@ -495,7 +490,7 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
                       <strong className="text-slate-900 font-bold">
                         {ev.tipo}
                         {anotacionesAprobadas.some((a) => Number(a.propuesta.datos.fase) === ev.indice) && (
-                          <span className="ml-2 text-[11px] bg-sky-100 text-sky-800 px-2 py-0.5 rounded-sm font-semibold">
+                          <span className="ml-2 rotulo text-amber-700 border-b border-amber-600">
                             Ver anotación N.º{' '}
                             {anotacionesAprobadas
                               .filter((a) => Number(a.propuesta.datos.fase) === ev.indice)
@@ -504,7 +499,7 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
                           </span>
                         )}
                       </strong>
-                      <span className="text-[11px] text-slate-500 tabular-nums whitespace-nowrap">{ev.fechaEvento}</span>
+                      <span className="text-[11px] text-slate-500 tabular-nums whitespace-nowrap">{formatearFechaColombia(ev.fechaEvento)}</span>
                     </div>
                     {ev.descripcion && (
                       <p className="text-slate-600 text-xs mb-2">{ev.descripcion}</p>
@@ -512,7 +507,7 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
 
                     {/* Resumen de datos según tipo */}
                     {ev.datos && Object.keys(ev.datos).length > 0 && (
-                      <div className="bg-white p-2 rounded-lg border border-slate-200/60 grid grid-cols-2 sm:grid-cols-3 gap-2 text-[11px]">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-[11px] border-l-2 border-slate-200 pl-3">
                         {Object.entries(ev.datos).map(([clave, valor]) => (
                           <div key={clave} className="min-w-0 [overflow-wrap:anywhere]">
                             <span className="text-slate-500">{nombreDato(clave)}: </span>
@@ -566,9 +561,10 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
                       )}
                     </p>
                     <p className="text-slate-600">Motivo: {d.motivo}</p>
-                    <p className="text-[11px] text-slate-400">
-                      Propuesta por {quienRegistro(a.propuesta, true)} · aprobada por {a.resolucion ? quienRegistro(a.resolucion, true) : '—'} ·{' '}
-                      {formatearFechaColombia(a.resolucion?.fecha || a.propuesta.fecha)}
+                    <p className="flex flex-wrap items-baseline gap-x-5 gap-y-1 pt-1 text-slate-700">
+                      <span><span className="rotulo text-slate-500 mr-2">Propuso</span><span className="firma">{quienRegistro(a.propuesta, true)}</span></span>
+                      <span><span className="rotulo text-slate-500 mr-2">Aprobó</span><span className="firma">{a.resolucion ? quienRegistro(a.resolucion, true) : '—'}</span></span>
+                      <span className="text-[11px] text-slate-500 tabular-nums">{formatearFechaColombia(a.resolucion?.fecha || a.propuesta.fecha)}</span>
                     </p>
                   </li>
                 );

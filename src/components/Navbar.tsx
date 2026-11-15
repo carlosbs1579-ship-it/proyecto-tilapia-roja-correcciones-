@@ -167,7 +167,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <div className="hidden lg:block text-left text-xs">
                     <p className="font-semibold text-slate-200 truncate max-w-[150px]" title={usuario.email || undefined}>{perfilUsuario?.displayName || usuario.email}</p>
                     <p className={`text-[11px] flex items-center truncate max-w-[150px] ${
-                      funcionActiva ? 'text-amber-400 font-semibold' : 'text-slate-300'
+                      funcionActiva ? 'text-slate-300 font-semibold' : 'text-slate-300'
                     }`}>
                       {funcionActiva ? (
                         <>{nombreFuncion(perfilUsuario, funcionActiva)}</>

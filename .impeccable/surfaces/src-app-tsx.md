@@ -25,4 +25,6 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
 
 Gesto propio (signature): la línea de acta (doble filete fino + versalitas: "SELLADO · fecha · CADENA ÍNTEGRA") y las líneas de firma (nombre visible en sans seminegrita sobre un filete, cargo en versalitas) en cada fase y anotación. Movimiento: transiciones de color cortas; ninguna animación decorativa.
 
-Sin resolver: el certificado PDF y el comprobante PDF siguen con su diseño actual hasta una pasada posterior.
+PDF: certificado y comprobante con membrete (logo + nombre en serif), doble filete dorado, secciones con título y filete, tablas de encabezado tinta y pie paginado. Usan las fuentes estándar del PDF (Times/Helvetica) como equivalentes de Libre Caslon y Public Sans.
+
+Sin resolver: incrustar Libre Caslon y Public Sans en los PDF (pesa ~300 KB por documento).

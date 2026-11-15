@@ -64,7 +64,9 @@ export function compactarFecha(fecha: string): string {
 export function formatearFechaColombia(fechaIsoOString: string | undefined): string {
   if (!fechaIsoOString) return '-';
   try {
-    const d = new Date(fechaIsoOString);
+    // Una fecha sin hora es un día del calendario: se fija al mediodía de Colombia para no correrla un día
+    const soloFecha = /^\d{4}-\d{2}-\d{2}$/.test(fechaIsoOString);
+    const d = new Date(soloFecha ? `${fechaIsoOString}T12:00:00-05:00` : fechaIsoOString);
     if (isNaN(d.getTime())) return fechaIsoOString;
     return new Intl.DateTimeFormat('es-CO', {
       timeZone: ZONA_HORARIA,

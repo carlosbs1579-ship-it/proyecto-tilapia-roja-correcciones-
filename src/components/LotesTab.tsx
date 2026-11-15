@@ -119,7 +119,7 @@ export const LotesTab: React.FC<LotesTabProps> = ({
               <option value="todos">Todos los estanques</option>
               {config.estanques.map((e) => (
                 <option key={e.codigo} value={e.codigo}>
-                  {e.codigo} — {e.nombre}
+                  {e.codigo} · {e.nombre}
                 </option>
               ))}
             </select>
@@ -236,7 +236,7 @@ export const LotesTab: React.FC<LotesTabProps> = ({
                       {lote.fechaSiembra}
                     </td>
                     <td className="px-4 py-3.5 text-right font-medium text-slate-600">
-                      {lote.resumen.diasDeCultivo != null ? `${lote.resumen.diasDeCultivo} d` : '—'}
+                      {lote.resumen.diasDeCultivo != null ? `${lote.resumen.diasDeCultivo} d` : 'Sin dato'}
                     </td>
                     <td className="px-4 py-3.5 text-right text-slate-800">
                       {lote.resumen.pecesVivos.toLocaleString()}

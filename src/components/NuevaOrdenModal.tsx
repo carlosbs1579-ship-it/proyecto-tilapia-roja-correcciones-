@@ -211,7 +211,7 @@ export const NuevaOrdenModal: React.FC<NuevaOrdenModalProps> = ({
                 <input
                   type="text"
                   maxLength={200}
-                  placeholder="Contacto (teléfono, persona) — opcional"
+                  placeholder="Contacto (teléfono, persona) (opcional)"
                   value={contactoCliente}
                   onChange={(e) => setContactoCliente(e.target.value)}
                   className="px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
@@ -219,7 +219,7 @@ export const NuevaOrdenModal: React.FC<NuevaOrdenModalProps> = ({
                 <input
                   type="text"
                   maxLength={300}
-                  placeholder="Dirección de entrega — opcional"
+                  placeholder="Dirección de entrega (opcional)"
                   value={direccionCliente}
                   onChange={(e) => setDireccionCliente(e.target.value)}
                   className="sm:col-span-2 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
@@ -235,8 +235,8 @@ export const NuevaOrdenModal: React.FC<NuevaOrdenModalProps> = ({
                 {clientes.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.nombre}
-                    {c.direccion ? ` — ${c.direccion}` : ''}
-                    {c.contacto ? ` — ${c.contacto}` : ''}
+                    {c.direccion ? ` · ${c.direccion}` : ''}
+                    {c.contacto ? ` · ${c.contacto}` : ''}
                   </option>
                 ))}
               </select>
@@ -373,7 +373,7 @@ export const NuevaOrdenModal: React.FC<NuevaOrdenModalProps> = ({
               </option>
               {repartidores.map((r) => (
                 <option key={r.uid} value={r.uid}>
-                  {r.nombre} — {r.cargo}
+                  {r.nombre} · {r.cargo}
                 </option>
               ))}
             </select>

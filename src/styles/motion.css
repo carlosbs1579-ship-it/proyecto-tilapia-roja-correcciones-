@@ -1,0 +1,41 @@
+/*
+ * Tokens de movimiento de toda la app (única fuente). Sus equivalentes para la librería
+ * `motion` están en src/lib/motion.ts y deben coincidir con estos valores.
+ *
+ * Reglas: solo se animan transform y opacity; las salidas son más rápidas que las entradas;
+ * con movimiento reducido todo queda en un fundido de 120 ms.
+ */
+:root {
+  /* Duraciones */
+  --mov-rapida: 150ms; /* hover, toque */
+  --mov-base: 220ms; /* pestañas, interruptores, menús */
+  --mov-entrada: 320ms; /* pantallas, modales */
+  --mov-salida: 180ms; /* siempre más corta que la entrada */
+  --mov-reducido: 120ms;
+  --mov-velo: 200ms; /* fondo oscuro detrás de las ventanas */
+
+  /* Curvas */
+  --curva-entrada: cubic-bezier(0.22, 1, 0.36, 1);
+  --curva-salida: cubic-bezier(0.4, 0, 1, 1);
+
+  /* Distancias */
+  --dist-pequena: 8px;
+  --dist-tarjeta: 12px;
+  --dist-pantalla: 16px;
+
+  /* Escalonado de listas */
+  --escalon: 40ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --mov-rapida: var(--mov-reducido);
+    --mov-base: var(--mov-reducido);
+    --mov-entrada: var(--mov-reducido);
+    --mov-salida: var(--mov-reducido);
+    --dist-pequena: 0px;
+    --dist-tarjeta: 0px;
+    --dist-pantalla: 0px;
+    --escalon: 0ms;
+  }
+}

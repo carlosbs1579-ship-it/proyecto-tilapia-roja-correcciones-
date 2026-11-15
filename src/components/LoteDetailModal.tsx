@@ -162,7 +162,7 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
       if (loteActualizado) {
         setLote(loteActualizado);
         setModalEditarSiembraOpen(false);
-        setMensajeExito('✓ Registros de alevinos y piscina actualizados exitosamente en la cadena.');
+        setMensajeExito('Registros de alevinos y piscina actualizados en la cadena.');
         if (onLoteActualizado) {
           onLoteActualizado(loteActualizado);
         }
@@ -198,7 +198,7 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
       if (loteCerrado) {
         setLote(loteCerrado);
         setConfirmarCierre(false);
-        setMensajeExito('✓ Lote cerrado exitosamente. El certificado y el QR de trazabilidad inalterable ya están activos.');
+        setMensajeExito('Lote cerrado. El certificado y el QR de trazabilidad ya están activos.');
         if (onLoteActualizado) {
           onLoteActualizado(loteCerrado);
         }
@@ -456,7 +456,7 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
                   <span className="text-[11px] font-medium uppercase">Días Cultivo</span>
                   <Clock className="w-3.5 h-3.5 text-slate-400" />
                 </div>
-                <p className="text-lg font-bold text-slate-900">{r.diasDeCultivo != null ? `${r.diasDeCultivo} d` : '—'}</p>
+                <p className="text-lg font-bold text-slate-900">{r.diasDeCultivo != null ? `${r.diasDeCultivo} d` : 'Sin dato'}</p>
                 <p className="text-[11px] text-slate-400">Desde {lote.fechaSiembra}</p>
               </div>
 
@@ -498,7 +498,7 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
                   <span className="text-[11px] font-medium uppercase">FCA / Alimento</span>
                   <span className="text-[11px] font-bold text-sky-600">{r.FCA ?? 'sin registro'}</span>
                 </div>
-                <p className="text-lg font-bold text-slate-900">{r.alimentoAcumuladoKg != null ? `${r.alimentoAcumuladoKg} kg` : '—'}</p>
+                <p className="text-lg font-bold text-slate-900">{r.alimentoAcumuladoKg != null ? `${r.alimentoAcumuladoKg} kg` : 'Sin dato'}</p>
                 <p className="text-[11px] text-slate-400">Alimento acumulado</p>
               </div>
 
@@ -781,7 +781,7 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
                 >
                   {config.estanques.map((est) => (
                     <option key={est.codigo} value={est.codigo}>
-                      {est.codigo} — {est.nombre} {est.volumenM3 ? `(${est.volumenM3} m³)` : ''}
+                      {est.codigo} · {est.nombre} {est.volumenM3 ? `(${est.volumenM3} m³)` : ''}
                     </option>
                   ))}
                 </select>

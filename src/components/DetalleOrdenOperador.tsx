@@ -78,15 +78,15 @@ export const DetalleOrdenOperador: React.FC<{
           <span>Pedido: <strong className="font-mono">{o.id}</strong></span>
           <span>Cliente: <strong>{o.clienteNombre}</strong></span>
           <span>Dirección: <strong>{o.clienteDireccion || 'sin registrar'}</strong></span>
-          <span>Contacto: <strong>{o.clienteContacto || '—'}</strong></span>
+          <span>Contacto: <strong>{o.clienteContacto || 'Sin dato'}</strong></span>
           <span>Creada: <strong>{formatearFechaColombia(o.creadoEn)}</strong></span>
           <span>Programada: <strong>{o.fechaProgramada || 'sin fecha'}</strong></span>
           <span>Creada por: <strong>{o.creadoPor}</strong></span>
           <span>Repartidor: <strong>{o.repartidorNombre || 'sin asignar'}</strong></span>
           <span>Unidad: <strong>{o.unidad}</strong></span>
           <span className="flex items-center gap-1">Estado: <EstadoOrdenBadge estado={o.estado} /></span>
-          <span>Ruta iniciada: <strong>{o.rutaIniciadaEn ? formatearFechaColombia(o.rutaIniciadaEn) : '—'}</strong></span>
-          <span>Llegada: <strong>{o.llegadaEn ? formatearFechaColombia(o.llegadaEn) : '—'}</strong></span>
+          <span>Ruta iniciada: <strong>{o.rutaIniciadaEn ? formatearFechaColombia(o.rutaIniciadaEn) : 'Sin dato'}</strong></span>
+          <span>Llegada: <strong>{o.llegadaEn ? formatearFechaColombia(o.llegadaEn) : 'Sin dato'}</strong></span>
         </div>
         {o.observaciones && <p className="text-slate-600">Observaciones: {o.observaciones}</p>}
       </Seccion>
@@ -113,7 +113,7 @@ export const DetalleOrdenOperador: React.FC<{
             <span className="font-semibold">Diferencias registradas:</span>
             {noAutorizado > 0 && <p>· Solicitado sin autorizar: {num(noAutorizado)} {o.unidad} (no había disponibilidad o se distribuyó menos).</p>}
             {faltantesRegistrados.map((e) => (
-              <p key={e.indice}>· Entrega del {formatearFechaColombia(e.fecha)}: faltaron {num(e.datos.faltante)} {o.unidad}{e.descripcion ? ` — ${e.descripcion}` : ''}.</p>
+              <p key={e.indice}>· Entrega del {formatearFechaColombia(e.fecha)}: faltaron {num(e.datos.faltante)} {o.unidad}{e.descripcion ? ` · ${e.descripcion}` : ''}.</p>
             ))}
           </div>
         )}
@@ -142,7 +142,7 @@ export const DetalleOrdenOperador: React.FC<{
                     <td className="px-3 py-1.5">{p.estanque}</td>
                     <td className="px-3 py-1.5 text-right">{num(p.cantidad)} {p.unidad}</td>
                     <td className="px-3 py-1.5 text-right">{num(o.entregadoPorLote?.[codigo] || 0)}</td>
-                    <td className="px-3 py-1.5 text-right">{cerrada ? '—' : num(saldoLote(o, codigo))}</td>
+                    <td className="px-3 py-1.5 text-right">{cerrada ? 'Sin dato' : num(saldoLote(o, codigo))}</td>
                   </tr>
                 ))}
               </tbody>
@@ -252,7 +252,7 @@ export const DetalleOrdenOperador: React.FC<{
             <select value={nuevoRepartidor} onChange={(e) => setNuevoRepartidor(e.target.value)} className="px-2.5 py-1.5 border border-slate-300 rounded-lg bg-white">
               <option value="">Cambiar repartidor...</option>
               {repartidores.filter((r) => r.uid !== o.repartidorUid).map((r) => (
-                <option key={r.uid} value={r.uid}>{r.nombre} — {r.cargo}</option>
+                <option key={r.uid} value={r.uid}>{r.nombre} · {r.cargo}</option>
               ))}
             </select>
             <button
@@ -278,7 +278,7 @@ export const DetalleOrdenOperador: React.FC<{
               <select value={nuevoRepartidor} onChange={(e) => setNuevoRepartidor(e.target.value)} className="px-2.5 py-1.5 border border-slate-300 rounded-lg bg-white">
                 <option value="">Mismo repartidor ({o.repartidorNombre})</option>
                 {repartidores.filter((r) => r.uid !== o.repartidorUid).map((r) => (
-                  <option key={r.uid} value={r.uid}>{r.nombre} — {r.cargo}</option>
+                  <option key={r.uid} value={r.uid}>{r.nombre} · {r.cargo}</option>
                 ))}
               </select>
               <button

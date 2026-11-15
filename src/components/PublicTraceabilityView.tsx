@@ -383,8 +383,8 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
               <div>
                 <strong className="block text-sm">
                   {resultadoIntegridad.valido
-                    ? '✓ Cadena Criptográfica 100% Auténtica e Íntegra'
-                    : '⚠ Inconsistencia detectada en la cadena'}
+                    ? 'Cadena íntegra: ninguna fase fue alterada'
+                    : 'Inconsistencia detectada en la cadena'}
                 </strong>
                 <p className="mt-1 text-xs">
                   {resultadoIntegridad.valido
@@ -419,7 +419,7 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
           <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs text-center">
             <span className="text-[11px] text-slate-500 font-medium block">Supervivencia</span>
             <strong className="text-lg font-bold text-slate-900 mt-1 block">
-              {r ? `${r.supervivencia.toFixed(1)}%` : '—'}
+              {r ? `${r.supervivencia.toFixed(1)}%` : 'Sin dato'}
             </strong>
             <span className="text-[11px] text-slate-400">
               {r ? `${r.pecesVivos.toLocaleString()} vivos` : ''}
@@ -429,7 +429,7 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
           <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs text-center">
             <span className="text-[11px] text-slate-500 font-medium block">Peso promedio</span>
             <strong className="text-lg font-bold text-sky-600 mt-1 block">
-              {r ? `${Math.round(r.pesoPromedioActualG)} g` : '—'}
+              {r ? `${Math.round(r.pesoPromedioActualG)} g` : 'Sin dato'}
             </strong>
             <span className="text-[11px] text-slate-400">Calibre 450 - 500 g</span>
           </div>
@@ -437,7 +437,7 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
           <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs text-center">
             <span className="text-[11px] text-slate-500 font-medium block">Biomasa total</span>
             <strong className="text-lg font-bold text-slate-900 mt-1 block">
-              {r ? `${(r.biomasaEstimadaKg || 0).toFixed(0)} kg` : '—'}
+              {r ? `${(r.biomasaEstimadaKg || 0).toFixed(0)} kg` : 'Sin dato'}
             </strong>
             <span className="text-[11px] text-slate-400">
               FCA: {r?.FCA ? r.FCA.toFixed(2) : 'sin registro'}
@@ -563,7 +563,7 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
                     <p className="text-slate-600">Motivo: {d.motivo}</p>
                     <p className="flex flex-wrap items-baseline gap-x-5 gap-y-1 pt-1 text-slate-700">
                       <span><span className="rotulo text-slate-500 mr-2">Propuso</span><span className="firma">{quienRegistro(a.propuesta, true)}</span></span>
-                      <span><span className="rotulo text-slate-500 mr-2">Aprobó</span><span className="firma">{a.resolucion ? quienRegistro(a.resolucion, true) : '—'}</span></span>
+                      <span><span className="rotulo text-slate-500 mr-2">Aprobó</span><span className="firma">{a.resolucion ? quienRegistro(a.resolucion, true) : 'Sin dato'}</span></span>
                       <span className="text-[11px] text-slate-500 tabular-nums">{formatearFechaColombia(a.resolucion?.fecha || a.propuesta.fecha)}</span>
                     </p>
                   </li>

@@ -98,9 +98,9 @@ export const HistorialEntregas: React.FC<{
                   {quienRegistro(evento)}
                   <span className="block text-slate-500">{evento.funcion ? ETIQUETA_FUNCION[evento.funcion] : 'sin función registrada'}</span>
                 </td>
-                <td className="px-2 py-1.5 text-slate-700">{cambiosDeEvento(evento) || '—'}</td>
-                <td className="px-2 py-1.5 text-slate-700">{evento.descripcion || '—'}</td>
-                <td className="px-2 py-1.5 font-mono text-[11px] text-slate-400">{evento.eventoId ? evento.eventoId.slice(0, 8) : '—'}</td>
+                <td className="px-2 py-1.5 text-slate-700">{cambiosDeEvento(evento) || 'Sin dato'}</td>
+                <td className="px-2 py-1.5 text-slate-700">{evento.descripcion || 'Sin dato'}</td>
+                <td className="px-2 py-1.5 font-mono text-[11px] text-slate-400">{evento.eventoId ? evento.eventoId.slice(0, 8) : 'Sin dato'}</td>
               </tr>
             ))}
           </tbody>

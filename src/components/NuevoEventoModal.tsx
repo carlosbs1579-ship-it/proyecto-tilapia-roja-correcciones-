@@ -904,7 +904,7 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                 >
                   {(lote.eventos || []).map((ev) => (
                     <option key={ev.id} value={ev.id}>
-                      #{ev.indice} • {ev.fechaEvento} • {ev.tipo} — {ev.descripcion || 'Sin descripción'}
+                      #{ev.indice} • {ev.fechaEvento} • {ev.tipo} · {ev.descripcion || 'Sin descripción'}
                     </option>
                   ))}
                 </select>

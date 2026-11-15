@@ -167,7 +167,7 @@ export const NuevoLoteModal: React.FC<NuevoLoteModalProps> = ({
               >
                 {config.estanques.map((est) => (
                   <option key={est.codigo} value={est.codigo}>
-                    {est.codigo} — {est.nombre} {est.volumenM3 ? `(${est.volumenM3} m³)` : ''}
+                    {est.codigo} · {est.nombre} {est.volumenM3 ? `(${est.volumenM3} m³)` : ''}
                   </option>
                 ))}
               </select>

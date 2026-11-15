@@ -174,7 +174,8 @@ export const RepartidorPanel: React.FC<RepartidorPanelProps> = ({ perfil }) => {
                 filtro === f.id ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-700 border-slate-300'
               }`}
             >
-              {f.etiqueta} ({cantidad})
+              {f.etiqueta}
+              <span className="sr-only"> ({cantidad})</span>
             </button>
           );
         })}

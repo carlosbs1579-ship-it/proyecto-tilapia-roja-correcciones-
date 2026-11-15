@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./styles/motion.css";
 
 /*
  * Mundo visual "acta formal": papel frío, tinta azul, verde solo para lo íntegro, oro viejo para
@@ -89,9 +90,6 @@
   --color-red-700: #8e1d17;
   --color-red-800: #6f1712;
   --color-red-900: #52110d;
-
-  /* Curvas de movimiento (salida fuerte para entradas de interfaz) */
-  --ease-salida: cubic-bezier(0.23, 1, 0.32, 1);
 
   /* Escalas que no tienen papel propio se llevan a tonos del sistema:
      violeta (en ruta) a pizarra, naranja (revisión, novedades) al oro, morado a pizarra */
@@ -250,28 +248,31 @@
 }
 
 /*
- * Movimiento: pocas entradas, cortas y con propósito.
- * - Ventanas: el velo aparece y la ventana sube un poco desde 97 % (no surge de la nada).
- * - Cambio de pestaña: solo un fundido breve, porque se usa muchas veces al día.
+ * Movimiento (valores en src/styles/motion.css):
+ * - Ventanas: el velo se oscurece en 200 ms y la ventana entra con escala 0,96 a 1 y opacidad;
+ *   en el celular la ventana sube desde abajo como una hoja.
+ * - Pantallas: opacidad y 12 px hacia arriba, solo al montarse.
  * - Aviso inferior: entra desde abajo, por donde se va.
  * - Lote sellado: el doble filete se traza de izquierda a derecha una sola vez.
  */
 .velo {
-  transition: opacity 200ms var(--ease-salida);
+  transition: opacity var(--mov-velo) var(--curva-entrada);
 }
 .velo > * {
   transition:
-    opacity 240ms var(--ease-salida),
-    transform 240ms var(--ease-salida);
+    opacity var(--mov-entrada) var(--curva-entrada),
+    transform var(--mov-entrada) var(--curva-entrada);
 }
 .aparece,
 .animate-fadeIn {
-  transition: opacity 160ms ease-out;
+  transition:
+    opacity var(--mov-entrada) var(--curva-entrada),
+    transform var(--mov-entrada) var(--curva-entrada);
 }
 .aviso-inferior {
   transition:
-    opacity 300ms var(--ease-salida),
-    transform 300ms var(--ease-salida);
+    opacity var(--mov-entrada) var(--curva-entrada),
+    transform var(--mov-entrada) var(--curva-entrada);
 }
 .trazo-acta {
   position: relative;
@@ -283,17 +284,20 @@
   inset: 0 0 auto 0;
   border-top: 3px double var(--color-amber-500);
   transform-origin: left center;
-  transition: transform 520ms var(--ease-salida) 120ms;
+  transition: transform 520ms var(--curva-entrada) 120ms;
 }
 @starting-style {
-  .velo,
-  .aparece,
-  .animate-fadeIn {
+  .velo {
     opacity: 0;
   }
   .velo > * {
     opacity: 0;
-    transform: translateY(6px) scale(0.97);
+    transform: scale(0.96);
+  }
+  .aparece,
+  .animate-fadeIn {
+    opacity: 0;
+    transform: translateY(var(--dist-tarjeta));
   }
   .aviso-inferior {
     opacity: 0;
@@ -304,15 +308,40 @@
   }
 }
 
-/* Con movimiento reducido se conservan los fundidos y se quitan los desplazamientos */
+/* Celular: las ventanas son hojas que suben desde el borde inferior */
+@media (max-width: 639px) {
+  .velo {
+    align-items: flex-end;
+    padding-left: 0;
+    padding-right: 0;
+    padding-bottom: 0;
+  }
+  .velo > * {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    max-height: 92dvh;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  @starting-style {
+    .velo > * {
+      opacity: 1;
+      transform: translateY(100%);
+    }
+  }
+}
+
+/* Con movimiento reducido todo queda en un fundido corto */
 @media (prefers-reduced-motion: reduce) {
   @starting-style {
     .velo > *,
-    .aviso-inferior {
+    .aviso-inferior,
+    .aparece,
+    .animate-fadeIn {
+      opacity: 0;
       transform: none;
     }
-    .trazo-acta::before {
-      transform: none;
-    }
+  }
+  .trazo-acta::before {
+    transition: none;
   }
 }

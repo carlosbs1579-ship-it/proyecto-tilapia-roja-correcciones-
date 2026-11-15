@@ -62,14 +62,14 @@ export const SupervisionRepartidores: React.FC<{
                   {r.nombre}
                   {!r.activo && <span className="block text-[11px] font-normal text-slate-400">ya no figura como repartidor activo</span>}
                 </td>
-                <td className="px-3 py-2 text-slate-600">{r.cargo || '—'}</td>
+                <td className="px-3 py-2 text-slate-600">{r.cargo || 'Sin dato'}</td>
                 <td className="px-3 py-2 text-right">{r.asignados}</td>
                 <td className="px-3 py-2 text-right">{r.pendientes}</td>
                 <td className="px-3 py-2 text-right">{r.enRuta}</td>
                 <td className="px-3 py-2 text-right">{r.parciales}</td>
                 <td className="px-3 py-2 text-right">{r.completadas}</td>
                 <td className="px-3 py-2 text-right">{r.novedades}</td>
-                <td className="px-3 py-2 text-slate-600">{r.ultimaActividad ? formatearFechaColombia(r.ultimaActividad) : '—'}</td>
+                <td className="px-3 py-2 text-slate-600">{r.ultimaActividad ? formatearFechaColombia(r.ultimaActividad) : 'Sin dato'}</td>
               </tr>
             ))}
           </tbody>

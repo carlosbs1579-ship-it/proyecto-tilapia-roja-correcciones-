@@ -244,10 +244,11 @@ export const ConfiguracionTab: React.FC<ConfiguracionTabProps> = ({
           <div>
             <div className="flex items-center space-x-2">
               <Waves className="w-5 h-5 text-sky-600" />
-              <h2 className="text-base font-bold text-slate-900">
-                1. Estanques y Piscinas de Cultivo ({estanques.length})
-              </h2>
+              <h2 className="text-base font-bold text-slate-900">1. Estanques y piscinas de cultivo</h2>
             </div>
+            <p className="text-xs text-slate-500 mt-0.5">
+              {estanques.length === 1 ? '1 estanque registrado' : `${estanques.length} estanques registrados`}
+            </p>
             <p className="text-xs text-slate-500 mt-0.5">
               Configura tus estanques (E1, E2, E3...). Cualquier estanque agregado aquí queda disponible de inmediato para crear nuevos lotes y registrar mediciones.
             </p>
@@ -402,8 +403,9 @@ export const ConfiguracionTab: React.FC<ConfiguracionTabProps> = ({
             className="pt-4 border-t border-slate-100 bg-sky-50/40 p-4 rounded-xl border border-sky-100 flex flex-wrap items-end gap-3"
           >
             <div className="w-full sm:w-auto">
-              <span className="text-xs font-bold text-sky-950 block mb-2">
-                ➕ Añadir Nuevo Estanque / Piscina
+              <span className="text-sm font-semibold text-sky-950 mb-2 inline-flex items-center gap-1.5">
+                <Plus className="w-4 h-4" strokeWidth={1.75} aria-hidden="true" />
+                Añadir estanque o piscina
               </span>
             </div>
 

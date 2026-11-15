@@ -449,7 +449,7 @@ export const UsuariosTab: React.FC<UsuariosTabProps> = ({
         </div>
 
         <div className="bg-white p-3.5 rounded-xl border border-emerald-200 shadow-xs bg-emerald-50/20">
-          <span className="text-[11px] font-medium text-emerald-700 block">🟢 Cuentas Activas</span>
+          <span className="text-[11px] font-medium text-emerald-700 block">Cuentas Activas</span>
           <strong className="text-lg font-bold text-emerald-700 mt-0.5 block">{activos}</strong>
           <span className="text-[11px] text-emerald-600/80">Acceso a lotes</span>
         </div>
@@ -460,7 +460,7 @@ export const UsuariosTab: React.FC<UsuariosTabProps> = ({
             : 'bg-white border-slate-200 text-slate-700'
         }`}>
           <span className="text-[11px] font-bold block">
-            🟡 Pendientes de Aprobación
+            Pendientes de Aprobación
           </span>
           <strong className="text-lg font-bold mt-0.5 block">{pendientes}</strong>
           <span className="text-[11px]">
@@ -469,7 +469,7 @@ export const UsuariosTab: React.FC<UsuariosTabProps> = ({
         </div>
 
         <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs">
-          <span className="text-[11px] font-medium text-slate-500 block">🔴 Inactivos</span>
+          <span className="text-[11px] font-medium text-slate-500 block">Inactivos</span>
           <strong className="text-lg font-bold text-slate-700 mt-0.5 block">{inactivos}</strong>
           <span className="text-[11px] text-slate-400">Sin acceso</span>
         </div>
@@ -603,7 +603,7 @@ export const UsuariosTab: React.FC<UsuariosTabProps> = ({
                                     : 'bg-slate-200 text-slate-700'
                                 }`}
                               >
-                                {ed.estado === 'activo' ? '🟢 Activo' : ed.estado === 'pendiente' ? '🟡 Pendiente' : '🔴 Inactivo'}
+                                {ed.estado === 'activo' ? 'Activo' : ed.estado === 'pendiente' ? 'Pendiente' : 'Inactivo'}
                               </span>
                             )}
                           </div>
@@ -648,9 +648,9 @@ export const UsuariosTab: React.FC<UsuariosTabProps> = ({
                                   : 'bg-slate-100 text-slate-700 border-slate-300 font-bold'
                               }`}
                             >
-                              <option value="activo">🟢 Activo</option>
-                              <option value="pendiente">🟡 Pendiente</option>
-                              <option value="inactivo">🔴 Inactivo</option>
+                              <option value="activo">Activo</option>
+                              <option value="pendiente">Pendiente</option>
+                              <option value="inactivo">Inactivo</option>
                             </select>
                           </div>
                         </div>
@@ -942,7 +942,7 @@ export const UsuariosTab: React.FC<UsuariosTabProps> = ({
                   : 'bg-amber-100 text-amber-800 border border-amber-300'
               }`}
             >
-              {perfilActual?.estado === 'activo' ? '🟢 Cuenta Autorizada' : '🟡 Pendiente de Aprobación'}
+              {perfilActual?.estado === 'activo' ? 'Cuenta Autorizada' : 'Pendiente de Aprobación'}
             </span>
           </div>
 
@@ -972,7 +972,7 @@ export const UsuariosTab: React.FC<UsuariosTabProps> = ({
                     : 'bg-slate-50 text-slate-400 border-slate-200'
                 }`}
               >
-                {perfilActual?.permisos?.crearLotes ? '✓ Autorizado' : '✗ Sin permiso'}: Añadir nuevos lotes
+                {perfilActual?.permisos?.crearLotes ? 'Autorizado' : 'Sin permiso'}: Añadir nuevos lotes
               </div>
               <div
                 className={`p-2.5 rounded-lg border ${
@@ -981,7 +981,7 @@ export const UsuariosTab: React.FC<UsuariosTabProps> = ({
                     : 'bg-slate-50 text-slate-400 border-slate-200'
                 }`}
               >
-                {perfilActual?.permisos?.registrarEventos ? '✓ Autorizado' : '✗ Sin permiso'}: Registrar eventos
+                {perfilActual?.permisos?.registrarEventos ? 'Autorizado' : 'Sin permiso'}: Registrar eventos
               </div>
               <div
                 className={`p-2.5 rounded-lg border ${
@@ -990,7 +990,7 @@ export const UsuariosTab: React.FC<UsuariosTabProps> = ({
                     : 'bg-slate-50 text-slate-400 border-slate-200'
                 }`}
               >
-                {perfilActual?.permisos?.cerrarLotes ? '✓ Autorizado' : '✗ Sin permiso'}: Cerrar lotes y PDF
+                {perfilActual?.permisos?.cerrarLotes ? 'Autorizado' : 'Sin permiso'}: Cerrar lotes y PDF
               </div>
               <div
                 className={`p-2.5 rounded-lg border ${
@@ -999,7 +999,7 @@ export const UsuariosTab: React.FC<UsuariosTabProps> = ({
                     : 'bg-slate-50 text-slate-400 border-slate-200'
                 }`}
               >
-                {perfilActual?.permisos?.gestionarEstanques ? '✓ Autorizado' : '✗ Sin permiso'}: Crear piscinas/estanques
+                {perfilActual?.permisos?.gestionarEstanques ? 'Autorizado' : 'Sin permiso'}: Crear piscinas/estanques
               </div>
               <div
                 className={`p-2.5 rounded-lg border ${
@@ -1008,7 +1008,7 @@ export const UsuariosTab: React.FC<UsuariosTabProps> = ({
                     : 'bg-slate-50 text-slate-400 border-slate-200'
                 }`}
               >
-                {perfilActual?.permisos?.gestionarConfiguracion ? '✓ Autorizado' : '✗ Sin permiso'}: Modificar configuración
+                {perfilActual?.permisos?.gestionarConfiguracion ? 'Autorizado' : 'Sin permiso'}: Modificar configuración
               </div>
               <div
                 className={`p-2.5 rounded-lg border ${
@@ -1017,7 +1017,7 @@ export const UsuariosTab: React.FC<UsuariosTabProps> = ({
                     : 'bg-slate-50 text-slate-400 border-slate-200'
                 }`}
               >
-                {perfilActual?.permisos?.gestionarPedidos ? '✓ Autorizado' : '✗ Sin permiso'}: Gestionar pedidos
+                {perfilActual?.permisos?.gestionarPedidos ? 'Autorizado' : 'Sin permiso'}: Gestionar pedidos
               </div>
             </div>
           </div>

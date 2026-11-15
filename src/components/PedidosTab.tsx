@@ -221,16 +221,16 @@ export const PedidosTab: React.FC<PedidosTabProps> = ({ lotes, perfilActual }) =
   };
 
   const pestañas: { id: Vista; etiqueta: string; icono: React.ReactNode; contador?: number }[] = [
-    { id: 'pedidos', etiqueta: 'Pedidos', icono: <ListChecks className="w-3.5 h-3.5" />, contador: ordenes.length },
-    { id: 'repartidores', etiqueta: 'Repartidores', icono: <Truck className="w-3.5 h-3.5" /> },
+    { id: 'pedidos', etiqueta: 'Pedidos', icono: <ListChecks className="w-4 h-4" strokeWidth={1.75} />, contador: ordenes.length },
+    { id: 'repartidores', etiqueta: 'Repartidores', icono: <Truck className="w-4 h-4" strokeWidth={1.75} /> },
     ...(puedeNovedades
       ? ([
-          { id: 'solicitudes', etiqueta: 'Solicitudes', icono: <Repeat className="w-3.5 h-3.5" />, contador: solicitudesPendientes },
-          { id: 'novedades', etiqueta: 'Novedades', icono: <AlertTriangle className="w-3.5 h-3.5" />, contador: novedadesAbiertas }
+          { id: 'solicitudes', etiqueta: 'Solicitudes', icono: <Repeat className="w-4 h-4" strokeWidth={1.75} />, contador: solicitudesPendientes },
+          { id: 'novedades', etiqueta: 'Novedades', icono: <AlertTriangle className="w-4 h-4" strokeWidth={1.75} />, contador: novedadesAbiertas }
         ] as { id: Vista; etiqueta: string; icono: React.ReactNode; contador?: number }[])
       : []),
-    { id: 'historial', etiqueta: 'Historial', icono: <History className="w-3.5 h-3.5" /> },
-    { id: 'lotes', etiqueta: 'Disponibilidad por lote', icono: <Layers className="w-3.5 h-3.5" /> }
+    { id: 'historial', etiqueta: 'Historial', icono: <History className="w-4 h-4" strokeWidth={1.75} /> },
+    { id: 'lotes', etiqueta: 'Disponibilidad', icono: <Layers className="w-4 h-4" strokeWidth={1.75} /> }
   ];
   const campo = 'px-2.5 py-1.5 border border-slate-300 rounded-lg bg-white text-xs';
 
@@ -345,9 +345,6 @@ export const PedidosTab: React.FC<PedidosTabProps> = ({ lotes, perfilActual }) =
           >
             {p.icono}
             <span>{p.etiqueta}</span>
-            {p.contador !== undefined && p.contador > 0 && (
-              <span className={`px-1.5 rounded-full text-[11px] ${vista === p.id ? 'bg-white/20' : 'bg-slate-100'}`}>{p.contador}</span>
-            )}
           </button>
         ))}
       </div>
@@ -426,7 +423,7 @@ export const PedidosTab: React.FC<PedidosTabProps> = ({ lotes, perfilActual }) =
                         </span>
                         <span className="text-slate-700 truncate">{o.clienteNombre}</span>
                         <span className="text-slate-500"><span className="xl:hidden">Creada </span>{formatearFechaColombia(o.creadoEn)}</span>
-                        <span className="text-slate-500"><span className="xl:hidden">Programada </span>{o.fechaProgramada || '—'}</span>
+                        <span className="text-slate-500"><span className="xl:hidden">Programada </span>{o.fechaProgramada || 'Sin dato'}</span>
                         <span className="text-slate-600 truncate">{o.repartidorNombre || 'Sin repartidor'}</span>
                         <span className="xl:text-right"><span className="xl:hidden text-slate-400">Solic. </span>{num(o.cantidadSolicitada)}</span>
                         <span className="xl:text-right"><span className="xl:hidden text-slate-400">Autor. </span>{num(o.cantidadAutorizada)}</span>
@@ -531,11 +528,11 @@ export const PedidosTab: React.FC<PedidosTabProps> = ({ lotes, perfilActual }) =
                     <td className="px-4 py-2 text-right">{num(disp.reservado)}</td>
                     <td className="px-4 py-2 text-right">{num(disp.entregado)}</td>
                     <td className="px-4 py-2 text-right font-bold text-emerald-700">
-                      {disp.cosechado > 0 ? `${num(disp.disponible)} ${unidad}` : '—'}
+                      {disp.cosechado > 0 ? `${num(disp.disponible)} ${unidad}` : 'Sin dato'}
                     </td>
                     <td className="px-4 py-2">
                       {vinculadas.length === 0 ? (
-                        <span className="text-slate-400">—</span>
+                        <span className="text-slate-400">Sin dato</span>
                       ) : (
                         <ul className="space-y-0.5">
                           {vinculadas.map(({ orden, cantidad }) => (

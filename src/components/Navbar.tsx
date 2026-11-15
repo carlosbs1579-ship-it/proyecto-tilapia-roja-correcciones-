@@ -66,14 +66,12 @@ const TABS: Record<TabTipo, DefinicionTab> = {
   usuarios: {
     id: 'usuarios',
     etiqueta: 'Personal',
-    etiquetaMovil: 'Personal & Permisos',
-    icono: <Users className="w-4 h-4" strokeWidth={1.75} />
+    etiquetaMovil: 'Personal'
   },
   reparto: {
     id: 'reparto',
     etiqueta: 'Mis entregas',
-    etiquetaMovil: 'Mis entregas',
-    icono: <Truck className="w-4 h-4" strokeWidth={1.75} />
+    etiquetaMovil: 'Mis entregas'
   }
 };
 

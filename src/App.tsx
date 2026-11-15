@@ -583,7 +583,7 @@ export default function App() {
       <footer className="bg-slate-900 text-slate-400 border-t border-slate-800 py-6 text-xs text-center">
         <div className="max-w-7xl mx-auto px-4">
           <p className="font-semibold text-slate-300">
-            Cultivos Loré — Granja de Tilapia Roja en Turbaco (Bolívar, Colombia)
+            Cultivos Loré · Granja de Tilapia Roja en Turbaco (Bolívar, Colombia)
           </p>
           <p className="text-slate-500 mt-1">
             Producto: Tilapia roja entera fresca, limpia (escamada y eviscerada), calibre 450 a 500 g • Modalidad Tilapia Pro

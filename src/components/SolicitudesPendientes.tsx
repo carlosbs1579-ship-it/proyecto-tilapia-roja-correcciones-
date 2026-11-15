@@ -77,12 +77,12 @@ export const SolicitudAjusteTarjeta: React.FC<{
                 <td className="py-0.5 text-right font-semibold">{num(d.propuesta)}</td>
                 {pendiente && (
                   <td className="py-0.5 text-right">
-                    {d.diferencia === 0 ? '—' : `${d.diferencia > 0 ? '+' : ''}${num(d.diferencia)}`}
+                    {d.diferencia === 0 ? 'Sin dato' : `${d.diferencia > 0 ? '+' : ''}${num(d.diferencia)}`}
                   </td>
                 )}
                 {pendiente && (
                   <td className="py-0.5 text-right">
-                    {d.diferencia > 0 ? (d.disponible === null ? '—' : num(d.disponible)) : 'se libera'}
+                    {d.diferencia > 0 ? (d.disponible === null ? 'Sin dato' : num(d.disponible)) : 'se libera'}
                     {d.motivo && <span className="block">{d.motivo}</span>}
                   </td>
                 )}

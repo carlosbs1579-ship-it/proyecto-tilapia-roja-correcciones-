@@ -623,7 +623,7 @@ export function nombreRegistro(): { registradoPorNombre?: string } {
  */
 export function quienRegistro(ev: { registradoPor?: string; registradoPorNombre?: string }, publico = false): string {
   if (ev.registradoPorNombre) return ev.registradoPorNombre;
-  if (!ev.registradoPor) return '—';
+  if (!ev.registradoPor) return 'Sin dato';
   if (!publico) return ev.registradoPor;
   const [usuario, dominio] = ev.registradoPor.split('@');
   return dominio ? `${usuario.slice(0, 2)}•••@${dominio}` : usuario.slice(0, 2) + '•••';

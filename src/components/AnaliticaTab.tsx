@@ -24,6 +24,7 @@ import {
   Bar
 } from 'recharts';
 import { Lote, ConfiguracionGeneral } from '../types';
+import { ComparativoEstanques } from './ComparativoEstanques';
 
 interface AnaliticaTabProps {
   lotes: Lote[];
@@ -49,7 +50,7 @@ export const AnaliticaTab: React.FC<AnaliticaTabProps> = ({
     return lotes.find((l) => l.codigo === loteSeleccionadoCodigo) || lotes[0] || null;
   }, [lotes, loteSeleccionadoCodigo]);
 
-  // Comparativo E1 vs E2
+  // Comparativo de estanques
   const comparativaEstanques = useMemo(() => {
     const data: Record<string, { totalLotes: number; activos: number; biomasaTotal: number; supervSuma: number; fcaSuma: number; fcaCount: number }> = {};
     for (const est of config.estanques) {
@@ -220,44 +221,11 @@ export const AnaliticaTab: React.FC<AnaliticaTabProps> = ({
         </button>
       </div>
 
-      {/* COMPARATIVA DE ESTANQUES E1 VS E2 */}
+      {/* COMPARATIVO DE ESTANQUES */}
       <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
-        <h2 className="text-sm font-bold text-slate-900 mb-1 flex items-center space-x-2">
-          <BarChart2 className="w-4 h-4 text-sky-600" />
-          <span>Comparativo de Estanques (E1 vs E2)</span>
-        </h2>
-        <p className="text-xs text-slate-500 mb-4">
-          Resumen de eficiencia de biomasa viva y factor de conversión alimenticia por estanque
-        </p>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {comparativaEstanques.map((item) => (
-            <div key={item.estanque} className="p-4 rounded-xl border border-slate-200 bg-slate-50">
-              <div className="flex items-center justify-between mb-2">
-                <span className="font-mono font-bold text-base text-sky-800">
-                  Estanque {item.estanque}
-                </span>
-                <span className="text-xs bg-sky-100 text-sky-700 font-semibold px-2 py-0.5 rounded">
-                  {item.lotesActivos} lotes activos
-                </span>
-              </div>
-              <div className="space-y-1.5 text-xs">
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Biomasa viva en estanque:</span>
-                  <span className="font-bold text-slate-900">{item.biomasaKg.toLocaleString()} kg</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Supervivencia promedio:</span>
-                  <span className="font-bold text-emerald-600">{item.supervivenciaProm}%</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">FCA promedio:</span>
-                  <span className="font-bold text-slate-800">{item.fcaProm || 'N/A'}</span>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+        <h2 className="text-lg text-slate-900 mb-1">Comparativo de estanques</h2>
+        <p className="text-sm text-slate-600 mb-4">Biomasa viva, supervivencia y conversión alimenticia de cada estanque.</p>
+        <ComparativoEstanques datos={comparativaEstanques} estanques={config.estanques} />
       </div>
 
       {/* SECCIÓN 1: LOTES EN GESTIÓN (ACTIVOS) */}

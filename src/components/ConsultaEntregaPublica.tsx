@@ -56,7 +56,7 @@ export const ConsultaEntregaPublica: React.FC<{
           <div className="flex items-center space-x-2 min-w-0">
             <Truck className="w-5 h-5 shrink-0" />
             <div className="min-w-0">
-              <span className="block font-bold truncate">{EMPRESA}</span>
+              <span className="block font-bold truncate">{EMPRESA.split(' — ').join(' · ')}</span>
               <span className="block text-xs text-sky-100">Consulta de entrega</span>
             </div>
           </div>
@@ -101,10 +101,10 @@ export const ConsultaEntregaPublica: React.FC<{
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-xs text-slate-700">
                 <span>Cliente: <strong>{actual.cliente.nombre}</strong></span>
-                <span>Repartidor: <strong>{actual.repartidor || '—'}</strong></span>
+                <span>Repartidor: <strong>{actual.repartidor || 'Sin dato'}</strong></span>
                 <span>Autorizado: <strong>{num(actual.cantidadAutorizada)} {actual.unidad}</strong></span>
                 <span>Entregado: <strong>{num(actual.cantidadEntregada)} {actual.unidad}</strong></span>
-                <span>Entrega confirmada: <strong>{actual.fechas.confirmacion ? formatearFechaColombia(actual.fechas.confirmacion) : '—'}</strong></span>
+                <span>Entrega confirmada: <strong>{actual.fechas.confirmacion ? formatearFechaColombia(actual.fechas.confirmacion) : 'Sin dato'}</strong></span>
                 {actual.fechas.correccion && (
                   <span>Entrega corregida: <strong>{formatearFechaColombia(actual.fechas.correccion)}</strong></span>
                 )}

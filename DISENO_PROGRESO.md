@@ -11,7 +11,7 @@ Sistema visual vigente: `DESIGN.md` (paleta tinta, verde solo íntegro, oro viej
 - [x] Fase 3. Animaciones de apertura y esqueletos
 - [x] Fase 4. Pestañas
 - [x] Fase 5. Personal y permisos
-- [ ] Fase 6. Pantalla de inicio de sesión
+- [x] Fase 6. Pantalla de inicio de sesión
 - [ ] Fase 7. Pulido general
 - [ ] Verificación final
 
@@ -79,3 +79,13 @@ Sistema visual vigente: `DESIGN.md` (paleta tinta, verde solo íntegro, oro viej
 - Filas que entran desde arriba con fundido y salen encogiéndose (layout de motion); aviso inferior de 3 s; estado vacío con texto útil y acción "Ver a todos".
 - Toda la lógica (guardar, estados, roles, permisos, plantillas, eliminar, reglas de quién edita a quién) se conserva.
 - No hecho: la matriz rol por permiso en escritorio (alternativa opcional); se mantuvieron los interruptores por persona.
+
+## Fase 6 hecha
+
+- `src/components/PantallaIngreso.tsx` (carga diferida) y `PantallaVerificando.tsx` (logo mientras se verifica la sesión, sin parpadeo del ingreso).
+- Sin sesión ya no se ve la app bloqueada con "Modo consulta": se muestra la pantalla de ingreso. Las consultas públicas del QR (lote y entrega) siguen abiertas sin sesión.
+- Escritorio: dos columnas (identidad en tinta con logo, frase y doble filete; formulario a la derecha). Celular: identidad arriba en pequeño.
+- Control segmentado Operador / Repartidor con indicador deslizante (resorte 400/35) e ícono de línea.
+- Campos con etiqueta encima, anillo de foco en 150 ms, error con temblor de 4 px una vez y mensaje debajo del campo, botón para mostrar u ocultar la contraseña, botón con carga interna sin cambiar de tamaño, recuperar contraseña, crear cuenta y Google.
+- Al ingresar, el formulario se desvanece en 180 ms y la app entra con fundido y 12 px en 320 ms. Entrada de la pantalla escalonada a 80 ms.
+- Lógica: el rol elegido es solo una preferencia. Se aplica con la lógica existente de funciones (`funcionesDisponibles`, `guardarFuncion`): si la cuenta tiene esa función entra con ella; un administrador que elige Operador entra como administrador; si no la tiene, entra con sus funciones y ve un aviso. Las reglas de la base de datos no cambian.

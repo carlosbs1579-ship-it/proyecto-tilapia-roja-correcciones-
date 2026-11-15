@@ -1,8 +1,10 @@
 import React, { useState, useEffect, Suspense, lazy, useRef } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { EsqueletoPantalla } from './components/Esqueleto';
+import { PantallaVerificando } from './components/PantallaVerificando';
+const PantallaIngreso = lazy(() => import('./components/PantallaIngreso').then((m) => ({ default: m.PantallaIngreso })));
 import { VAR_CONTENIDO_TAB } from './lib/motion';
-import { useConservar } from './lib/presencia';
+import { useConservar, usePresencia } from './lib/presencia';
 import { onAuthStateChanged, signOut, User } from 'firebase/auth';
 import { auth, db } from './firebase/firebaseConfig';
 import { Lote, ConfiguracionGeneral, UsuarioPerfil, RolFuncional } from './types';
@@ -135,6 +137,9 @@ export default function App() {
 
   // Funciones (roles) con las que la cuenta puede trabajar y la elegida en esta sesión
   const [funcionActiva, setFuncionActiva] = useState<RolFuncional | null>(null);
+  // Función elegida en la pantalla de ingreso: es solo una preferencia; se aplica si la cuenta la tiene
+  const [funcionPedida, setFuncionPedida] = useState<RolFuncional | null>(null);
+  const [avisoFuncionPedida, setAvisoFuncionPedida] = useState<string | null>(null);
   const funciones = usuario ? funcionesDisponibles(perfilUsuario) : [];
   const clavefunciones = funciones.join(',');
   const mostrarSelectorFuncion = Boolean(usuario) && funciones.length > 1 && !funcionActiva;
@@ -145,6 +150,23 @@ export default function App() {
     if (!usuario || funciones.length === 0) {
       setFuncionActiva(null);
       return;
+    }
+    // Preferencia del ingreso: solo si la cuenta tiene esa función (un administrador entra como tal al elegir Operador)
+    if (funcionPedida) {
+      const aplicable = funciones.includes(funcionPedida)
+        ? funcionPedida
+        : funcionPedida === 'operator' && funciones.includes('admin')
+        ? 'admin'
+        : null;
+      setFuncionPedida(null);
+      if (aplicable) {
+        guardarFuncion(usuario.uid, aplicable);
+        setFuncionActiva(aplicable);
+        return;
+      }
+      setAvisoFuncionPedida(
+        `Tu cuenta no tiene la función de ${funcionPedida === 'courier' ? 'repartidor' : 'operador'}. Entraste con las funciones que te asignó el administrador.`
+      );
     }
     if (funciones.length === 1) {
       setFuncionActiva(funciones[0]);
@@ -364,6 +386,9 @@ export default function App() {
   };
 
   // Si se detectó un código de lote por escaneo de QR en la URL, mostrar vista pública interactiva
+  // La pantalla de ingreso se desvanece (180 ms) cuando la sesión queda activa, antes de que entre la app
+  const ingreso = usePresencia(!usuario && !authCargando);
+
   if (entregaPublicaToken && !lotePublicoCodigo) {
     return (
       <Suspense fallback={<Cargando />}>
@@ -403,8 +428,24 @@ export default function App() {
     );
   }
 
+  // Sin sesión: pantalla breve con el logo mientras se verifica y, después, la pantalla de ingreso
+  if (authCargando && !usuario) return <PantallaVerificando />;
+  if (!usuario || ingreso.saliendo) {
+    return (
+      <div className={ingreso.saliendo ? "opacity-0 transition-opacity duration-[180ms] ease-[cubic-bezier(0.4,0,1,1)]" : ""}>
+        <Suspense fallback={<PantallaVerificando />}>
+          <PantallaIngreso onRolElegido={(rol) => setFuncionPedida(rol)} />
+        </Suspense>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-dvh bg-white flex flex-col font-sans">
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0, transition: { duration: 0.32, ease: [0.22, 1, 0.36, 1] } }}
+      className="min-h-dvh bg-white flex flex-col font-sans"
+    >
       {/* NAVBAR */}
       <Navbar
         tabActiva={tabActiva}
@@ -420,21 +461,12 @@ export default function App() {
         onNuevoLote={handleAbrirNuevoLote}
       />
 
-      {/* BANNER 1: SI NO HA INICIADO SESIÓN */}
-      {!usuario && !authCargando && (
-        <div className="bg-sky-950 text-sky-100 px-4 py-2.5 text-xs border-b border-sky-800">
-          <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
-            <div className="flex items-center space-x-2">
-              <Lock className="w-4 h-4 text-sky-400 shrink-0" />
-              <span>
-                <strong>Modo Consulta:</strong> Para ver los lotes de la granja, crear lotes o registrar eventos debes ingresar con una cuenta autorizada por el administrador.
-              </span>
-            </div>
-            <button
-              onClick={() => setAuthModalOpen(true)}
-              className="px-3.5 py-1 bg-sky-500 hover:bg-sky-400 text-white font-semibold rounded-md shadow-xs transition-colors shrink-0"
-            >
-              Ingresar al sistema
+      {avisoFuncionPedida && (
+        <div role="status" className="bg-amber-50 border-b border-amber-200 text-amber-900 text-sm">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 flex items-start justify-between gap-3">
+            <span>{avisoFuncionPedida}</span>
+            <button type="button" onClick={() => setAvisoFuncionPedida(null)} className="font-semibold underline shrink-0">
+              Entendido
             </button>
           </div>
         </div>
@@ -678,6 +710,6 @@ export default function App() {
           }}
         />
       )}
-    </div>
+    </motion.div>
   );
 }

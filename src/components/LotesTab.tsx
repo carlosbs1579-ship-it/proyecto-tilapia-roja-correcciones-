@@ -278,7 +278,7 @@ export const LotesTab: React.FC<LotesTabProps> = ({
                       )}
                       <button
                         onClick={() => onSeleccionarLote(lote)}
-                        className="px-2.5 py-1 text-xs font-semibold text-sky-700 bg-sky-50 hover:bg-sky-100 rounded-md border border-sky-200 transition-colors inline-flex items-center space-x-1"
+                        className="px-3 py-1.5 text-xs font-semibold text-white bg-sky-600 hover:bg-sky-700 rounded-md transition-colors inline-flex items-center space-x-1"
                       >
                         <span>Abrir</span>
                         <ExternalLink className="w-3 h-3" />

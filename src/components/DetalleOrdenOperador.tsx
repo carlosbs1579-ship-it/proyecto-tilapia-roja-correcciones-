@@ -182,7 +182,7 @@ export const DetalleOrdenOperador: React.FC<{
       {/* Acciones del operador (las generales requieren "Crear y asignar órdenes") */}
       {(puedeGestionar || puedeSaldos) && (
       <Seccion titulo="Acciones">
-        {!cerrada && puedeGestionar && (
+        {!cerrada && (puedeGestionar || puedeSaldos) && (
           <input
             type="text"
             placeholder="Motivo (obligatorio para cancelar, enviar a revisión, cambiar el repartidor o liberar el saldo)"
@@ -190,6 +190,11 @@ export const DetalleOrdenOperador: React.FC<{
             onChange={(e) => setMotivo(e.target.value)}
             className="w-full px-3 py-1.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
           />
+        )}
+        {!cerrada && (puedeGestionar || puedeSaldos) && !motivo.trim() && (
+          <p className="text-[11px] text-amber-800">
+            Escribe el motivo arriba para habilitar: cancelar, enviar a revisión, cambiar el repartidor o liberar el saldo.
+          </p>
         )}
         <div className={`flex flex-wrap gap-2 ${puedeGestionar ? "" : "hidden"}`}>
           {o.estado === 'borrador' && (
@@ -215,7 +220,8 @@ export const DetalleOrdenOperador: React.FC<{
           {transiciones.map((e) => (
             <button
               key={e}
-              disabled={procesando}
+              disabled={procesando || (e === 'requiere_revision' && !motivo.trim())}
+              title={e === 'requiere_revision' && !motivo.trim() ? 'Escribe el motivo en el campo Motivo.' : undefined}
               onClick={() => correr(() => cambiarEstadoOrden(o.id, e, motivo), `Orden ${o.id}: ${ETIQUETA_ESTADO_ORDEN[e]}.`)}
               className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-semibold disabled:opacity-50"
             >
@@ -224,7 +230,8 @@ export const DetalleOrdenOperador: React.FC<{
           ))}
           {puedeCancelar && (
             <button
-              disabled={procesando}
+              disabled={procesando || !motivo.trim()}
+              title={!motivo.trim() ? 'Escribe el motivo de la cancelación en el campo Motivo.' : undefined}
               onClick={() =>
                 correr(
                   () => cambiarEstadoOrden(o.id, 'cancelado', motivo),
@@ -249,7 +256,8 @@ export const DetalleOrdenOperador: React.FC<{
               ))}
             </select>
             <button
-              disabled={procesando || !nuevoRepartidor}
+              disabled={procesando || !nuevoRepartidor || (o.estado !== 'borrador' && !motivo.trim())}
+              title={o.estado !== 'borrador' && !motivo.trim() ? 'Escribe el motivo del cambio en el campo Motivo.' : undefined}
               onClick={() => {
                 const r = repartidores.find((x) => x.uid === nuevoRepartidor);
                 if (r) correr(() => cambiarRepartidor(o.id, r, motivo), `Repartidor de ${o.id}: ${r.nombre}.`);
@@ -286,7 +294,8 @@ export const DetalleOrdenOperador: React.FC<{
                 Reprogramar entrega del saldo
               </button>
               <button
-                disabled={procesando}
+                disabled={procesando || !motivo.trim()}
+                title={!motivo.trim() ? 'Escribe el motivo en el campo Motivo para liberar el saldo.' : undefined}
                 onClick={() =>
                   correr(
                     () => liberarSaldoYCerrar(o.id, motivo),

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
@@ -22,6 +22,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
   const [cargando, setCargando] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [exitoMsg, setExitoMsg] = useState<string | null>(null);
+
+  // Cada vez que se abre, el formulario empieza limpio (sin datos ni mensajes de la sesión anterior)
+  useEffect(() => {
+    if (!isOpen) return;
+    setEsRegistro(false);
+    setEmail('');
+    setPassword('');
+    setCargando(false);
+    setErrorMsg(null);
+    setExitoMsg(null);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -235,7 +246,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                 <input
                   type="password"
                   required
-                  placeholder="••••••••"
+                  placeholder="Contraseña (mínimo 6 caracteres)"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"

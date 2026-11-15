@@ -282,6 +282,11 @@ service cloud.firestore {
             || (d.dato in lote.eventos[d.fase].datos && string(lote.eventos[d.fase].datos[d.dato]) == d.get('valorRegistrado', '')));
     }
 
+    function anotacionEnlazada(d, i) {
+      return i is int && i >= 0 && i < d.registros.size()
+        && d.registros[i].hashAnterior == (i == 0 ? d.hashAnclaje : d.registros[i - 1].hash);
+    }
+
     function resolucionAnotacionValida(r, antes, despues) {
       let i = r.datos.propuestaIndice;
       let dif = despues.resueltas.diff(antes.get('resueltas', {}));
@@ -316,6 +321,11 @@ service cloud.firestore {
       allow update: if isSignedIn()
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['registros', 'resueltas'])
         && loteDeMiGranja(get(rutaLote(codigo)).data)
+        // Si el sello del lote cambió, la cadena de anotaciones ya no corresponde: no se agrega nada
+        && resource.data.hashAnclaje == get(rutaLote(codigo)).data.eventos[get(rutaLote(codigo)).data.eventos.size() - 1].hash
+        // La propuesta que se resuelve debe seguir enlazada con el registro anterior
+        && (request.resource.data.registros[resource.data.registros.size()].tipo == 'Propuesta'
+            || anotacionEnlazada(resource.data, request.resource.data.registros[resource.data.registros.size()].datos.propuestaIndice))
         && request.resource.data.registros.size() == resource.data.registros.size() + 1
         && request.resource.data.registros[0:resource.data.registros.size()] == resource.data.registros
         && registroAnotacionValido(request.resource.data.registros[resource.data.registros.size()], resource.data.registros.size(),

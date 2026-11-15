@@ -416,7 +416,7 @@ export const ConfiguracionTab: React.FC<ConfiguracionTabProps> = ({
               <input
                 type="text"
                 required
-                placeholder="E3"
+                placeholder="Ej: E3"
                 value={nuevoCodigo}
                 onChange={(e) => setNuevoCodigo(e.target.value)}
                 className="w-24 px-3 py-1.5 text-xs font-mono font-bold border border-slate-300 rounded-lg uppercase bg-white focus:outline-none focus:ring-2 focus:ring-sky-500"
@@ -443,7 +443,7 @@ export const ConfiguracionTab: React.FC<ConfiguracionTabProps> = ({
               <input
                 type="number"
                 min="1"
-                placeholder="250"
+                placeholder="Ej: 250"
                 value={nuevoVolumen}
                 onChange={(e) => setNuevoVolumen(e.target.value === '' ? '' : Number(e.target.value))}
                 className="w-24 px-3 py-1.5 text-xs border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-sky-500"

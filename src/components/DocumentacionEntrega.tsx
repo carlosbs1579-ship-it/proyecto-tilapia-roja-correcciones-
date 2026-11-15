@@ -213,6 +213,9 @@ export const DocumentacionEntrega: React.FC<{
                     onChange={(e) => setMotivoAnulacion(e.target.value)}
                     className="w-full px-2 py-1 border border-red-300 rounded"
                   />
+                  {motivoAnulacion.trim().length < 10 && (
+                    <p className="text-[11px] text-amber-800">Motivo: {motivoAnulacion.trim().length}/10 caracteres. Escribe al menos 10 para poder anular.</p>
+                  )}
                   <div className="flex gap-2">
                     <button
                       type="button"

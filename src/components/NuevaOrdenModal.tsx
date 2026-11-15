@@ -326,6 +326,7 @@ export const NuevaOrdenModal: React.FC<NuevaOrdenModalProps> = ({
                               max={disp.disponible}
                               step={unidad === 'peces' ? 1 : 0.01}
                               disabled={bloqueado && !valor}
+                              title={bloqueado && !valor ? (!disp.compatible ? `Este lote está registrado en ${disp.unidadInventario}: no se puede pedir en esta unidad.` : "Este lote no tiene cantidad disponible.") : undefined}
                               value={valor}
                               onChange={(e) =>
                                 setCantidades((prev) => ({

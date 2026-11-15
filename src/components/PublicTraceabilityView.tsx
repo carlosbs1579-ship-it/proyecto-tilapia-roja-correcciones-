@@ -404,7 +404,7 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
               Sello Hash SHA-256 de Cierre del Lote
             </span>
             <code className="text-[11px] font-mono text-slate-700 break-all select-all block">
-              {r?.hashFinal || 'En proceso de cultivo'}
+              {r?.hashFinal || (esCerrado ? 'No registrado' : 'En proceso de cultivo')}
             </code>
           </div>
         </div>
@@ -482,14 +482,14 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
                     {ev.indice + 1}
                   </div>
                   <div
-                    className={`flex-1 rounded-xl p-3 border text-xs ${
+                    className={`flex-1 min-w-0 rounded-xl p-3 border text-xs ${
                       diagnostico[ev.indice] && diagnostico[ev.indice].estado !== 'integra'
                         ? 'bg-red-50 border-red-400'
                         : 'bg-slate-50 border-slate-200/80'
                     }`}
                   >
                     {diagnostico[ev.indice] && diagnostico[ev.indice].estado !== 'integra' && (
-                      <p className="mb-1.5 font-semibold text-red-700">⚠ {diagnostico[ev.indice].mensaje}</p>
+                      <p className="mb-1.5 font-semibold text-red-700">{diagnostico[ev.indice].mensaje}</p>
                     )}
                     <div className="flex flex-wrap items-center justify-between gap-1 mb-1">
                       <strong className="text-slate-900 font-bold">
@@ -504,7 +504,7 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
                           </span>
                         )}
                       </strong>
-                      <span className="text-[11px] text-slate-500 font-mono">{ev.fechaEvento}</span>
+                      <span className="text-[11px] text-slate-500 tabular-nums whitespace-nowrap">{ev.fechaEvento}</span>
                     </div>
                     {ev.descripcion && (
                       <p className="text-slate-600 text-xs mb-2">{ev.descripcion}</p>
@@ -514,20 +514,20 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
                     {ev.datos && Object.keys(ev.datos).length > 0 && (
                       <div className="bg-white p-2 rounded-lg border border-slate-200/60 grid grid-cols-2 sm:grid-cols-3 gap-2 text-[11px]">
                         {Object.entries(ev.datos).map(([clave, valor]) => (
-                          <div key={clave}>
-                            <span className="text-slate-400">{nombreDato(clave)}: </span>
+                          <div key={clave} className="min-w-0 [overflow-wrap:anywhere]">
+                            <span className="text-slate-500">{nombreDato(clave)}: </span>
                             <span className="font-semibold text-slate-800">{String(valor)}</span>
                           </div>
                         ))}
                       </div>
                     )}
 
-                    <div className="mt-2 text-[11px] text-slate-400 flex items-center justify-between">
-                      <span className="text-slate-700">
+                    <div className="mt-2 text-[11px] text-slate-500 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+                      <span className="text-slate-700 min-w-0 [overflow-wrap:anywhere]">
                         <span className="rotulo text-slate-500 mr-2">Registró</span>
                         <span className="firma text-sm">{quienRegistro(ev, true)}</span>
                       </span>
-                      <span className="font-mono text-[11px]">Hash: {ev.hash.substring(0, 12)}...</span>
+                      <span className="font-mono text-[11px] whitespace-nowrap" title={ev.hash}>Huella {ev.hash.substring(0, 12)}…</span>
                     </div>
                   </div>
                 </div>

@@ -107,7 +107,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
             <span className="text-xs text-slate-500 font-medium">activos</span>
           </div>
           <div className="mt-2 text-xs text-slate-500 flex items-center space-x-2">
-            <span>{lotesCerrados.length} lotes cerrados</span>
+            <span>{lotesCerrados.length} {lotesCerrados.length === 1 ? 'lote cerrado' : 'lotes cerrados'}</span>
           </div>
         </div>
 
@@ -236,7 +236,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                     </td>
                     <td className="px-4 py-3.5 text-slate-600">
                       <div>{lote.fechaSiembra}</div>
-                      <div className="text-[11px] text-slate-400">{lote.resumen.diasDeCultivo} días</div>
+                      <div className="text-[11px] text-slate-400">{lote.resumen.diasDeCultivo ?? '—'} días</div>
                     </td>
                     <td className="px-4 py-3.5 text-right font-medium">
                       <span className={lote.resumen.supervivencia >= 85 ? 'text-emerald-600 font-bold' : 'text-amber-600'}>

@@ -455,7 +455,7 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
                   <span className="text-[11px] font-medium uppercase">Días Cultivo</span>
                   <Clock className="w-3.5 h-3.5 text-slate-400" />
                 </div>
-                <p className="text-lg font-bold text-slate-900">{r.diasDeCultivo} d</p>
+                <p className="text-lg font-bold text-slate-900">{r.diasDeCultivo ?? '—'} d</p>
                 <p className="text-[11px] text-slate-400">Desde {lote.fechaSiembra}</p>
               </div>
 

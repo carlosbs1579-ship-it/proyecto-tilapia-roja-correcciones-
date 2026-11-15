@@ -245,7 +245,7 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
   return (
     <>
       <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/55 p-3 md:p-6 overflow-y-auto">
-        <div className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-5xl w-full max-h-[92vh] flex flex-col overflow-hidden">
+        <div className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-5xl w-full max-h-[92dvh] flex flex-col overflow-hidden">
           {/* BARRA SUPERIOR DEL LOTE */}
           <div className="bg-slate-900 text-white px-6 py-4 flex flex-wrap items-center justify-between gap-3 shrink-0">
             <div className="flex items-center space-x-3">

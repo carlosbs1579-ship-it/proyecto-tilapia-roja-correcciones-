@@ -107,6 +107,8 @@
 @layer base {
   html {
     -webkit-text-size-adjust: 100%;
+    /* Sin el destello gris al tocar: cada control da su propia respuesta al presionar */
+    -webkit-tap-highlight-color: transparent;
   }
   body {
     background-color: #ffffff;
@@ -147,12 +149,32 @@
   a {
     text-underline-offset: 3px;
   }
+  /* Toque inmediato (sin la espera de doble toque) y sin seleccionar el texto de los botones al mantener presionado */
   button,
-  a {
-    -webkit-tap-highlight-color: transparent;
+  a,
+  [role="button"],
+  [role="tab"] {
+    touch-action: manipulation;
   }
-  /* En el celular los campos usan 16 px para que el teléfono no haga zoom al escribir */
-  @media (max-width: 640px) {
+  button,
+  [role="button"],
+  [role="tab"] {
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+  }
+  /* Las ventanas y listas con desplazamiento propio no arrastran la página de atrás */
+  .overflow-y-auto,
+  .overflow-auto {
+    overscroll-behavior: contain;
+  }
+  /* Respuesta al presionar, igual con dedo o con mouse */
+  button:not(:disabled):active,
+  [role="button"]:active {
+    filter: brightness(0.93);
+  }
+  /* En pantallas táctiles los campos usan 16 px para que el teléfono no haga zoom al escribir */
+  @media (pointer: coarse) {
     input,
     select,
     textarea {

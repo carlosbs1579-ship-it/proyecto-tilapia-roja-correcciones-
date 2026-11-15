@@ -50,7 +50,7 @@ export const ConsultaEntregaPublica: React.FC<{
   const actual = comprobantes.find((c) => !anulaciones[c.id]) || comprobantes[0];
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-800">
+    <div className="min-h-dvh bg-slate-100 text-slate-800">
       <header className="bg-sky-800 text-white">
         <div className="max-w-3xl mx-auto px-4 py-4 flex items-center justify-between gap-3">
           <div className="flex items-center space-x-2 min-w-0">

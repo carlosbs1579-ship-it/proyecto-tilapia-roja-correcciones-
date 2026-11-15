@@ -289,7 +289,7 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
             </div>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+          <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[80dvh] overflow-y-auto">
           {errorMsg && (
             <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-start space-x-2 text-red-700 text-xs">
               <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />

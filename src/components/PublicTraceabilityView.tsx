@@ -198,7 +198,7 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
 
   if (cargando) {
     return (
-      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-4 text-white">
+      <div className="min-h-dvh bg-slate-900 flex flex-col items-center justify-center p-4 text-white">
         <div className="w-12 h-12 border-3 border-sky-400 border-t-transparent rounded-full animate-spin mb-4" />
         <p className="text-sm font-semibold tracking-wide text-sky-200">
           CULTIVOS LORÉ • TILAPIA PRO
@@ -210,7 +210,7 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
 
   if (error || !lote) {
     return (
-      <div className="min-h-screen bg-slate-100 flex flex-col items-center justify-center p-4">
+      <div className="min-h-dvh bg-slate-100 flex flex-col items-center justify-center p-4">
         <div className="bg-white rounded-2xl shadow-xl border border-slate-200 max-w-md w-full p-6 text-center space-y-4">
           <div className="w-14 h-14 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto">
             <AlertTriangle className="w-7 h-7" />
@@ -251,7 +251,7 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
   const esCerrado = lote.estado === 'cerrado';
 
   return (
-    <div className="min-h-screen bg-white text-slate-900 pb-16">
+    <div className="min-h-dvh bg-white text-slate-900 pb-16">
       {/* BARRA SUPERIOR FIJA */}
       <header className="bg-slate-900 text-white sticky top-0 z-30 border-b-4 border-double border-amber-600">
         <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">

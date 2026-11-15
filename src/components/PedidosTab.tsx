@@ -238,9 +238,7 @@ export const PedidosTab: React.FC<PedidosTabProps> = ({ lotes, perfilActual }) =
     <div className="space-y-5">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-slate-900 tracking-tight flex items-center space-x-2">
-            <ClipboardList className="w-5 h-5 text-sky-600" />
-            <span>Gestión de entregas</span>
+          <h1 className="text-2xl text-slate-900"><span>Gestión de entregas</span>
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
             Órdenes de entrega de la granja, avance de los repartidores, solicitudes, novedades e historial (en tiempo real)

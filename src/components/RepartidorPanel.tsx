@@ -221,12 +221,12 @@ export const RepartidorPanel: React.FC<RepartidorPanelProps> = ({ perfil }) => {
                 {(pendientesOrden > 0 || solicitudPendiente) && (
                   <div className="flex flex-wrap gap-1.5 pt-1">
                     {pendientesOrden > 0 && (
-                      <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[11px] font-semibold">
+                      <span className="px-2 py-0.5 rounded-sm bg-amber-100 text-amber-800 text-[11px] font-semibold">
                         {pendientesOrden} acción(es) por enviar
                       </span>
                     )}
                     {solicitudPendiente && (
-                      <span className="px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 text-[11px] font-semibold flex items-center space-x-1">
+                      <span className="px-2 py-0.5 rounded-sm bg-indigo-100 text-indigo-800 text-[11px] font-semibold flex items-center space-x-1">
                         <Repeat className="w-3 h-3" />
                         <span>Ajuste pendiente de aprobación</span>
                       </span>

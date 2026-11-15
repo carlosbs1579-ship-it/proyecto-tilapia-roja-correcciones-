@@ -174,7 +174,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
       <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
         <div className="p-5 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h2 className="text-base font-bold text-slate-900">Últimos Lotes Modificados</h2>
+            <h2 className="text-base font-bold text-slate-900">Últimos lotes modificados</h2>
             <p className="text-xs text-slate-500">
               Accede directamente al historial o continúa registrando fases
             </p>

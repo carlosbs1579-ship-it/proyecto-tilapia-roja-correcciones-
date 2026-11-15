@@ -198,9 +198,7 @@ export const ConfiguracionTab: React.FC<ConfiguracionTabProps> = ({
       {/* Cabecera Principal */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-slate-900 tracking-tight flex items-center space-x-2">
-            <Settings className="w-5 h-5 text-sky-600" />
-            <span>Configuración de Granja y Estanques</span>
+          <h1 className="text-2xl text-slate-900"><span>Configuración de granja y estanques</span>
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
             Administración de piscinas/estanques, umbrales de agua en Turbaco y ficha nutricional

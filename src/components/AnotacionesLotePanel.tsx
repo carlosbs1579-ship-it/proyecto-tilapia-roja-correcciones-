@@ -91,7 +91,7 @@ export const AnotacionesLotePanel: React.FC<{
         <div className="flex items-center space-x-2">
           <FilePen className="w-4 h-4 text-sky-600" />
           <h3 className="font-bold text-slate-900 text-sm">Anotaciones posteriores al cierre</h3>
-          <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-semibold">{anotaciones.length}</span>
+          <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-sm font-semibold">{anotaciones.length}</span>
         </div>
         {puedeProponer && !abierto && (
           <button

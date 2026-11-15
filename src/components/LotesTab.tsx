@@ -79,7 +79,7 @@ export const LotesTab: React.FC<LotesTabProps> = ({
       {/* Barra de Título */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-slate-900 tracking-tight">Gestión de Lotes de Cultivo</h1>
+          <h1 className="text-2xl text-slate-900">Gestión de lotes de cultivo</h1>
           <p className="text-xs text-slate-500">
             Modalidad Tilapia Pro • Registro incremental de siembra a despacho
           </p>

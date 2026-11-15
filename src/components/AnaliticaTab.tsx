@@ -203,7 +203,7 @@ export const AnaliticaTab: React.FC<AnaliticaTabProps> = ({
       {/* Barra de cabecera con exportar CSV */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-slate-900 tracking-tight">Analítica y Control Productivo</h1>
+          <h1 className="text-2xl text-slate-900">Analítica y control productivo</h1>
           <p className="text-xs text-slate-500">
             Comparativa de estanques, gráficos de evolución y exportación de datos
           </p>
@@ -265,7 +265,7 @@ export const AnaliticaTab: React.FC<AnaliticaTabProps> = ({
         <div className="px-5 py-3.5 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-            <h2 className="text-sm font-bold text-slate-900">Lotes en Gestión (Activos)</h2>
+            <h2 className="text-sm font-bold text-slate-900">Lotes en gestión (activos)</h2>
           </div>
           <span className="text-xs font-semibold text-slate-500">
             {lotesActivos.length} lotes
@@ -328,7 +328,7 @@ export const AnaliticaTab: React.FC<AnaliticaTabProps> = ({
         <div className="px-5 py-3.5 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <span className="w-2.5 h-2.5 rounded-full bg-slate-400" />
-            <h2 className="text-sm font-bold text-slate-900">Lotes Cerrados (Cosechados)</h2>
+            <h2 className="text-sm font-bold text-slate-900">Lotes cerrados (cosechados)</h2>
           </div>
           <span className="text-xs font-semibold text-slate-500">
             {lotesCerrados.length} lotes

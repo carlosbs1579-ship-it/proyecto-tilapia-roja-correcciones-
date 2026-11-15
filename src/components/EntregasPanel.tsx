@@ -147,7 +147,7 @@ export const EntregasPanel: React.FC<EntregasPanelProps> = ({ lote, userEmail, p
           <div className="flex items-center space-x-2">
             <Truck className="w-4 h-4 text-indigo-600" />
             <h3 className="font-bold text-slate-900 text-sm">Entregas a Clientes</h3>
-            <span className="text-[11px] bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full font-semibold uppercase tracking-wider">
+            <span className="text-[11px] bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-sm font-semibold uppercase tracking-wider">
               Posterior al sellado
             </span>
           </div>

@@ -27,4 +27,4 @@ Gesto propio (signature): la línea de acta (doble filete fino + versalitas: "SE
 
 PDF: certificado y comprobante con membrete (logo + nombre en serif), doble filete dorado, secciones con título y filete, tablas de encabezado tinta y pie paginado. Usan las fuentes estándar del PDF (Times/Helvetica) como equivalentes de Libre Caslon y Public Sans.
 
-Sin resolver: incrustar Libre Caslon y Public Sans en los PDF (pesa ~300 KB por documento).
+Decisión del usuario (2026-11-15): los PDF conservan Times/Helvetica como equivalentes de Libre Caslon y Public Sans para no subir el peso (~300 KB por documento).

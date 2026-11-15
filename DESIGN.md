@@ -252,7 +252,7 @@ Nombre de quien registra en sans seminegrita sobre un filete de 1 px, alineado a
 Bloque tinta de esquina 4 px con candado en oro claro, "Lote sellado" en Caslon 1.5rem y la línea de acta en rótulo oro ("SELLADO · fecha · CADENA ÍNTEGRA"). El texto de abajo lleva el doble filete dorado, que se traza de izquierda a derecha una sola vez al abrir (520 ms, curva de salida fuerte, 120 ms de retraso).
 
 ### Documentos PDF
-Membrete con el logo, "Cultivos Loré" en Times 22 pt y subtítulo en Helvetica versalitas espaciadas, cerrado por el doble filete oro. Secciones con título en Times 13 pt sobre filete oro de 0.25 mm. Tablas planas en Helvetica 7.5 pt: cabecera tinta con texto blanco, filas alternas gris de fondo, divisor de 0.15 mm. Pie paginado con filete oro, referencia y "Página n de N". Times y Helvetica sustituyen a Libre Caslon y Public Sans.
+Membrete con el logo, "Cultivos Loré" en Times 22 pt y subtítulo en Helvetica versalitas espaciadas, cerrado por el doble filete oro. Secciones con título en Times 13 pt sobre filete oro de 0.25 mm. Tablas planas en Helvetica 7.5 pt: cabecera tinta con texto blanco, filas alternas gris de fondo, divisor de 0.15 mm. Pie paginado con filete oro, referencia y "Página n de N". Times y Helvetica sustituyen a Libre Caslon y Public Sans por decisión del usuario, para no aumentar el peso de cada PDF (≈300 KB más si se incrustaran).
 
 ### Movimiento
 Pocas entradas, cortas y con propósito, con la curva de salida `cubic-bezier(0.23, 1, 0.32, 1)`: el velo de ventana aparece en 200 ms y la ventana sube desde 97 % en 240 ms; el cambio de pestaña es un fundido de 160 ms; el aviso inferior entra desde abajo en 300 ms. Con movimiento reducido se conservan los fundidos y se quitan los desplazamientos.

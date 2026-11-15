@@ -141,6 +141,32 @@ function estiloTabla(): Record<string, any> {
   };
 }
 
+/**
+ * Marca de agua diagonal: palabra en serif con letras espaciadas, semitransparente y centrada en la
+ * página (jsPDF no centra el texto girado, así que el punto de inicio se calcula a mano).
+ */
+function marcaDeAgua(doc: any, texto: string, color: RGB) {
+  const ancho = doc.internal.pageSize.getWidth();
+  const alto = doc.internal.pageSize.getHeight();
+  const angulo = 30;
+  const rad = (angulo * Math.PI) / 180;
+  const tamano = 72;
+  const espacio = 4; // mm entre letras
+  const palabra = texto.toUpperCase();
+  doc.setFont('times', 'normal');
+  doc.setFontSize(tamano);
+  const largo = doc.getTextWidth(palabra) + espacio * (palabra.length - 1);
+  const altoLetra = tamano * 0.3528 * 0.7; // altura de las mayúsculas en mm
+  const cx = ancho / 2;
+  const cy = alto / 2;
+  const x = cx - (largo / 2) * Math.cos(rad) + (altoLetra / 2) * Math.sin(rad);
+  const y = cy + (largo / 2) * Math.sin(rad) + (altoLetra / 2) * Math.cos(rad);
+  if (doc.GState) doc.setGState(new doc.GState({ opacity: 0.16 }));
+  doc.setTextColor(...color);
+  doc.text(palabra, x, y, { angle: angulo, charSpace: espacio });
+  if (doc.GState) doc.setGState(new doc.GState({ opacity: 1 }));
+}
+
 // Pie de todas las páginas: filete dorado, referencia del documento y número de página
 function piePaginas(doc: any, referencia: string) {
   const ancho = doc.internal.pageSize.getWidth();
@@ -795,16 +821,10 @@ export async function generarComprobantePdfBlob(
   if (opciones.preliminar || opciones.anulacion) {
     // Marca de agua en TODAS las páginas, para que ninguna se confunda con un comprobante vigente.
     // Semitransparente para que no tape el texto de las tablas
-    const anyDoc = doc as any;
     const paginas = doc.getNumberOfPages();
     for (let p = 1; p <= paginas; p++) {
       doc.setPage(p);
-      if (anyDoc.GState) anyDoc.setGState(new anyDoc.GState({ opacity: 0.18 }));
-      doc.setTextColor(...((opciones.anulacion ? [179, 38, 30] : [93, 100, 112]) as [number, number, number]));
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(64);
-      doc.text(opciones.anulacion ? 'ANULADO' : 'PRELIMINAR', pageWidth / 2, 170, { align: 'center', angle: 35 });
-      if (anyDoc.GState) anyDoc.setGState(new anyDoc.GState({ opacity: 1 }));
+      marcaDeAgua(doc, opciones.anulacion ? 'Anulado' : 'Preliminar', opciones.anulacion ? C.rojo : C.gris);
     }
   }
   return doc.output('blob');

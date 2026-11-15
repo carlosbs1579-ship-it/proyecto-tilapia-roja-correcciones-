@@ -50,3 +50,10 @@ export const varMenu: Variants = {
   visible: { opacity: 1, scale: 1, transition: entrada(DURACION.base) },
   salida: { opacity: 0, scale: 0.98, transition: salida(DURACION.rapida) }
 };
+
+/** Contenido de pestaña: la anterior sale con fundido y la nueva entra 8 px desde el lado de la navegación */
+export const VAR_CONTENIDO_TAB: Variants = {
+  entra: (dir: number = 1) => ({ opacity: 0, x: DISTANCIA.pequena * dir }),
+  visible: { opacity: 1, x: 0, transition: entrada(DURACION.base) },
+  sale: { opacity: 0, transition: salida(DURACION.rapida) }
+};

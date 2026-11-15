@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { EsqueletoTarjetas } from './Esqueleto';
 import {
   Truck,
   Plus,
@@ -215,7 +216,7 @@ export const EntregasPanel: React.FC<EntregasPanelProps> = ({ lote, userEmail, p
       {/* Lista de entregas */}
       <div className="divide-y divide-slate-100">
         {cargando ? (
-          <div className="py-8 text-center text-xs text-slate-400">Cargando entregas...</div>
+          <EsqueletoTarjetas cantidad={3} alto="h-[72px]" />
         ) : errorCarga ? (
           <div className="py-8 text-center text-xs text-red-600">{errorCarga}</div>
         ) : entregas.length === 0 ? (

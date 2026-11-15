@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { usePresencia } from '../lib/presencia';
 import { X, PlusCircle, AlertCircle, Calendar, Hash, Scale, Building2, FileText } from 'lucide-react';
 import { ConfiguracionGeneral, Lote, UsuarioPerfil } from '../types';
 import { getFechaHoyBogota } from '../utils/constants';
@@ -43,7 +44,8 @@ export const NuevoLoteModal: React.FC<NuevoLoteModalProps> = ({
     }
   }, [config.estanques, estanque]);
 
-  if (!isOpen) return null;
+  const presencia = usePresencia(isOpen);
+  if (!presencia.montado) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -104,7 +106,7 @@ export const NuevoLoteModal: React.FC<NuevoLoteModalProps> = ({
   };
 
   return (
-    <div className="velo fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4 overflow-y-auto">
+    <div role="dialog" aria-modal="true" data-saliendo={presencia.saliendo || undefined} className="velo fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4 overflow-y-auto">
       <div className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-xl w-full overflow-hidden my-6">
         {/* Encabezado */}
         <div className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between">

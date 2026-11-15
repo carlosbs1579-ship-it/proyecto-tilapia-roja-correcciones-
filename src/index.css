@@ -345,3 +345,84 @@
     transition: none;
   }
 }
+
+/* Salida de ventanas (180 ms, curva de salida): el velo se aclara y la ventana se encoge un poco */
+.velo[data-saliendo] {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--mov-salida) var(--curva-salida);
+}
+.velo[data-saliendo] > * {
+  opacity: 0;
+  transform: scale(0.98);
+  transition:
+    opacity var(--mov-salida) var(--curva-salida),
+    transform var(--mov-salida) var(--curva-salida);
+}
+@media (max-width: 639px) {
+  .velo[data-saliendo] > * {
+    opacity: 1;
+    transform: translateY(100%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .velo[data-saliendo] > * {
+    opacity: 0;
+    transform: none;
+  }
+}
+
+/* Pestañas: respuesta al toque (escala 0,97) y color con transición rápida */
+.pestana {
+  transition:
+    color var(--mov-rapida) var(--curva-entrada),
+    transform var(--mov-rapida) var(--curva-entrada);
+}
+.pestana:active {
+  transform: scale(0.97);
+}
+
+/* Franjas que se deslizan en horizontal: desvanecido en los bordes */
+.borde-desvanecido {
+  mask-image: linear-gradient(to right, transparent 0, #000 16px, #000 calc(100% - 16px), transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 16px, #000 calc(100% - 16px), transparent 100%);
+  scroll-padding-inline: 16px;
+}
+
+/* Esqueletos: un reflejo cruza el bloque en 1,5 s (solo transform) */
+.esqueleto {
+  position: relative;
+  overflow: hidden;
+}
+.esqueleto::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.65), transparent);
+  transform: translateX(-100%);
+  animation: brillo-esqueleto 1.5s ease-in-out infinite;
+}
+@keyframes brillo-esqueleto {
+  to {
+    transform: translateX(100%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .esqueleto::after,
+  .animate-spin,
+  .animate-pulse {
+    animation: none;
+  }
+}
+
+/* Filas y tarjetas que entran escalonadas al montar la vista (40 ms por fila, 8 px, solo las 8 primeras) */
+.fila-escalonada {
+  animation: entra-fila var(--mov-entrada) var(--curva-entrada) both;
+  animation-delay: calc(var(--i, 0) * var(--escalon));
+}
+@keyframes entra-fila {
+  from {
+    opacity: 0;
+    transform: translateY(var(--dist-pequena));
+  }
+}

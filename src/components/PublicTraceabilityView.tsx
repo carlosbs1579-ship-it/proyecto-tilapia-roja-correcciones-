@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Bloque } from './Esqueleto';
 import { quienRegistro } from '../services/usuariosService';
 import { LogoLore } from './LogoLore';
 import { doc, getDoc } from 'firebase/firestore';
@@ -199,12 +200,34 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
 
   if (cargando) {
     return (
-      <div className="min-h-dvh bg-slate-900 flex flex-col items-center justify-center p-4 text-white">
-        <div className="w-12 h-12 border-3 border-sky-400 border-t-transparent rounded-full animate-spin mb-4" />
-        <p className="text-sm font-semibold tracking-wide text-sky-200">
-          CULTIVOS LORÉ • TILAPIA PRO
-        </p>
-        <p className="text-xs text-slate-400 mt-1">Cargando certificado de trazabilidad...</p>
+      <div className="min-h-dvh bg-white" role="status" aria-label="Cargando el certificado">
+        <div className="bg-slate-900 border-b-4 border-double border-amber-600">
+          <div className="max-w-4xl mx-auto px-4 py-3 flex items-center gap-3">
+            <LogoLore className="w-10 h-8 text-amber-400" />
+            <span className="font-serif text-xl text-white">Cultivos Loré</span>
+          </div>
+        </div>
+        <div className="max-w-4xl mx-auto px-4 pt-6 space-y-6">
+          <div className="rounded-2xl border border-slate-200 overflow-hidden">
+            <div className="bg-slate-900 p-6 space-y-4">
+              <span className="esqueleto block h-9 w-56 rounded bg-slate-800" />
+              <span className="esqueleto block h-3 w-72 max-w-full rounded bg-slate-800" />
+            </div>
+            <div className="p-6 grid grid-cols-2 sm:grid-cols-4 gap-4">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="space-y-2">
+                  <Bloque className="h-3 w-16" />
+                  <Bloque className="h-4 w-24" />
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="rounded-2xl border border-slate-200 p-6 space-y-3">
+            <Bloque className="h-4 w-48" />
+            <Bloque className="h-3 w-full" />
+            <Bloque className="h-3 w-2/3" />
+          </div>
+        </div>
       </div>
     );
   }

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { usePresencia } from '../lib/presencia';
 import { X, Calendar, AlertTriangle, CheckCircle2, ShieldAlert, Lock } from 'lucide-react';
 import { Lote, TipoEvento, ConfiguracionGeneral } from '../types';
 import { getFechaHoyBogota } from '../utils/constants';
@@ -111,7 +112,8 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
     lote.eventos && lote.eventos.length > 0 ? lote.eventos[lote.eventos.length - 1].id : ''
   );
 
-  if (!isOpen) return null;
+  const presencia = usePresencia(isOpen);
+  if (!presencia.montado) return null;
 
   // Evaluaciones en tiempo real de agua
   const rangos = config.rangosReferencia;
@@ -247,7 +249,7 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
   };
 
   return (
-    <div className="velo fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4 overflow-y-auto">
+    <div role="dialog" aria-modal="true" data-saliendo={presencia.saliendo || undefined} className="velo fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4 overflow-y-auto">
       <div className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-2xl w-full overflow-hidden my-6">
         {/* Cabecera */}
         <div className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between">

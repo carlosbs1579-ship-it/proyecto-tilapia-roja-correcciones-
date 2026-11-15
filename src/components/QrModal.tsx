@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { usePresencia } from '../lib/presencia';
 import { X, Download, Copy, Check, ExternalLink, QrCode } from 'lucide-react';
 import { Lote, ConfiguracionGeneral } from '../types';
 import { generarQrDataUrl, descargarQrConEtiqueta, construirUrlPublicaTrazabilidad } from '../services/qrService';
@@ -41,7 +42,8 @@ export const QrModal: React.FC<QrModalProps> = ({
       });
   }, [isOpen, trazabilidadUrl]);
 
-  if (!isOpen) return null;
+  const presencia = usePresencia(isOpen);
+  if (!presencia.montado) return null;
 
   const handleCopiarUrl = () => {
     navigator.clipboard.writeText(trazabilidadUrl);
@@ -59,7 +61,7 @@ export const QrModal: React.FC<QrModalProps> = ({
   };
 
   return (
-    <div className="velo fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4">
+    <div role="dialog" aria-modal="true" data-saliendo={presencia.saliendo || undefined} className="velo fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4">
       <div className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-sm w-full overflow-hidden text-center">
         {/* Cabecera */}
         <div className="bg-slate-900 text-white px-5 py-3.5 flex items-center justify-between">

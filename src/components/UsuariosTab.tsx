@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { EsqueletoTarjetas } from './Esqueleto';
 import {
   Users,
   ShieldCheck,
@@ -536,10 +537,7 @@ export const UsuariosTab: React.FC<UsuariosTabProps> = ({
 
           {/* LISTA DE USUARIOS */}
           {usuariosCargando ? (
-            <div className="py-12 flex flex-col items-center justify-center space-y-2 text-xs text-slate-500">
-              <div className="w-6 h-6 border-2 border-sky-600 border-t-transparent rounded-full animate-spin" />
-              <span>Cargando lista de operarios...</span>
-            </div>
+            <EsqueletoTarjetas cantidad={4} alto="h-16" avatar />
           ) : usuariosFiltrados.length === 0 ? (
             <div className="p-8 bg-slate-50 rounded-xl text-center space-y-2 text-xs text-slate-500 border border-slate-200">
               <Users className="w-8 h-8 mx-auto text-slate-400" />

@@ -1,4 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { escalon, usePrimerMontaje } from '../lib/montaje';
+import { EsqueletoTarjetas } from './Esqueleto';
+import { Pestanas } from './Pestanas';
 import { Truck, Info, AlertCircle, MapPin, WifiOff, Wifi, RefreshCw, ChevronRight, Repeat } from 'lucide-react';
 import { EstadoOrden, OrdenEntrega, UsuarioPerfil } from '../types';
 import { nombreFuncion } from '../services/usuariosService';
@@ -54,6 +57,8 @@ export const RepartidorPanel: React.FC<RepartidorPanelProps> = ({ perfil }) => {
   const [desdeServidor, setDesdeServidor] = useState(false);
   const [guardadaEn, setGuardadaEn] = useState<string | null>(null);
   const [cargando, setCargando] = useState(true);
+  // Las tarjetas entran escalonadas solo la primera vez que llegan los datos
+  const primerMontaje = usePrimerMontaje(!cargando);
   const [errorCarga, setErrorCarga] = useState<string | null>(null);
   const [acciones, setAcciones] = useState<AccionReparto[]>([]);
   const [enLinea, setEnLinea] = useState(typeof navigator === 'undefined' ? true : navigator.onLine);
@@ -159,30 +164,18 @@ export const RepartidorPanel: React.FC<RepartidorPanelProps> = ({ perfil }) => {
         </div>
       )}
 
-      <div className="flex gap-1.5 overflow-x-auto sin-barra -mx-4 px-4 pb-1" role="tablist" aria-label="Filtrar entregas">
-        {FILTROS.map((f) => {
-          const cantidad = f.id === 'activas'
-            ? visibles.filter((o) => o.estado !== 'entregado').length
-            : visibles.filter((o) => o.estado === f.id).length;
-          return (
-            <button
-              key={f.id}
-              onClick={() => setFiltro(f.id)}
-              role="tab"
-              aria-selected={filtro === f.id}
-              className={`shrink-0 whitespace-nowrap px-3.5 py-2.5 rounded-md text-sm font-semibold border ${
-                filtro === f.id ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-700 border-slate-300'
-              }`}
-            >
-              {f.etiqueta}
-              <span className="sr-only"> ({cantidad})</span>
-            </button>
-          );
-        })}
+      <div className="-mx-4 px-4">
+        <Pestanas
+          items={FILTROS.map((f) => ({ id: f.id, etiqueta: f.etiqueta }))}
+          activo={filtro}
+          onCambio={setFiltro}
+          idIndicador="filtro-repartidor"
+          etiqueta="Filtrar entregas"
+        />
       </div>
 
       {cargando ? (
-        <p className="text-sm text-slate-500">Cargando tus entregas...</p>
+        <EsqueletoTarjetas cantidad={3} alto="h-[120px]" />
       ) : filtradas.length === 0 ? (
         <div className="p-4 bg-sky-50 border border-sky-200 rounded-xl flex items-start space-x-2 text-sky-900 text-sm">
           <Info className="w-5 h-5 shrink-0 text-sky-600" />
@@ -190,14 +183,15 @@ export const RepartidorPanel: React.FC<RepartidorPanelProps> = ({ perfil }) => {
         </div>
       ) : (
         <div className="space-y-3">
-          {filtradas.map((o) => {
+          {filtradas.map((o, i) => {
             const pendientesOrden = porEnviar.filter((a) => a.ordenId === o.id).length;
             const solicitudPendiente = Object.values(o.ajustes || {}).some((a) => a.estado === 'pendiente_aprobacion');
             return (
               <button
                 key={o.id}
                 onClick={() => setSeleccionada(o.id)}
-                className="w-full text-left bg-white border border-slate-200 rounded-xl p-4 shadow-xs hover:border-sky-400 space-y-1.5"
+                style={escalon(i, primerMontaje).style}
+                className={`w-full text-left bg-white border border-slate-200 rounded-xl p-4 shadow-xs hover:border-sky-400 space-y-1.5 ${escalon(i, primerMontaje).className}`}
               >
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-base font-bold text-slate-900">{o.clienteNombre}</span>

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { usePresencia } from '../lib/presencia';
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
@@ -34,7 +35,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     setExitoMsg(null);
   }, [isOpen]);
 
-  if (!isOpen) return null;
+  const presencia = usePresencia(isOpen);
+  if (!presencia.montado) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -133,7 +135,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
   };
 
   return (
-    <div className="velo fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4">
+    <div role="dialog" aria-modal="true" data-saliendo={presencia.saliendo || undefined} className="velo fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4">
       <div className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-md w-full overflow-hidden">
         {/* Cabecera */}
         <div className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between">

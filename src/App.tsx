@@ -1,4 +1,8 @@
-import React, { useState, useEffect, Suspense, lazy } from 'react';
+import React, { useState, useEffect, Suspense, lazy, useRef } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
+import { EsqueletoPantalla } from './components/Esqueleto';
+import { VAR_CONTENIDO_TAB } from './lib/motion';
+import { useConservar } from './lib/presencia';
 import { onAuthStateChanged, signOut, User } from 'firebase/auth';
 import { auth, db } from './firebase/firebaseConfig';
 import { Lote, ConfiguracionGeneral, UsuarioPerfil, RolFuncional } from './types';
@@ -30,7 +34,7 @@ const ConsultaEntregaPublica = lazy(() =>
   import('./components/ConsultaEntregaPublica').then((m) => ({ default: m.ConsultaEntregaPublica }))
 );
 
-const Cargando = () => <p className="py-10 text-center text-sm text-slate-500">Cargando…</p>;
+const Cargando = () => <EsqueletoPantalla />;
 import { LotesTab } from './components/LotesTab';
 import { AuthModal } from './components/AuthModal';
 import { NuevoLoteModal } from './components/NuevoLoteModal';
@@ -68,6 +72,20 @@ interface UsuarioSesion {
 
 export default function App() {
   const [tabActiva, setTabActiva] = useState<TabTipo>('inicio');
+  // Dirección del cambio de pestaña (1 avanza, -1 retrocede) y posición de scroll de cada pestaña
+  const tabAnterior = useRef<TabTipo>('inicio');
+  const scrollPorTab = useRef<Partial<Record<TabTipo, number>>>({});
+  const ORDEN_TABS: TabTipo[] = ['inicio', 'lotes', 'pedidos', 'analitica', 'configuracion', 'usuarios', 'reparto'];
+  const direccionTab = ORDEN_TABS.indexOf(tabActiva) >= ORDEN_TABS.indexOf(tabAnterior.current) ? 1 : -1;
+  useEffect(() => {
+    tabAnterior.current = tabActiva;
+    const y = scrollPorTab.current[tabActiva] ?? 0;
+    const raf = requestAnimationFrame(() => window.scrollTo({ top: y }));
+    return () => {
+      cancelAnimationFrame(raf);
+      scrollPorTab.current[tabActiva] = window.scrollY;
+    };
+  }, [tabActiva]);
 
   // Si se ingresó mediante escaneo de QR (con parámetro ?lote=...), mostrar vista pública
   const [lotePublicoCodigo, setLotePublicoCodigo] = useState<string | null>(() => {
@@ -108,7 +126,10 @@ export default function App() {
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [nuevoLoteModalOpen, setNuevoLoteModalOpen] = useState(false);
   const [loteDetalle, setLoteDetalle] = useState<Lote | null>(null);
+  // Se conserva unos milisegundos al cerrar para que la ventana termine de desvanecerse
+  const loteDetalleVisible = useConservar(loteDetalle);
   const [loteQr, setLoteQr] = useState<Lote | null>(null);
+  const loteQrVisible = useConservar(loteQr);
 
   const esAdmin = esAdminMaestro(usuario?.email);
 
@@ -483,7 +504,17 @@ export default function App() {
       )}
 
       {/* CONTENIDO PRINCIPAL SEGÚN PESTAÑA SELECCIONADA */}
-      <main key={tabActiva} className="aparece flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="relative flex-1 flex flex-col min-h-[60vh]">
+      <AnimatePresence mode="popLayout" initial={false} custom={direccionTab}>
+      <motion.main
+        key={tabActiva}
+        custom={direccionTab}
+        variants={VAR_CONTENIDO_TAB}
+        initial="entra"
+        animate="visible"
+        exit="sale"
+        className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6"
+      >
         <Suspense fallback={<Cargando />}>
         {/* SELECCIÓN DE FUNCIÓN (CUENTAS CON VARIOS ROLES) */}
         {mostrarSelectorFuncion && perfilUsuario && (
@@ -509,7 +540,7 @@ export default function App() {
         <>
         {/* 1. INICIO */}
         {tabActiva === 'inicio' && tabsPermitidas.includes('inicio') && (funcionActiva === 'admin' || puede('verInicio') || puede('crearLotes')) && (
-          <DashboardTab
+          lotesCargando ? <EsqueletoPantalla /> : <DashboardTab
             lotes={lotes}
             config={config}
             onNuevoLote={handleAbrirNuevoLote}
@@ -528,7 +559,7 @@ export default function App() {
 
         {/* 2. LOTES */}
         {tabActiva === 'lotes' && tabsPermitidas.includes('lotes') && (
-          <LotesTab
+          lotesCargando ? <EsqueletoPantalla /> : <LotesTab
             lotes={lotes}
             config={config}
             onNuevoLote={handleAbrirNuevoLote}
@@ -546,7 +577,7 @@ export default function App() {
 
         {/* 3. ANALÍTICA */}
         {tabActiva === 'analitica' && tabsPermitidas.includes('analitica') && (
-          <AnaliticaTab
+          lotesCargando ? <EsqueletoPantalla /> : <AnaliticaTab
             lotes={lotes}
             config={config}
             onSeleccionarLote={(lote) => setLoteDetalle(lote)}
@@ -577,7 +608,9 @@ export default function App() {
         </>
         )}
         </Suspense>
-      </main>
+      </motion.main>
+      </AnimatePresence>
+      </div>
 
       {/* FOOTER */}
       <footer className="bg-slate-900 text-slate-400 border-t border-slate-800 py-6 text-xs text-center">
@@ -611,11 +644,11 @@ export default function App() {
         />
       )}
 
-      {loteDetalle && (
+      {loteDetalleVisible && (
         <LoteDetailModal
           isOpen={Boolean(loteDetalle)}
           onClose={() => setLoteDetalle(null)}
-          loteInicial={loteDetalle}
+          loteInicial={loteDetalleVisible}
           config={config}
           userEmail={usuario?.email || ''}
           perfilActual={perfilUsuario}
@@ -630,11 +663,11 @@ export default function App() {
         />
       )}
 
-      {loteQr && (
+      {loteQrVisible && (
         <QrModal
           isOpen={Boolean(loteQr)}
           onClose={() => setLoteQr(null)}
-          lote={loteQr}
+          lote={loteQrVisible}
           config={config}
           onAbrirVistaPublica={(codigo) => {
             setLoteQr(null);

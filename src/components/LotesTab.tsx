@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { escalon, usePrimerMontaje } from '../lib/montaje';
 import {
   Search,
   Filter,
@@ -31,6 +32,7 @@ export const LotesTab: React.FC<LotesTabProps> = ({
   puedeBuscar = true,
   puedeDocumentos = true
 }) => {
+  const primerMontaje = usePrimerMontaje();
   const [busqueda, setBusqueda] = useState('');
   const [filtroEstanque, setFiltroEstanque] = useState('todos');
   const [filtroEstado, setFiltroEstado] = useState('todos');
@@ -213,11 +215,20 @@ export const LotesTab: React.FC<LotesTabProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {lotesFiltrados.map((lote) => (
+                {lotesFiltrados.map((lote, i) => (
                   <tr
                     key={lote.codigo}
-                    className="hover:bg-slate-50/80 transition-colors cursor-pointer"
+                    className={`hover:bg-slate-50/80 transition-colors cursor-pointer ${escalon(i, primerMontaje).className}`}
+                    style={escalon(i, primerMontaje).style}
                     onClick={() => onSeleccionarLote(lote)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        onSeleccionarLote(lote);
+                      }
+                    }}
+                    tabIndex={0}
+                    aria-label={`Abrir el lote ${lote.codigo}`}
                   >
                     <td className="px-5 py-3.5">
                       <div className="font-serif text-base text-slate-900 tabular-nums">

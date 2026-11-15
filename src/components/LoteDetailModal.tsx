@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { Pestanas } from './Pestanas';
+import { usePresencia } from '../lib/presencia';
 import {
   X,
   Plus,
@@ -187,7 +189,8 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
     return () => unsubscribe();
   }, [isOpen, loteInicial?.codigo]);
 
-  if (!isOpen) return null;
+  const presencia = usePresencia(isOpen);
+  if (!presencia.montado) return null;
 
   const r = lote.resumen;
 
@@ -244,7 +247,7 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
 
   return (
     <>
-      <div className="velo fixed inset-0 z-40 flex items-center justify-center bg-slate-950/55 p-3 md:p-6 overflow-y-auto">
+      <div role="dialog" aria-modal="true" data-saliendo={presencia.saliendo || undefined} className="velo fixed inset-0 z-40 flex items-center justify-center bg-slate-950/55 p-3 md:p-6 overflow-y-auto">
         <div className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-5xl w-full max-h-[92dvh] flex flex-col overflow-hidden">
           {/* BARRA SUPERIOR DEL LOTE */}
           <div className="bg-slate-900 text-white px-6 py-4 flex flex-wrap items-center justify-between gap-3 shrink-0">
@@ -546,48 +549,20 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
                   </span>
                 </div>
 
-                <div className="flex items-center space-x-1 text-xs">
-                  <button
-                    onClick={() => setFiltroTipo('todos')}
-                    className={`px-2.5 py-1 rounded-md font-medium ${
-                      filtroTipo === 'todos' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'
-                    }`}
-                  >
-                    Todos
-                  </button>
-                  <button
-                    onClick={() => setFiltroTipo('agua')}
-                    className={`px-2.5 py-1 rounded-md font-medium ${
-                      filtroTipo === 'agua' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'
-                    }`}
-                  >
-                    Agua
-                  </button>
-                  <button
-                    onClick={() => setFiltroTipo('alimentacion')}
-                    className={`px-2.5 py-1 rounded-md font-medium ${
-                      filtroTipo === 'alimentacion' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'
-                    }`}
-                  >
-                    Alimentación & Biometría
-                  </button>
-                  <button
-                    onClick={() => setFiltroTipo('sanitario')}
-                    className={`px-2.5 py-1 rounded-md font-medium ${
-                      filtroTipo === 'sanitario' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'
-                    }`}
-                  >
-                    Sanitario & Mortalidad
-                  </button>
-                  <button
-                    onClick={() => setFiltroTipo('cosecha')}
-                    className={`px-2.5 py-1 rounded-md font-medium ${
-                      filtroTipo === 'cosecha' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'
-                    }`}
-                  >
-                    Cosecha & Despacho
-                  </button>
-                </div>
+                <Pestanas
+                  items={[
+                    { id: 'todos', etiqueta: 'Todos' },
+                    { id: 'agua', etiqueta: 'Agua' },
+                    { id: 'alimentacion', etiqueta: 'Alimentación' },
+                    { id: 'sanitario', etiqueta: 'Sanitario' },
+                    { id: 'cosecha', etiqueta: 'Cosecha' }
+                  ]}
+                  activo={filtroTipo}
+                  onCambio={setFiltroTipo}
+                  idIndicador="filtro-fases"
+                  etiqueta="Filtrar fases"
+                  className="max-w-full"
+                />
               </div>
 
               {/* Lista de eventos */}

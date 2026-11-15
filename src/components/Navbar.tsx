@@ -11,13 +11,16 @@ import {
 } from 'lucide-react';
 import { User } from 'firebase/auth';
 import { LogoLore } from './LogoLore';
+import { Pestanas } from './Pestanas';
+import { LayoutGroup, motion } from 'motion/react';
+import { RESORTE } from '../lib/motion';
 import { RolFuncional, UsuarioPerfil } from '../types';
 import { ETIQUETA_ROL, esAdminMaestro, nombreFuncion, veePestana } from '../services/usuariosService';
 
 const ICONO_FUNCION: Record<RolFuncional, React.ReactNode> = {
-  admin: <Shield className="w-3.5 h-3.5" />,
-  operator: <Factory className="w-3.5 h-3.5" />,
-  courier: <Truck className="w-3.5 h-3.5" />
+  admin: <Shield className="w-3.5 h-3.5" strokeWidth={1.75} />,
+  operator: <Factory className="w-3.5 h-3.5" strokeWidth={1.75} />,
+  courier: <Truck className="w-3.5 h-3.5" strokeWidth={1.75} />
 };
 
 /**
@@ -29,6 +32,7 @@ const SelectorRapidoFuncion: React.FC<{
   onElegir: (f: RolFuncional) => void;
   compacto?: boolean;
 }> = ({ funciones, activa, onElegir, compacto }) => (
+  <LayoutGroup id={compacto ? 'funcion-movil' : 'funcion-escritorio'}>
   <div className="flex items-center rounded-lg bg-slate-800 p-0.5" role="group" aria-label="Cambiar de función">
     {funciones.map((f) => (
       <button
@@ -37,15 +41,21 @@ const SelectorRapidoFuncion: React.FC<{
         onClick={() => f !== activa && onElegir(f)}
         aria-pressed={f === activa}
         title={f === activa ? `Trabajando como ${ETIQUETA_ROL[f]}` : `Cambiar a ${ETIQUETA_ROL[f]}`}
-        className={`flex items-center space-x-1 rounded-md font-semibold transition-colors ${compacto ? 'px-2 py-1 text-[11px]' : 'px-2.5 py-1 text-xs'} ${
-          f === activa ? 'bg-slate-50 text-slate-900' : 'text-slate-300 hover:text-white hover:bg-slate-700'
+        className={`pestana relative flex items-center rounded-md font-semibold ${compacto ? 'min-h-10 px-3 text-xs' : 'min-h-9 px-2.5 text-xs'} ${
+          f === activa ? 'text-slate-900' : 'text-slate-300 hover:text-white'
         }`}
       >
-        {ICONO_FUNCION[f]}
-        <span>{ETIQUETA_ROL[f]}</span>
+        {f === activa && (
+          <motion.span layoutId="funcion-indicador" transition={RESORTE} aria-hidden="true" className="absolute inset-0 rounded-md bg-slate-50" />
+        )}
+        <span className="relative flex items-center gap-1">
+          {ICONO_FUNCION[f]}
+          <span>{ETIQUETA_ROL[f]}</span>
+        </span>
       </button>
     ))}
   </div>
+  </LayoutGroup>
 );
 
 export type TabTipo = 'inicio' | 'lotes' | 'pedidos' | 'analitica' | 'configuracion' | 'usuarios' | 'reparto';
@@ -137,19 +147,17 @@ export const Navbar: React.FC<NavbarProps> = ({
           </button>
 
           {/* Navegación por pestañas de la función activa (Desktop) */}
-          <nav className="hidden md:flex items-center self-stretch">
-            {tabs.map((t) => (
-              <button
-                key={t.id}
-                onClick={() => setTabActiva(t.id)}
-                className={`rotulo h-full px-3 border-b-2 transition-colors ${t.icono ? 'flex items-center space-x-1.5' : ''} ${
-                  tabActiva === t.id ? 'text-white border-amber-400' : 'text-slate-300 border-transparent hover:text-white'
-                }`}
-              >
-                {t.icono}
-                <span>{t.etiqueta}</span>
-              </button>
-            ))}
+          <nav className="hidden md:flex items-stretch self-stretch min-w-0" aria-label="Secciones">
+            <Pestanas
+              items={tabs.map((t) => ({ id: t.id, etiqueta: t.etiqueta }))}
+              activo={tabActiva}
+              onCambio={setTabActiva}
+              idIndicador="barra-escritorio"
+              variante="subrayado"
+              tono="oscuro"
+              etiqueta="Secciones"
+              className="h-full"
+            />
           </nav>
 
           {/* Acciones de usuario */}
@@ -188,7 +196,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <button
                     onClick={onCerrarSesion}
                     title="Cerrar sesión"
-                    className="p-1.5 text-slate-400 hover:text-red-400 rounded-md hover:bg-slate-800 transition-colors"
+                    aria-label="Cerrar sesión"
+                    className="min-h-11 min-w-11 grid place-items-center text-slate-300 hover:text-red-400 rounded-md hover:bg-slate-800 transition-colors"
                   >
                     <LogOut className="w-4 h-4" />
                   </button>
@@ -216,17 +225,17 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Navegación móvil */}
         {tabs.length > 1 && (
-        <div className="md:hidden flex border-t border-slate-800 -mx-4 px-2 overflow-x-auto sin-barra">
-          {tabs.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => setTabActiva(t.id)}
-              className={`rotulo px-3 py-3 whitespace-nowrap border-b-2 ${tabActiva === t.id ? 'text-white border-amber-400' : 'text-slate-300 border-transparent'}`}
-            >
-              {t.etiquetaMovil}
-            </button>
-          ))}
-        </div>
+        <nav className="md:hidden border-t border-slate-800 -mx-4 px-2" aria-label="Secciones">
+          <Pestanas
+            items={tabs.map((t) => ({ id: t.id, etiqueta: t.etiquetaMovil }))}
+            activo={tabActiva}
+            onCambio={setTabActiva}
+            idIndicador="barra-movil"
+            variante="subrayado"
+            tono="oscuro"
+            etiqueta="Secciones"
+          />
+        </nav>
         )}
       </div>
     </header>

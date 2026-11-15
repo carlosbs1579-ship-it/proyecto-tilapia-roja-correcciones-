@@ -8,8 +8,8 @@ Sistema visual vigente: `DESIGN.md` (paleta tinta, verde solo íntegro, oro viej
 - [x] Fase 0. Lectura y sistema de movimiento
 - [x] Fase 1. Revisión con agentes en paralelo (A apertura, B pestañas, C referencias, D móvil/accesibilidad) y plan priorizado
 - [x] Fase 2. Limpieza visual (emojis, "(2)", comparativo de estanques, rayas largas)
-- [ ] Fase 3. Animaciones de apertura y esqueletos
-- [ ] Fase 4. Pestañas
+- [x] Fase 3. Animaciones de apertura y esqueletos
+- [x] Fase 4. Pestañas
 - [ ] Fase 5. Personal y permisos
 - [ ] Fase 6. Pantalla de inicio de sesión
 - [ ] Fase 7. Pulido general
@@ -61,3 +61,13 @@ Sistema visual vigente: `DESIGN.md` (paleta tinta, verde solo íntegro, oro viej
 
 - El nombre de empresa "Cultivos Loré — Tilapia Pro" está guardado dentro de los comprobantes encadenados (forma parte del contenido con hash). No se cambia el dato; solo se muestra con "·" en la consulta pública y en el pie del PDF.
 - Las correcciones de siembra ya registradas guardan su texto con "—" y "→" (lotesService). Es dato encadenado: no se modifica.
+
+## Fases 3 y 4 hechas
+
+- `src/components/Esqueleto.tsx`: esqueletos (tabla, indicadores, tarjetas, pantalla) con reflejo de 1,5 s (solo transform). Usados en Suspense, Inicio, Lotes, Analítica (mientras `lotesCargando`), Entregas, panel de entregas, Repartidor, Personal y las consultas públicas del lote y de la entrega.
+- `src/lib/presencia.ts`: `usePresencia` (salida de 180 ms con `data-saliendo`) en AuthModal, QrModal, IntegrityCheckModal, NuevoLoteModal, NuevoEventoModal, NuevaOrdenModal y LoteDetailModal; `useConservar` mantiene el lote mientras se cierra su ventana. Ventanas con role="dialog" y aria-modal.
+- Celular: las ventanas son hojas que suben desde abajo.
+- `src/lib/montaje.ts`: filas y tarjetas escalonadas (40 ms, 8 px, máximo 8) solo la primera vez que llegan los datos (Inicio, Lotes, Entregas, Repartidor). Filas de lotes accesibles con teclado.
+- `src/components/Pestanas.tsx`: indicador compartido con layoutId y resorte 400/35; respuesta al toque 0,97; color en 150 ms; desvanecido de borde y la activa se lleva a la vista. Usado en la barra (escritorio y móvil), subpestañas de Entregas, filtros del repartidor y filtros de la línea de tiempo del lote. Selector de función con el mismo indicador.
+- `App.tsx`: el contenido de pestaña sale con fundido de 150 ms y entra con fundido y 8 px según la dirección (AnimatePresence popLayout); scroll guardado por pestaña; altura mínima de 60vh para que no salte.
+- `vite.config.ts`: motion en su propio archivo (evita el aviso nuevo de paquete mayor a 500 kB).

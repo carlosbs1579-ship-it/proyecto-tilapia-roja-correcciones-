@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { usePresencia } from '../lib/presencia';
 import { X, ClipboardList, AlertCircle, Save, Send, UserPlus } from 'lucide-react';
 import { Cliente, InventarioLote, Lote, OrdenEntrega, UnidadMedida } from '../types';
 import {
@@ -95,7 +96,8 @@ export const NuevaOrdenModal: React.FC<NuevaOrdenModalProps> = ({
   const totalDistribuido = redondear(lotesUsados.reduce((s, [, v]) => s + Number(v), 0), unidad);
   const solicitada = Number(cantidadSolicitada) || 0;
 
-  if (!isOpen) return null;
+  const presencia = usePresencia(isOpen);
+  if (!presencia.montado) return null;
 
   const datosOrden = async () => {
     let cliente = clientes.find((c) => c.id === clienteId) || null;
@@ -163,7 +165,7 @@ export const NuevaOrdenModal: React.FC<NuevaOrdenModalProps> = ({
   };
 
   return (
-    <div className="velo fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4">
+    <div role="dialog" aria-modal="true" data-saliendo={presencia.saliendo || undefined} className="velo fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4">
       <div className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-3xl w-full max-h-[92dvh] overflow-y-auto">
         <div className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between sticky top-0 z-10">
           <div className="flex items-center space-x-2">

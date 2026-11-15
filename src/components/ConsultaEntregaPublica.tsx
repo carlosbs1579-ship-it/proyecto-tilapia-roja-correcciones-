@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { EsqueletoTarjetas } from './Esqueleto';
 import { ArrowLeft, Download, FileText, ShieldAlert, ShieldCheck, Truck } from 'lucide-react';
 import { BloqueAnulacion, ComprobanteEntrega, ConsultaEntrega } from '../types';
 import { EMPRESA, esAnulacion, leerConsultaEntrega, separarBloques, verificarCadena, verificarComprobante } from '../services/comprobantesService';
@@ -68,7 +69,7 @@ export const ConsultaEntregaPublica: React.FC<{
       </header>
 
       <main className="max-w-3xl mx-auto px-4 py-5 space-y-4 text-sm">
-        {estado === 'cargando' && <p className="text-slate-500">Consultando la entrega…</p>}
+        {estado === 'cargando' && <EsqueletoTarjetas cantidad={2} alto="h-28" />}
         {estado === 'no_encontrada' && (
           <div className="bg-white rounded-lg border border-slate-200 p-4">
             <p className="font-semibold">No se encontró ninguna entrega con este código.</p>

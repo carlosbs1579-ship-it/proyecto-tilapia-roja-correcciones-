@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { escalon, usePrimerMontaje } from '../lib/montaje';
 import {
   Fish,
   Layers,
@@ -37,6 +38,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
   puedeBuscar = true,
   puedeDocumentos = true
 }) => {
+  const primerMontaje = usePrimerMontaje();
   const [busquedaRapida, setBusquedaRapida] = useState('');
 
   // Métricas globales calculadas
@@ -204,11 +206,20 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {lotesFiltrados.slice(0, 8).map((lote) => (
+                {lotesFiltrados.slice(0, 8).map((lote, i) => (
                   <tr
                     key={lote.codigo}
-                    className="hover:bg-slate-50/80 transition-colors cursor-pointer"
+                    className={`hover:bg-slate-50/80 transition-colors cursor-pointer ${escalon(i, primerMontaje).className}`}
+                    style={escalon(i, primerMontaje).style}
                     onClick={() => onSeleccionarLote(lote)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        onSeleccionarLote(lote);
+                      }
+                    }}
+                    tabIndex={0}
+                    aria-label={`Abrir el lote ${lote.codigo}`}
                   >
                     <td className="px-5 py-3.5">
                       <div className="flex items-center space-x-2">

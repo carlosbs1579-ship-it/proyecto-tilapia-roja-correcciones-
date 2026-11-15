@@ -1,4 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { escalon, usePrimerMontaje } from '../lib/montaje';
+import { EsqueletoTarjetas } from './Esqueleto';
+import { Pestanas } from './Pestanas';
 import {
   ClipboardList,
   Plus,
@@ -91,6 +94,8 @@ export const PedidosTab: React.FC<PedidosTabProps> = ({ lotes, perfilActual }) =
   const [inventario, setInventario] = useState<Record<string, InventarioLote>>({});
   const [repartidores, setRepartidores] = useState<Repartidor[]>([]);
   const [cargando, setCargando] = useState(true);
+  // Las tarjetas entran escalonadas solo la primera vez que llegan los datos
+  const primerMontaje = usePrimerMontaje(!cargando);
   const [errorCarga, setErrorCarga] = useState<string | null>(null);
   const [abierta, setAbierta] = useState<string | null>(null);
   const [modalAbierto, setModalAbierto] = useState(false);
@@ -334,20 +339,13 @@ export const PedidosTab: React.FC<PedidosTabProps> = ({ lotes, perfilActual }) =
       )}
 
       {/* Secciones */}
-      <div className="flex flex-wrap gap-1 text-xs">
-        {pestañas.map((p) => (
-          <button
-            key={p.id}
-            onClick={() => setVista(p.id)}
-            className={`inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg font-medium border ${
-              vista === p.id ? 'bg-slate-900 text-white border-slate-900 font-bold' : 'bg-white text-slate-600 border-slate-200 hover:text-slate-900'
-            }`}
-          >
-            {p.icono}
-            <span>{p.etiqueta}</span>
-          </button>
-        ))}
-      </div>
+      <Pestanas
+        items={pestañas.map((p) => ({ id: p.id, etiqueta: p.etiqueta, icono: p.icono }))}
+        activo={vista}
+        onCambio={setVista}
+        idIndicador="secciones-entregas"
+        etiqueta="Secciones de entregas"
+      />
 
       {vista === 'pedidos' && (
         <div className="bg-white rounded-xl border border-slate-200 shadow-xs">
@@ -386,7 +384,7 @@ export const PedidosTab: React.FC<PedidosTabProps> = ({ lotes, perfilActual }) =
           </div>
 
           {cargando ? (
-            <div className="py-10 text-center text-xs text-slate-500">Cargando órdenes...</div>
+            <div className="p-4"><EsqueletoTarjetas cantidad={4} alto="h-[88px]" /></div>
           ) : ordenesFiltradas.length === 0 ? (
             <div className="py-10 text-center text-xs text-slate-500">No hay pedidos con estos filtros.</div>
           ) : (
@@ -406,10 +404,10 @@ export const PedidosTab: React.FC<PedidosTabProps> = ({ lotes, perfilActual }) =
                 <span />
               </div>
               <div className="divide-y divide-slate-100">
-                {ordenesFiltradas.map((o) => {
+                {ordenesFiltradas.map((o, i) => {
                   const expandida = abierta === o.id;
                   return (
-                    <div key={o.id}>
+                    <div key={o.id} className={escalon(i, primerMontaje).className} style={escalon(i, primerMontaje).style}>
                       <button
                         onClick={() => {
                           setAbierta(expandida ? null : o.id);

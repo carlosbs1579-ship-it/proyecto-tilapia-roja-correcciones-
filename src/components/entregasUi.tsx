@@ -32,13 +32,13 @@ export const ETIQUETA_FUNCION: Record<string, string> = {
 };
 
 export const EstadoOrdenBadge: React.FC<{ estado: EstadoOrden }> = ({ estado }) => (
-  <span className={`inline-block px-2 py-0.5 rounded-full border font-semibold text-[10px] whitespace-nowrap ${ESTILO_ESTADO[estado]}`}>
+  <span className={`inline-block px-2 py-0.5 rounded-full border font-semibold text-[11px] whitespace-nowrap ${ESTILO_ESTADO[estado]}`}>
     {ETIQUETA_ESTADO_ORDEN[estado]}
   </span>
 );
 
 export const EstadoAtencionBadge: React.FC<{ estado: EstadoAtencion }> = ({ estado }) => (
-  <span className={`inline-block px-2 py-0.5 rounded-full border font-semibold text-[10px] whitespace-nowrap ${ESTILO_ATENCION[estado]}`}>
+  <span className={`inline-block px-2 py-0.5 rounded-full border font-semibold text-[11px] whitespace-nowrap ${ESTILO_ATENCION[estado]}`}>
     {ETIQUETA_ATENCION[estado]}
   </span>
 );

@@ -200,7 +200,7 @@ export const AnotacionesLotePanel: React.FC<{
             // Valor registrado tomado de la fase sellada (no del texto guardado en la propuesta)
             const registradoReal = d.dato && ev ? String(ev.datos?.[d.dato] ?? d.valorRegistrado) : d.valorRegistrado;
             return (
-              <li key={a.propuesta.id} className={`p-3 space-y-1 ${alterada ? 'bg-red-50 border-l-4 border-red-500' : ''}`}>
+              <li key={a.propuesta.id} className={`p-3 space-y-1 ${alterada ? 'bg-red-50 ring-1 ring-inset ring-red-300' : ''}`}>
                 {alterada && <p className="font-semibold text-red-700">Anotación alterada después de registrarse: sin validez.</p>}
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="font-semibold text-slate-800">
@@ -227,7 +227,7 @@ export const AnotacionesLotePanel: React.FC<{
                   <p className="text-slate-700">Aclaración general de la fase</p>
                 )}
                 <p className="text-slate-600">Motivo: {d.motivo}</p>
-                <p className="text-[10px] text-slate-400">
+                <p className="text-[11px] text-slate-400">
                   Propuesta por {quienRegistro(a.propuesta)} · {formatearFechaColombia(a.propuesta.fecha)}
                   {a.resolucion &&
                     ` · ${a.estado === 'aprobada' ? 'Aprobada' : 'Rechazada'} por ${quienRegistro(a.resolucion)} · ${formatearFechaColombia(a.resolucion.fecha)}`}
@@ -272,7 +272,7 @@ export const AnotacionesLotePanel: React.FC<{
                   </div>
                 )}
                 {a.estado === 'pendiente' && propia && (
-                  <p className="text-[10px] text-amber-700">La propusiste tú: debe aprobarla otra persona.</p>
+                  <p className="text-[11px] text-amber-700">La propusiste tú: debe aprobarla otra persona.</p>
                 )}
               </li>
             );

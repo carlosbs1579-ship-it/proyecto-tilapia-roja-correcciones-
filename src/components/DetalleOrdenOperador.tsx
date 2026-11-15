@@ -102,9 +102,9 @@ export const DetalleOrdenOperador: React.FC<{
             ['Pendiente', cantidadPendiente(o), 'por entregar o decidir']
           ].map(([t, v, ayuda]) => (
             <div key={t as string} className="bg-slate-50 border border-slate-200 rounded-lg p-2">
-              <span className="text-[10px] text-slate-500 block">{t}</span>
+              <span className="text-[11px] text-slate-500 block">{t}</span>
               <strong className="text-sm text-slate-900">{num(v as number)} {o.unidad}</strong>
-              <span className="block text-[10px] text-slate-400">{ayuda}</span>
+              <span className="block text-[11px] text-slate-400">{ayuda}</span>
             </div>
           ))}
         </div>
@@ -126,7 +126,7 @@ export const DetalleOrdenOperador: React.FC<{
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[460px]">
-              <thead className="bg-slate-50 text-[10px] uppercase text-slate-500 text-left">
+              <thead className="bg-slate-50 text-[11px] uppercase text-slate-500 text-left">
                 <tr>
                   <th className="px-3 py-1.5">Lote</th>
                   <th className="px-3 py-1.5">Piscina</th>
@@ -149,7 +149,7 @@ export const DetalleOrdenOperador: React.FC<{
             </table>
           </div>
         )}
-        {o.estado === 'borrador' && <p className="text-[10px] text-slate-500">Borrador: estas cantidades aún no están reservadas.</p>}
+        {o.estado === 'borrador' && <p className="text-[11px] text-slate-500">Borrador: estas cantidades aún no están reservadas.</p>}
       </Seccion>
 
       {/* Novedades de la orden */}
@@ -349,7 +349,7 @@ export const DetalleOrdenOperador: React.FC<{
             </li>
           ))}
         </ol>
-        <p className="flex items-center space-x-1 text-[10px] text-slate-400">
+        <p className="flex items-center space-x-1 text-[11px] text-slate-400">
           <History className="w-3 h-3" />
           <span>Construido con el historial real de la orden; los eventos no se modifican.</span>
         </p>

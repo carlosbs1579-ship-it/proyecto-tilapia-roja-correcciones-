@@ -223,7 +223,7 @@ export const LotesTab: React.FC<LotesTabProps> = ({
                       <div className="font-mono font-bold text-slate-900 text-sm">
                         {lote.codigo}
                       </div>
-                      <div className="text-[10px] text-slate-400">
+                      <div className="text-[11px] text-slate-400">
                         {lote.eventos?.length || 0} fases
                       </div>
                     </td>
@@ -257,7 +257,7 @@ export const LotesTab: React.FC<LotesTabProps> = ({
                     </td>
                     <td className="px-4 py-3.5 text-center">
                       <span
-                        className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                        className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider ${
                           lote.estado === 'activo'
                             ? 'bg-emerald-100 text-emerald-800'
                             : 'bg-slate-200 text-slate-700'

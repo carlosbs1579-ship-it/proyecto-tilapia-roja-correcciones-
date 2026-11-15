@@ -46,7 +46,7 @@ export const IntegrityCheckModal: React.FC<IntegrityCheckModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4">
       <div className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-lg w-full overflow-hidden">
         {/* Cabecera */}
         <div className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between">
@@ -94,11 +94,11 @@ export const IntegrityCheckModal: React.FC<IntegrityCheckModalProps> = ({
                 </div>
                 <div className="flex justify-between items-center py-1 border-b border-slate-200/60">
                   <span className="text-slate-500 font-medium">Hash Génesis (#0):</span>
-                  <span className="font-mono text-[10px] text-slate-600">0000...0000 (64 ceros válidos)</span>
+                  <span className="font-mono text-[11px] text-slate-600">0000...0000 (64 ceros válidos)</span>
                 </div>
                 <div className="py-1">
                   <span className="text-slate-500 font-medium block mb-1">Hash Final del Lote (resumen.hashFinal):</span>
-                  <span className="font-mono text-[10px] bg-white p-1.5 rounded border border-slate-300 block break-all text-slate-700">
+                  <span className="font-mono text-[11px] bg-white p-1.5 rounded border border-slate-300 block break-all text-slate-700">
                     {lote.resumen.hashFinal || 'Sin hash registrado'}
                   </span>
                 </div>
@@ -129,7 +129,7 @@ export const IntegrityCheckModal: React.FC<IntegrityCheckModalProps> = ({
                         <li key={f.indice} className="px-3 py-2 bg-white">
                           <span className="text-slate-800">{f.mensaje}</span>
                           {f.estado === 'alterada' && !f.conRastro && (
-                            <span className="block text-[10px] text-slate-500 mt-0.5">
+                            <span className="block text-[11px] text-slate-500 mt-0.5">
                               Fase registrada antes del rastro por dato: se sabe que fue alterada, pero no qué dato cambió.
                             </span>
                           )}
@@ -151,13 +151,13 @@ export const IntegrityCheckModal: React.FC<IntegrityCheckModalProps> = ({
                   </div>
                   <div>
                     <span className="text-slate-500 block">Hash recalculado según datos actuales:</span>
-                    <span className="font-mono text-[10px] bg-red-50 text-red-800 p-1 rounded block break-all border border-red-200">
+                    <span className="font-mono text-[11px] bg-red-50 text-red-800 p-1 rounded block break-all border border-red-200">
                       {resultado.detalles.hashEsperado || 'Discrepancia en cadena previa'}
                     </span>
                   </div>
                   <div>
                     <span className="text-slate-500 block">Hash guardado en el documento original:</span>
-                    <span className="font-mono text-[10px] bg-slate-100 text-slate-800 p-1 rounded block break-all border border-slate-300">
+                    <span className="font-mono text-[11px] bg-slate-100 text-slate-800 p-1 rounded block break-all border border-slate-300">
                       {resultado.detalles.hashAlmacenado}
                     </span>
                   </div>

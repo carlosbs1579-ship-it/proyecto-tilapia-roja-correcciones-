@@ -35,7 +35,7 @@ export const SupervisionRepartidores: React.FC<{
           <span className="font-bold text-slate-900">Supervisión de repartidores</span>
         </div>
         <table className="w-full text-left min-w-[720px]">
-          <thead className="bg-slate-50 text-[10px] uppercase text-slate-500">
+          <thead className="bg-slate-50 text-[11px] uppercase text-slate-500">
             <tr>
               <th className="px-3 py-2">Repartidor</th>
               <th className="px-3 py-2">Cargo visible</th>
@@ -60,7 +60,7 @@ export const SupervisionRepartidores: React.FC<{
               >
                 <td className="px-3 py-2 font-semibold text-slate-900">
                   {r.nombre}
-                  {!r.activo && <span className="block text-[10px] font-normal text-slate-400">ya no figura como repartidor activo</span>}
+                  {!r.activo && <span className="block text-[11px] font-normal text-slate-400">ya no figura como repartidor activo</span>}
                 </td>
                 <td className="px-3 py-2 text-slate-600">{r.cargo || '—'}</td>
                 <td className="px-3 py-2 text-right">{r.asignados}</td>

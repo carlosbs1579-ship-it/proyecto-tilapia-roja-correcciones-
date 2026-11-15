@@ -307,7 +307,7 @@ export const ConfiguracionTab: React.FC<ConfiguracionTabProps> = ({
                         </div>
                       </div>
                       <div>
-                        <label className="text-[10px] text-slate-500 block">Nombre</label>
+                        <label className="text-[11px] text-slate-500 block">Nombre</label>
                         <input
                           type="text"
                           value={editNombre}
@@ -316,7 +316,7 @@ export const ConfiguracionTab: React.FC<ConfiguracionTabProps> = ({
                         />
                       </div>
                       <div>
-                        <label className="text-[10px] text-slate-500 block">Volumen (m³)</label>
+                        <label className="text-[11px] text-slate-500 block">Volumen (m³)</label>
                         <input
                           type="number"
                           value={editVolumen}
@@ -484,7 +484,7 @@ export const ConfiguracionTab: React.FC<ConfiguracionTabProps> = ({
             <span className="text-xs font-bold text-slate-800 block">Temperatura del Agua (°C)</span>
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="text-[10px] text-slate-500">Mínimo</label>
+                <label className="text-[11px] text-slate-500">Mínimo</label>
                 <input
                   type="number"
                   step="0.5"
@@ -495,7 +495,7 @@ export const ConfiguracionTab: React.FC<ConfiguracionTabProps> = ({
                 />
               </div>
               <div>
-                <label className="text-[10px] text-slate-500">Máximo</label>
+                <label className="text-[11px] text-slate-500">Máximo</label>
                 <input
                   type="number"
                   step="0.5"
@@ -512,7 +512,7 @@ export const ConfiguracionTab: React.FC<ConfiguracionTabProps> = ({
           <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
             <span className="text-xs font-bold text-slate-800 block">Oxígeno Disuelto (mg/L)</span>
             <div>
-              <label className="text-[10px] text-slate-500">Mínimo Crítico Recomendado</label>
+              <label className="text-[11px] text-slate-500">Mínimo Crítico Recomendado</label>
               <input
                 type="number"
                 step="0.1"
@@ -529,7 +529,7 @@ export const ConfiguracionTab: React.FC<ConfiguracionTabProps> = ({
             <span className="text-xs font-bold text-slate-800 block">pH</span>
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="text-[10px] text-slate-500">Mínimo</label>
+                <label className="text-[11px] text-slate-500">Mínimo</label>
                 <input
                   type="number"
                   step="0.1"
@@ -540,7 +540,7 @@ export const ConfiguracionTab: React.FC<ConfiguracionTabProps> = ({
                 />
               </div>
               <div>
-                <label className="text-[10px] text-slate-500">Máximo</label>
+                <label className="text-[11px] text-slate-500">Máximo</label>
                 <input
                   type="number"
                   step="0.1"
@@ -557,7 +557,7 @@ export const ConfiguracionTab: React.FC<ConfiguracionTabProps> = ({
           <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
             <span className="text-xs font-bold text-slate-800 block">Amonio Total (mg/L)</span>
             <div>
-              <label className="text-[10px] text-slate-500">Máximo Permitido</label>
+              <label className="text-[11px] text-slate-500">Máximo Permitido</label>
               <input
                 type="number"
                 step="0.1"
@@ -573,7 +573,7 @@ export const ConfiguracionTab: React.FC<ConfiguracionTabProps> = ({
           <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
             <span className="text-xs font-bold text-slate-800 block">Nitritos (mg/L)</span>
             <div>
-              <label className="text-[10px] text-slate-500">Máximo Permitido (Tóxico)</label>
+              <label className="text-[11px] text-slate-500">Máximo Permitido (Tóxico)</label>
               <input
                 type="number"
                 step="0.01"
@@ -590,7 +590,7 @@ export const ConfiguracionTab: React.FC<ConfiguracionTabProps> = ({
             <span className="text-xs font-bold text-slate-800 block">Transparencia Disco Secchi (cm)</span>
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="text-[10px] text-slate-500">Mínimo</label>
+                <label className="text-[11px] text-slate-500">Mínimo</label>
                 <input
                   type="number"
                   step="1"
@@ -601,7 +601,7 @@ export const ConfiguracionTab: React.FC<ConfiguracionTabProps> = ({
                 />
               </div>
               <div>
-                <label className="text-[10px] text-slate-500">Máximo</label>
+                <label className="text-[11px] text-slate-500">Máximo</label>
                 <input
                   type="number"
                   step="1"

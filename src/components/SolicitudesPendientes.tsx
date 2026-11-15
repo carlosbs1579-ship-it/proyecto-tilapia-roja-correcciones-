@@ -55,7 +55,7 @@ export const SolicitudAjusteTarjeta: React.FC<{
           {mostrarOrden && <span className="font-mono text-slate-900">{o.id} · {o.clienteNombre} · </span>}
           {a.solicitadoPor} · {formatearFechaColombia(a.solicitadoEn)}
         </span>
-        <span className={`px-2 py-0.5 rounded-full border font-semibold text-[10px] ${ESTILO_AJUSTE[a.estado]}`}>{ETIQUETA_AJUSTE[a.estado]}</span>
+        <span className={`px-2 py-0.5 rounded-full border font-semibold text-[11px] ${ESTILO_AJUSTE[a.estado]}`}>{ETIQUETA_AJUSTE[a.estado]}</span>
       </div>
 
       <div className="overflow-x-auto">

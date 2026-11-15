@@ -74,7 +74,7 @@ export const HistorialEntregas: React.FC<{
       </p>
       <div className="overflow-x-auto">
         <table className="w-full text-left min-w-[860px]">
-          <thead className="bg-slate-50 text-[10px] uppercase text-slate-500">
+          <thead className="bg-slate-50 text-[11px] uppercase text-slate-500">
             <tr>
               <th className="px-2 py-2">Fecha y hora</th>
               <th className="px-2 py-2">Pedido</th>
@@ -100,7 +100,7 @@ export const HistorialEntregas: React.FC<{
                 </td>
                 <td className="px-2 py-1.5 text-slate-700">{cambiosDeEvento(evento) || '—'}</td>
                 <td className="px-2 py-1.5 text-slate-700">{evento.descripcion || '—'}</td>
-                <td className="px-2 py-1.5 font-mono text-[10px] text-slate-400">{evento.eventoId ? evento.eventoId.slice(0, 8) : '—'}</td>
+                <td className="px-2 py-1.5 font-mono text-[11px] text-slate-400">{evento.eventoId ? evento.eventoId.slice(0, 8) : '—'}</td>
               </tr>
             ))}
           </tbody>

@@ -59,7 +59,7 @@ export const FotosEntregaOrden: React.FC<{ orden: OrdenEntrega }> = ({ orden: o 
                   La imagen ya no está disponible (se conserva {DIAS_RETENCION_FOTOS} días). Queda el registro de la foto en el historial.
                 </span>
               )}
-              <span className="block font-mono text-[10px] text-slate-400 break-all">SHA-256: {ref.hash}</span>
+              <span className="block font-mono text-[11px] text-slate-400 break-all">SHA-256: {ref.hash}</span>
               {foto && (
                 <button
                   type="button"

@@ -1,1 +1,190 @@
 @import "tailwindcss";
+
+/*
+ * Mundo visual "acta formal": papel frío, tinta azul, verde solo para lo íntegro, oro viejo para
+ * detalles de acta y rojo solo para alteraciones. Se redefinen las escalas que ya usan los
+ * componentes para cambiar la identidad sin mover la distribución.
+ */
+@theme {
+  --font-sans: "Public Sans", ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+  --font-serif: "Libre Caslon Text", Georgia, "Times New Roman", serif;
+
+  /* Neutros con tinte de tinta */
+  --color-slate-50: #f5f5f1;
+  --color-slate-100: #ecece6;
+  --color-slate-200: #dcddd6;
+  --color-slate-300: #c2c5c0;
+  --color-slate-400: #868c93;
+  --color-slate-500: #5d6470;
+  --color-slate-600: #4a5160;
+  --color-slate-700: #363d4b;
+  --color-slate-800: #232a39;
+  --color-slate-900: #16213a;
+  --color-slate-950: #0d1526;
+
+  /* Acción principal: azul tinta */
+  --color-sky-50: #eef1f7;
+  --color-sky-100: #dce2ee;
+  --color-sky-200: #b9c4dc;
+  --color-sky-300: #8c9cc0;
+  --color-sky-400: #8ea0c8;
+  --color-sky-500: #3e5584;
+  --color-sky-600: #2c426e;
+  --color-sky-700: #22375c;
+  --color-sky-800: #1a2b4a;
+  --color-sky-900: #14213d;
+  --color-sky-950: #0c1427;
+  --color-cyan-50: #eef1f7;
+  --color-cyan-100: #dce2ee;
+  --color-cyan-500: #3e5584;
+  --color-cyan-600: #2c426e;
+  --color-cyan-700: #22375c;
+
+  /* Íntegro: verde formal */
+  --color-emerald-50: #eef5f1;
+  --color-emerald-100: #d5e8dd;
+  --color-emerald-200: #abd0bc;
+  --color-emerald-300: #7cb397;
+  --color-emerald-400: #6fb08f;
+  --color-emerald-500: #2f7758;
+  --color-emerald-600: #225f46;
+  --color-emerald-700: #1b4d39;
+  --color-emerald-800: #163d2e;
+  --color-emerald-900: #113126;
+  --color-emerald-950: #0a1e17;
+
+  /* Pendiente y detalles de acta: oro viejo */
+  --color-amber-50: #faf5e8;
+  --color-amber-100: #f2e6c6;
+  --color-amber-200: #e6cf92;
+  --color-amber-300: #d5b262;
+  --color-amber-400: #d1ac5c;
+  --color-amber-500: #a07a2c;
+  --color-amber-600: #8a6624;
+  --color-amber-700: #6e501d;
+  --color-amber-800: #553e18;
+  --color-amber-900: #3f2e13;
+  --color-amber-950: #261b0b;
+
+  /* Secundario: pizarra */
+  --color-indigo-50: #eff1f5;
+  --color-indigo-100: #dfe3ec;
+  --color-indigo-200: #bfc7d8;
+  --color-indigo-300: #96a3bd;
+  --color-indigo-400: #6d7c9d;
+  --color-indigo-500: #4a5a7d;
+  --color-indigo-600: #3a4a6b;
+  --color-indigo-700: #2f3c57;
+  --color-indigo-800: #252f44;
+  --color-indigo-900: #1b2333;
+
+  /* Alteración y error */
+  --color-red-50: #fbf0ef;
+  --color-red-100: #f6dad7;
+  --color-red-200: #edb6b1;
+  --color-red-300: #df8a82;
+  --color-red-400: #e0786f;
+  --color-red-500: #c62828;
+  --color-red-600: #b3261e;
+  --color-red-700: #8e1d17;
+  --color-red-800: #6f1712;
+  --color-red-900: #52110d;
+
+  /* Esquinas pequeñas y sombras mínimas */
+  --radius-md: 0.25rem;
+  --radius-lg: 0.3125rem;
+  --radius-xl: 0.375rem;
+  --radius-2xl: 0.5rem;
+  --radius-3xl: 0.625rem;
+  --shadow-xs: 0 1px 2px 0 rgb(20 33 61 / 0.05);
+  --shadow-sm: 0 1px 3px 0 rgb(20 33 61 / 0.07);
+  --shadow-md: 0 3px 8px -2px rgb(20 33 61 / 0.09);
+  --shadow-lg: 0 8px 20px -6px rgb(20 33 61 / 0.12);
+  --shadow-xl: 0 14px 32px -10px rgb(20 33 61 / 0.16);
+  --shadow-2xl: 0 24px 48px -16px rgb(20 33 61 / 0.2);
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    background-color: #fbfbf8;
+    color: var(--color-slate-900);
+    font-family: var(--font-sans);
+    font-feature-settings: "kern", "liga";
+    -webkit-font-smoothing: antialiased;
+  }
+  h1,
+  h2 {
+    font-family: var(--font-serif);
+    font-weight: 400;
+    letter-spacing: -0.005em;
+    text-wrap: balance;
+  }
+  h3 {
+    text-wrap: balance;
+  }
+  table,
+  input[type="number"],
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+  ::selection {
+    background: #dce2ee;
+    color: #14213d;
+  }
+  :focus-visible {
+    outline: 2px solid #3e5584;
+    outline-offset: 2px;
+  }
+  input,
+  select,
+  textarea {
+    caret-color: #2c426e;
+    accent-color: #2c426e;
+  }
+  a {
+    text-underline-offset: 3px;
+  }
+  * {
+    scrollbar-color: #c2c5c0 transparent;
+    scrollbar-width: thin;
+  }
+}
+
+@layer components {
+  /* Rótulo en versalitas espaciadas */
+  .rotulo {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+  /* Línea de acta: doble filete fino con texto en versalitas */
+  .linea-acta {
+    border-top: 3px double currentColor;
+    padding-top: 0.5rem;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+  /* Firma: nombre en serif itálica sobre un filete */
+  .firma {
+    font-family: var(--font-serif);
+    font-style: italic;
+    border-bottom: 1px solid currentColor;
+    padding: 0 0.25rem 1px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

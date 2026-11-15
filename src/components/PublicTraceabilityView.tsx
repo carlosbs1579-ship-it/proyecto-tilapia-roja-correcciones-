@@ -261,7 +261,7 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
             </div>
             <div>
               <h1 className="text-sm font-bold tracking-wide">CULTIVOS LORÉ</h1>
-              <p className="text-[10px] text-sky-400 font-medium">Turbaco, Bolívar • Colombia</p>
+              <p className="text-[11px] text-sky-400 font-medium">Turbaco, Bolívar • Colombia</p>
             </div>
           </div>
 
@@ -292,9 +292,9 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
         {/* TARJETA DE CERTIFICADO PRINCIPAL */}
         <div className="bg-white rounded-2xl shadow-md border border-slate-200 overflow-hidden">
           {/* Banda de Identidad Tilapia Pro */}
-          <div className="bg-linear-to-r from-sky-700 via-sky-600 to-cyan-600 p-6 text-white">
+          <div className="bg-sky-900 p-6 text-white">
             <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
-              <span className="inline-flex items-center space-x-1.5 bg-white/20 backdrop-blur-xs text-white text-xs font-bold px-3 py-1 rounded-full border border-white/30">
+              <span className="inline-flex items-center space-x-1.5 bg-white/20 text-white text-xs font-bold px-3 py-1 rounded-full border border-white/30">
                 <Award className="w-3.5 h-3.5 text-amber-300" />
                 <span>CERTIFICADO OFICIAL DE TRAZABILIDAD</span>
               </span>
@@ -415,7 +415,7 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
 
           {/* Visualización del Hash Final */}
           <div className="bg-slate-50 rounded-xl p-3 border border-slate-200">
-            <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">
+            <span className="text-[11px] uppercase font-bold text-slate-400 block mb-1">
               Sello Hash SHA-256 de Cierre del Lote
             </span>
             <code className="text-[11px] font-mono text-slate-700 break-all select-all block">
@@ -431,7 +431,7 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
             <strong className="text-lg font-bold text-slate-900 mt-1 block">
               {lote.cantidadSembrada.toLocaleString()}
             </strong>
-            <span className="text-[10px] text-slate-400">Alevinos iniciales</span>
+            <span className="text-[11px] text-slate-400">Alevinos iniciales</span>
           </div>
 
           <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs text-center">
@@ -439,7 +439,7 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
             <strong className="text-lg font-bold text-emerald-600 mt-1 block">
               {r ? `${r.supervivencia.toFixed(1)}%` : '—'}
             </strong>
-            <span className="text-[10px] text-slate-400">
+            <span className="text-[11px] text-slate-400">
               {r ? `${r.pecesVivos.toLocaleString()} vivos` : ''}
             </span>
           </div>
@@ -449,7 +449,7 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
             <strong className="text-lg font-bold text-sky-600 mt-1 block">
               {r ? `${Math.round(r.pesoPromedioActualG)} g` : '—'}
             </strong>
-            <span className="text-[10px] text-slate-400">Calibre 450 - 500 g</span>
+            <span className="text-[11px] text-slate-400">Calibre 450 - 500 g</span>
           </div>
 
           <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs text-center">
@@ -457,7 +457,7 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
             <strong className="text-lg font-bold text-slate-900 mt-1 block">
               {r ? `${(r.biomasaEstimadaKg || 0).toFixed(0)} kg` : '—'}
             </strong>
-            <span className="text-[10px] text-slate-400">
+            <span className="text-[11px] text-slate-400">
               FCA: {r?.FCA ? r.FCA.toFixed(2) : '1.20'}
             </span>
           </div>
@@ -493,7 +493,7 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
             <div className="space-y-3 relative before:absolute before:inset-0 before:left-3.5 before:w-0.5 before:bg-slate-200 pt-2">
               {(lote.eventos || []).map((ev) => (
                 <div key={ev.id} className="relative flex items-start space-x-3 pl-1">
-                  <div className="w-6 h-6 rounded-full bg-sky-600 text-white flex items-center justify-center font-bold text-[10px] shrink-0 z-10 shadow-xs">
+                  <div className="w-6 h-6 rounded-full bg-sky-600 text-white flex items-center justify-center font-bold text-[11px] shrink-0 z-10 shadow-xs">
                     {ev.indice + 1}
                   </div>
                   <div
@@ -510,7 +510,7 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
                       <strong className="text-slate-900 font-bold">
                         {ev.tipo}
                         {anotacionesAprobadas.some((a) => Number(a.propuesta.datos.fase) === ev.indice) && (
-                          <span className="ml-2 text-[10px] bg-sky-100 text-sky-800 px-2 py-0.5 rounded-full font-semibold">
+                          <span className="ml-2 text-[11px] bg-sky-100 text-sky-800 px-2 py-0.5 rounded-full font-semibold">
                             Ver anotación N.º{' '}
                             {anotacionesAprobadas
                               .filter((a) => Number(a.propuesta.datos.fase) === ev.indice)
@@ -537,9 +537,12 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
                       </div>
                     )}
 
-                    <div className="mt-2 text-[10px] text-slate-400 flex items-center justify-between">
-                      <span>Registrado por: {quienRegistro(ev, true)}</span>
-                      <span className="font-mono text-[9px]">Hash: {ev.hash.substring(0, 12)}...</span>
+                    <div className="mt-2 text-[11px] text-slate-400 flex items-center justify-between">
+                      <span className="text-slate-700">
+                        <span className="rotulo text-slate-500 mr-2">Registró</span>
+                        <span className="firma text-sm">{quienRegistro(ev, true)}</span>
+                      </span>
+                      <span className="font-mono text-[11px]">Hash: {ev.hash.substring(0, 12)}...</span>
                     </div>
                   </div>
                 </div>
@@ -578,7 +581,7 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
                       )}
                     </p>
                     <p className="text-slate-600">Motivo: {d.motivo}</p>
-                    <p className="text-[10px] text-slate-400">
+                    <p className="text-[11px] text-slate-400">
                       Propuesta por {quienRegistro(a.propuesta, true)} · aprobada por {a.resolucion ? quienRegistro(a.resolucion, true) : '—'} ·{' '}
                       {formatearFechaColombia(a.resolucion?.fecha || a.propuesta.fecha)}
                     </p>

@@ -447,13 +447,13 @@ export const UsuariosTab: React.FC<UsuariosTabProps> = ({
         <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs">
           <span className="text-[11px] font-medium text-slate-500 block">Total Usuarios</span>
           <strong className="text-lg font-bold text-slate-900 mt-0.5 block">{totalUsuarios}</strong>
-          <span className="text-[10px] text-slate-400">Registrados en la app</span>
+          <span className="text-[11px] text-slate-400">Registrados en la app</span>
         </div>
 
         <div className="bg-white p-3.5 rounded-xl border border-emerald-200 shadow-xs bg-emerald-50/20">
           <span className="text-[11px] font-medium text-emerald-700 block">🟢 Cuentas Activas</span>
           <strong className="text-lg font-bold text-emerald-700 mt-0.5 block">{activos}</strong>
-          <span className="text-[10px] text-emerald-600/80">Acceso a lotes</span>
+          <span className="text-[11px] text-emerald-600/80">Acceso a lotes</span>
         </div>
 
         <div className={`p-3.5 rounded-xl border shadow-xs transition-all ${
@@ -465,7 +465,7 @@ export const UsuariosTab: React.FC<UsuariosTabProps> = ({
             🟡 Pendientes de Aprobación
           </span>
           <strong className="text-lg font-bold mt-0.5 block">{pendientes}</strong>
-          <span className="text-[10px]">
+          <span className="text-[11px]">
             {pendientes > 0 ? 'Esperando tu autorización' : 'Sin pendientes'}
           </span>
         </div>
@@ -473,7 +473,7 @@ export const UsuariosTab: React.FC<UsuariosTabProps> = ({
         <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs">
           <span className="text-[11px] font-medium text-slate-500 block">🔴 Inactivos</span>
           <strong className="text-lg font-bold text-slate-700 mt-0.5 block">{inactivos}</strong>
-          <span className="text-[10px] text-slate-400">Sin acceso</span>
+          <span className="text-[11px] text-slate-400">Sin acceso</span>
         </div>
       </div>
 
@@ -591,13 +591,13 @@ export const UsuariosTab: React.FC<UsuariosTabProps> = ({
                             <span className="font-bold text-sm text-slate-900">{u.displayName || u.email.split('@')[0]}</span>
                             <span className="text-xs text-slate-500 font-mono">({u.email})</span>
                             {esElAdmin ? (
-                              <span className="text-[10px] bg-amber-100 text-amber-900 font-bold px-2.5 py-0.5 rounded-full border border-amber-300 flex items-center space-x-1">
+                              <span className="text-[11px] bg-amber-100 text-amber-900 font-bold px-2.5 py-0.5 rounded-full border border-amber-300 flex items-center space-x-1">
                                 <Shield className="w-3 h-3 text-amber-600" />
                                 <span>ADMINISTRADOR</span>
                               </span>
                             ) : (
                               <span
-                                className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${
+                                className={`text-[11px] font-bold px-2 py-0.5 rounded-full uppercase ${
                                   ed.estado === 'activo'
                                     ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
                                     : ed.estado === 'pendiente'
@@ -677,7 +677,7 @@ export const UsuariosTab: React.FC<UsuariosTabProps> = ({
                       <label className="text-xs font-bold text-slate-700 block mb-1">
                         Funciones asignadas y nombre visible de cada una:
                       </label>
-                      <p className="text-[10px] text-slate-400 mb-2">
+                      <p className="text-[11px] text-slate-400 mb-2">
                         La función determina los permisos. El nombre visible es solo cómo se muestra en la plataforma y puede cambiarse sin alterar los permisos.
                       </p>
                       <div className="space-y-2">
@@ -706,7 +706,7 @@ export const UsuariosTab: React.FC<UsuariosTabProps> = ({
                                   <span className={asignado ? 'font-semibold text-sky-950' : 'text-slate-600'}>
                                     {ETIQUETA_ROL[rol]}
                                   </span>
-                                  <p className="text-[10px] text-slate-400 font-normal">{DESCRIPCION_ROL[rol]}</p>
+                                  <p className="text-[11px] text-slate-400 font-normal">{DESCRIPCION_ROL[rol]}</p>
                                 </div>
                               </label>
 
@@ -724,7 +724,7 @@ export const UsuariosTab: React.FC<UsuariosTabProps> = ({
                                     className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500 bg-white font-medium text-slate-800 disabled:bg-slate-100"
                                   />
                                   {editable && SUGERENCIAS_CARGO[rol] && (
-                                    <div className="flex flex-wrap gap-1 text-[10px]">
+                                    <div className="flex flex-wrap gap-1 text-[11px]">
                                       <span className="text-slate-400 mr-1">Sugerencias:</span>
                                       {SUGERENCIAS_CARGO[rol]!.map((s) => (
                                         <button
@@ -759,7 +759,7 @@ export const UsuariosTab: React.FC<UsuariosTabProps> = ({
                         </span>
 
                         {!esElAdmin && editable && (
-                          <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
+                          <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
                             <span className="text-slate-400 mr-1">Plantillas rápidas:</span>
                             <button
                               type="button"
@@ -825,7 +825,7 @@ export const UsuariosTab: React.FC<UsuariosTabProps> = ({
                                   />
                                   <span className="text-xs font-bold text-slate-800">Pestaña {g.titulo}</span>
                                 </span>
-                                <span className="text-[10px] text-slate-400">
+                                <span className="text-[11px] text-slate-400">
                                   {marcadas === 0 ? 'oculta' : `${marcadas} de ${claves.length}`}
                                 </span>
                               </label>
@@ -851,7 +851,7 @@ export const UsuariosTab: React.FC<UsuariosTabProps> = ({
                                     />
                                     <div>
                                       <span>{a.etiqueta}</span>
-                                      <p className="text-[10px] text-slate-400 font-normal">{a.detalle}</p>
+                                      <p className="text-[11px] text-slate-400 font-normal">{a.detalle}</p>
                                     </div>
                                   </label>
                                 ))}
@@ -859,7 +859,7 @@ export const UsuariosTab: React.FC<UsuariosTabProps> = ({
                             </div>
                           );
                         })}
-                        <p className="text-[10px] text-slate-400">
+                        <p className="text-[11px] text-slate-400">
                           La persona solo ve las pestañas en las que tiene al menos un permiso. La pestaña Personal & Permisos es solo para administradores.
                         </p>
                       </div>

@@ -79,7 +79,7 @@ export const CorreccionEntrega: React.FC<{ orden: OrdenEntrega; procesando: bool
         onChange={(e) => setMotivo(e.target.value)}
         className="w-full px-2 py-1 border border-slate-300 rounded"
       />
-      <p className="text-[10px] text-slate-500">
+      <p className="text-[11px] text-slate-500">
         Si esta orden tiene un comprobante vigente con los datos anteriores, anúlalo en "Documentación de entrega" y emite uno nuevo después de corregir.
       </p>
       {(motivo.trim().length < 10 || iguales || total <= 0) && (

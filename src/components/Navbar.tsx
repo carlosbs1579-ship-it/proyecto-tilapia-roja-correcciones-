@@ -142,7 +142,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <LogoLore className="w-10 h-8 text-amber-400" />
             <span>
               <span className="block font-serif text-2xl leading-tight">Cultivos Loré</span>
-              <span className="rotulo hidden sm:block text-slate-300">Trazabilidad Tilapia Pro · Turbaco, Bolívar</span>
+              <span className="rotulo hidden sm:block md:hidden text-slate-300">Trazabilidad Tilapia Pro · Turbaco, Bolívar</span>
             </span>
           </button>
 

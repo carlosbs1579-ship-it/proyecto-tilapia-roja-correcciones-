@@ -383,11 +383,21 @@
   transform: scale(0.97);
 }
 
-/* Franjas que se deslizan en horizontal: desvanecido en los bordes */
+/* Franjas que se deslizan en horizontal: desvanecido solo en el borde con pestañas ocultas */
 .borde-desvanecido {
-  mask-image: linear-gradient(to right, transparent 0, #000 16px, #000 calc(100% - 16px), transparent 100%);
-  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 16px, #000 calc(100% - 16px), transparent 100%);
   scroll-padding-inline: 16px;
+}
+.borde-desvanecido[data-borde-der] {
+  mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent 100%);
+}
+.borde-desvanecido[data-borde-izq] {
+  mask-image: linear-gradient(to right, transparent 0, #000 24px);
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 24px);
+}
+.borde-desvanecido[data-borde-izq][data-borde-der] {
+  mask-image: linear-gradient(to right, transparent 0, #000 24px, #000 calc(100% - 24px), transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 24px, #000 calc(100% - 24px), transparent 100%);
 }
 
 /* Esqueletos: un reflejo cruza el bloque en 1,5 s (solo transform) */

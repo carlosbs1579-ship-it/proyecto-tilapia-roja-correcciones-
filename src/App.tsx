@@ -151,7 +151,9 @@ export default function App() {
       setFuncionActiva(null);
       return;
     }
-    // Preferencia del ingreso: solo si la cuenta tiene esa función (un administrador entra como tal al elegir Operador)
+    // Preferencia del ingreso: se evalúa cuando ya cargó el perfil de esta cuenta
+    if (funcionPedida && perfilUsuario?.uid !== usuario.uid) return;
+    // Solo si la cuenta tiene esa función (un administrador entra como tal al elegir Operador)
     if (funcionPedida) {
       const aplicable = funciones.includes(funcionPedida)
         ? funcionPedida
@@ -177,7 +179,7 @@ export default function App() {
       const guardada = leerFuncionGuardada(usuario.uid) as RolFuncional | null;
       return guardada && funciones.includes(guardada) ? guardada : null;
     });
-  }, [usuario?.uid, clavefunciones]);
+  }, [usuario?.uid, clavefunciones, perfilUsuario?.uid]);
 
   // Los registros nuevos guardan el nombre visible de quien los hace (no solo el correo)
   useEffect(() => {

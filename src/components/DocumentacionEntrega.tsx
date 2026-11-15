@@ -116,7 +116,7 @@ export const DocumentacionEntrega: React.FC<{
           <span>Emitir comprobante definitivo</span>
         </button>
       </div>
-      <p className="text-[10px] text-slate-500">
+      <p className="text-[11px] text-slate-500">
         El preliminar se genera al momento con los datos actuales, va marcado como PRELIMINAR y no se guarda. El definitivo
         solo usa datos confirmados en el servidor, queda guardado y no se puede modificar.
       </p>
@@ -248,12 +248,12 @@ export const DocumentacionEntrega: React.FC<{
           {qr && <img src={qr} alt="QR de consulta de la entrega" className="w-20 h-20 border border-slate-200 rounded" />}
           <div className="space-y-1 min-w-0">
             <span className="block font-semibold text-slate-700">Consulta del cliente (sin cuenta)</span>
-            <span className="block font-mono text-[10px] text-slate-500 break-all">{url}</span>
+            <span className="block font-mono text-[11px] text-slate-500 break-all">{url}</span>
             <button type="button" onClick={copiar} className="flex items-center px-1.5 py-0.5 rounded border border-slate-300 hover:bg-slate-100">
               <Link2 className="w-3 h-3 mr-1" />
               {copiado ? 'Enlace copiado' : 'Copiar enlace'}
             </button>
-            <span className="block text-[10px] text-slate-400">
+            <span className="block text-[11px] text-slate-400">
               Muestra solo los comprobantes emitidos de esta orden; los datos de otros pedidos o lotes no se exponen.
             </span>
           </div>

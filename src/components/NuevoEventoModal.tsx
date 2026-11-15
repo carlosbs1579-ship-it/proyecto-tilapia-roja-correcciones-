@@ -247,7 +247,7 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4 overflow-y-auto">
       <div className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-2xl w-full overflow-hidden my-6">
         {/* Cabecera */}
         <div className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between">
@@ -352,9 +352,9 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                   <div className="flex items-center justify-between mb-1">
                     <label className="text-[11px] font-medium text-slate-700">Temperatura (°C)</label>
                     {evalTemp.fueraDeRango ? (
-                      <span className="text-[10px] bg-red-100 text-red-700 px-1.5 py-0.2 rounded font-semibold">Fuera</span>
+                      <span className="text-[11px] bg-red-100 text-red-700 px-1.5 py-0.2 rounded font-semibold">Fuera</span>
                     ) : (
-                      <span className="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.2 rounded font-semibold">Óptimo</span>
+                      <span className="text-[11px] bg-emerald-100 text-emerald-700 px-1.5 py-0.2 rounded font-semibold">Óptimo</span>
                     )}
                   </div>
                   <input
@@ -365,7 +365,7 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                     onChange={(e) => setTempAgua(e.target.value === '' ? '' : Number(e.target.value))}
                     className={`w-full px-2.5 py-1.5 text-xs border rounded-md ${evalTemp.fueraDeRango ? 'border-red-400 bg-red-50/50' : 'border-slate-300'}`}
                   />
-                  <p className="text-[10px] text-slate-400 mt-0.5">Rango: {rangos.temperaturaMin}-{rangos.temperaturaMax} °C</p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">Rango: {rangos.temperaturaMin}-{rangos.temperaturaMax} °C</p>
                 </div>
 
                 {/* Oxígeno */}
@@ -373,9 +373,9 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                   <div className="flex items-center justify-between mb-1">
                     <label className="text-[11px] font-medium text-slate-700">O₂ Disuelto (mg/L)</label>
                     {evalOx.fueraDeRango ? (
-                      <span className="text-[10px] bg-red-100 text-red-700 px-1.5 py-0.2 rounded font-semibold">Crítico</span>
+                      <span className="text-[11px] bg-red-100 text-red-700 px-1.5 py-0.2 rounded font-semibold">Crítico</span>
                     ) : (
-                      <span className="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.2 rounded font-semibold">Óptimo</span>
+                      <span className="text-[11px] bg-emerald-100 text-emerald-700 px-1.5 py-0.2 rounded font-semibold">Óptimo</span>
                     )}
                   </div>
                   <input
@@ -386,7 +386,7 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                     onChange={(e) => setOxigeno(e.target.value === '' ? '' : Number(e.target.value))}
                     className={`w-full px-2.5 py-1.5 text-xs border rounded-md ${evalOx.fueraDeRango ? 'border-red-400 bg-red-50/50' : 'border-slate-300'}`}
                   />
-                  <p className="text-[10px] text-slate-400 mt-0.5">Mínimo: {rangos.oxigenoMin} mg/L</p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">Mínimo: {rangos.oxigenoMin} mg/L</p>
                 </div>
 
                 {/* pH */}
@@ -394,9 +394,9 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                   <div className="flex items-center justify-between mb-1">
                     <label className="text-[11px] font-medium text-slate-700">pH</label>
                     {evalPh.fueraDeRango ? (
-                      <span className="text-[10px] bg-red-100 text-red-700 px-1.5 py-0.2 rounded font-semibold">Fuera</span>
+                      <span className="text-[11px] bg-red-100 text-red-700 px-1.5 py-0.2 rounded font-semibold">Fuera</span>
                     ) : (
-                      <span className="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.2 rounded font-semibold">Óptimo</span>
+                      <span className="text-[11px] bg-emerald-100 text-emerald-700 px-1.5 py-0.2 rounded font-semibold">Óptimo</span>
                     )}
                   </div>
                   <input
@@ -407,7 +407,7 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                     onChange={(e) => setPhAgua(e.target.value === '' ? '' : Number(e.target.value))}
                     className={`w-full px-2.5 py-1.5 text-xs border rounded-md ${evalPh.fueraDeRango ? 'border-red-400 bg-red-50/50' : 'border-slate-300'}`}
                   />
-                  <p className="text-[10px] text-slate-400 mt-0.5">Rango: {rangos.phMin}-{rangos.phMax}</p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">Rango: {rangos.phMin}-{rangos.phMax}</p>
                 </div>
 
                 {/* Amonio */}
@@ -415,9 +415,9 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                   <div className="flex items-center justify-between mb-1">
                     <label className="text-[11px] font-medium text-slate-700">Amonio total (mg/L)</label>
                     {evalAm.fueraDeRango ? (
-                      <span className="text-[10px] bg-red-100 text-red-700 px-1.5 py-0.2 rounded font-semibold">Alto</span>
+                      <span className="text-[11px] bg-red-100 text-red-700 px-1.5 py-0.2 rounded font-semibold">Alto</span>
                     ) : (
-                      <span className="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.2 rounded font-semibold">Óptimo</span>
+                      <span className="text-[11px] bg-emerald-100 text-emerald-700 px-1.5 py-0.2 rounded font-semibold">Óptimo</span>
                     )}
                   </div>
                   <input
@@ -428,7 +428,7 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                     onChange={(e) => setAmonio(e.target.value === '' ? '' : Number(e.target.value))}
                     className={`w-full px-2.5 py-1.5 text-xs border rounded-md ${evalAm.fueraDeRango ? 'border-red-400 bg-red-50/50' : 'border-slate-300'}`}
                   />
-                  <p className="text-[10px] text-slate-400 mt-0.5">Máximo: {rangos.amonioMax} mg/L</p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">Máximo: {rangos.amonioMax} mg/L</p>
                 </div>
 
                 {/* Nitritos */}
@@ -436,9 +436,9 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                   <div className="flex items-center justify-between mb-1">
                     <label className="text-[11px] font-medium text-slate-700">Nitritos (mg/L)</label>
                     {evalNit.fueraDeRango ? (
-                      <span className="text-[10px] bg-red-100 text-red-700 px-1.5 py-0.2 rounded font-semibold">Tóxico</span>
+                      <span className="text-[11px] bg-red-100 text-red-700 px-1.5 py-0.2 rounded font-semibold">Tóxico</span>
                     ) : (
-                      <span className="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.2 rounded font-semibold">Óptimo</span>
+                      <span className="text-[11px] bg-emerald-100 text-emerald-700 px-1.5 py-0.2 rounded font-semibold">Óptimo</span>
                     )}
                   </div>
                   <input
@@ -449,7 +449,7 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                     onChange={(e) => setNitritos(e.target.value === '' ? '' : Number(e.target.value))}
                     className={`w-full px-2.5 py-1.5 text-xs border rounded-md ${evalNit.fueraDeRango ? 'border-red-400 bg-red-50/50' : 'border-slate-300'}`}
                   />
-                  <p className="text-[10px] text-slate-400 mt-0.5">Máximo: {rangos.nitritosMax} mg/L</p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">Máximo: {rangos.nitritosMax} mg/L</p>
                 </div>
 
                 {/* Secchi */}
@@ -457,9 +457,9 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                   <div className="flex items-center justify-between mb-1">
                     <label className="text-[11px] font-medium text-slate-700">Transp. Secchi (cm)</label>
                     {evalSec.fueraDeRango ? (
-                      <span className="text-[10px] bg-red-100 text-red-700 px-1.5 py-0.2 rounded font-semibold">Fuera</span>
+                      <span className="text-[11px] bg-red-100 text-red-700 px-1.5 py-0.2 rounded font-semibold">Fuera</span>
                     ) : (
-                      <span className="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.2 rounded font-semibold">Óptimo</span>
+                      <span className="text-[11px] bg-emerald-100 text-emerald-700 px-1.5 py-0.2 rounded font-semibold">Óptimo</span>
                     )}
                   </div>
                   <input
@@ -470,7 +470,7 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                     onChange={(e) => setSecchi(e.target.value === '' ? '' : Number(e.target.value))}
                     className={`w-full px-2.5 py-1.5 text-xs border rounded-md ${evalSec.fueraDeRango ? 'border-red-400 bg-red-50/50' : 'border-slate-300'}`}
                   />
-                  <p className="text-[10px] text-slate-400 mt-0.5">Rango: {rangos.secchiMin}-{rangos.secchiMax} cm</p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">Rango: {rangos.secchiMin}-{rangos.secchiMax} cm</p>
                 </div>
               </div>
             </div>

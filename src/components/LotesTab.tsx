@@ -79,7 +79,7 @@ export const LotesTab: React.FC<LotesTabProps> = ({
       {/* Barra de Título */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-slate-900 tracking-tight">Gestión de Lotes de Cultivo</h1>
+          <h1 className="text-2xl text-slate-900">Gestión de lotes de cultivo</h1>
           <p className="text-xs text-slate-500">
             Modalidad Tilapia Pro • Registro incremental de siembra a despacho
           </p>
@@ -223,7 +223,7 @@ export const LotesTab: React.FC<LotesTabProps> = ({
                       <div className="font-mono font-bold text-slate-900 text-sm">
                         {lote.codigo}
                       </div>
-                      <div className="text-[10px] text-slate-400">
+                      <div className="text-[11px] text-slate-400">
                         {lote.eventos?.length || 0} fases
                       </div>
                     </td>
@@ -257,7 +257,7 @@ export const LotesTab: React.FC<LotesTabProps> = ({
                     </td>
                     <td className="px-4 py-3.5 text-center">
                       <span
-                        className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                        className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider ${
                           lote.estado === 'activo'
                             ? 'bg-emerald-100 text-emerald-800'
                             : 'bg-slate-200 text-slate-700'
@@ -278,7 +278,7 @@ export const LotesTab: React.FC<LotesTabProps> = ({
                       )}
                       <button
                         onClick={() => onSeleccionarLote(lote)}
-                        className="px-2.5 py-1 text-xs font-semibold text-sky-700 bg-sky-50 hover:bg-sky-100 rounded-md border border-sky-200 transition-colors inline-flex items-center space-x-1"
+                        className="px-3 py-1.5 text-xs font-semibold text-white bg-sky-600 hover:bg-sky-700 rounded-md transition-colors inline-flex items-center space-x-1"
                       >
                         <span>Abrir</span>
                         <ExternalLink className="w-3 h-3" />

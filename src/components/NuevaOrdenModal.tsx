@@ -163,7 +163,7 @@ export const NuevaOrdenModal: React.FC<NuevaOrdenModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4">
       <div className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-3xl w-full max-h-[92vh] overflow-y-auto">
         <div className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between sticky top-0 z-10">
           <div className="flex items-center space-x-2">
@@ -250,7 +250,7 @@ export const NuevaOrdenModal: React.FC<NuevaOrdenModalProps> = ({
               <div className="px-3 py-1.5 rounded-lg border border-slate-300 bg-slate-50 font-semibold text-sky-700">
                 {unidad === 'kg' ? 'Kilogramos (kg)' : 'Peces (orden anterior)'}
               </div>
-              <p className="text-[10px] text-slate-400 mt-1">Los pedidos se registran y reparten en kilogramos.</p>
+              <p className="text-[11px] text-slate-400 mt-1">Los pedidos se registran y reparten en kilogramos.</p>
             </div>
             <div>
               <label className="font-bold text-slate-700 block mb-1">Cantidad solicitada ({unidad}) *</label>
@@ -280,7 +280,7 @@ export const NuevaOrdenModal: React.FC<NuevaOrdenModalProps> = ({
             <label className="font-bold text-slate-700 block mb-1">
               3. Distribución por lote y piscina (hasta {MAX_LOTES_POR_ORDEN} lotes)
             </label>
-            <p className="text-[10px] text-slate-400 mb-2">
+            <p className="text-[11px] text-slate-400 mb-2">
               Disponible = cosecha registrada − reservado − entregado. Cada lote pertenece a una piscina; la procedencia se conserva por lote.
             </p>
             {lotesConCosecha.length === 0 ? (
@@ -290,7 +290,7 @@ export const NuevaOrdenModal: React.FC<NuevaOrdenModalProps> = ({
             ) : (
               <div className="border border-slate-200 rounded-lg overflow-x-auto">
                 <table className="w-full text-left">
-                  <thead className="bg-slate-50 text-[10px] uppercase text-slate-500">
+                  <thead className="bg-slate-50 text-[11px] uppercase text-slate-500">
                     <tr>
                       <th className="px-3 py-2">Lote</th>
                       <th className="px-3 py-2">Piscina</th>
@@ -309,7 +309,7 @@ export const NuevaOrdenModal: React.FC<NuevaOrdenModalProps> = ({
                         <tr key={lote.codigo} className={bloqueado ? 'bg-slate-50 text-slate-400' : ''}>
                           <td className="px-3 py-2 font-mono font-bold">
                             {lote.codigo}
-                            <span className="ml-1 text-[10px] font-sans font-normal text-slate-400">
+                            <span className="ml-1 text-[11px] font-sans font-normal text-slate-400">
                               {lote.estado === 'cerrado' ? 'sellado' : 'activo'}
                             </span>
                           </td>
@@ -353,7 +353,7 @@ export const NuevaOrdenModal: React.FC<NuevaOrdenModalProps> = ({
                 {solicitada > 0 && totalDistribuido < solicitada && ' (lo autorizado será menor que lo solicitado)'}
               </span>
               {lotesSinCosecha > 0 && (
-                <span className="text-[10px] text-slate-400">
+                <span className="text-[11px] text-slate-400">
                   {lotesSinCosecha} lote(s) sin cosecha registrada en {unidad} no se muestran.
                 </span>
               )}

@@ -133,7 +133,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4">
       <div className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-md w-full overflow-hidden">
         {/* Cabecera */}
         <div className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between">
@@ -200,7 +200,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
 
           <div className="relative flex items-center justify-center my-3">
             <div className="border-t border-slate-200 w-full" />
-            <span className="bg-white px-2 text-[10px] uppercase tracking-wider text-slate-400 font-semibold absolute">
+            <span className="bg-white px-2 text-[11px] uppercase tracking-wider text-slate-400 font-semibold absolute">
               o con correo de operario
             </span>
           </div>

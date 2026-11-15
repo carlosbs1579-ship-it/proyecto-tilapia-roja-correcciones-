@@ -251,18 +251,13 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
   const esCerrado = lote.estado === 'cerrado';
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-900 pb-16">
+    <div className="min-h-screen bg-white text-slate-900 pb-16">
       {/* BARRA SUPERIOR FIJA */}
-      <header className="bg-slate-900 text-white sticky top-0 z-30 shadow-md">
+      <header className="bg-slate-900 text-white sticky top-0 z-30 border-b-4 border-double border-amber-600">
         <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center space-x-2.5">
-            <div className="w-8 h-8 rounded-lg bg-sky-500 flex items-center justify-center text-white font-black text-xs">
-              CL
-            </div>
-            <div>
-              <h1 className="text-sm font-bold tracking-wide">CULTIVOS LORÉ</h1>
-              <p className="text-[10px] text-sky-400 font-medium">Turbaco, Bolívar • Colombia</p>
-            </div>
+          <div>
+            <h1 className="text-xl leading-tight">Cultivos Loré</h1>
+            <p className="rotulo text-slate-300">Turbaco, Bolívar · Colombia</p>
           </div>
 
           <div className="flex items-center space-x-2">
@@ -277,7 +272,7 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
             {onVolverAlPanel && (
               <button
                 onClick={onVolverAlPanel}
-                className="text-xs bg-sky-600 hover:bg-sky-500 text-white font-semibold px-3 py-1.5 rounded-lg flex items-center space-x-1"
+                className="text-xs bg-slate-50 hover:bg-white text-slate-900 font-semibold px-3 py-1.5 rounded-lg flex items-center space-x-1"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">Panel Operativo</span>
@@ -290,32 +285,18 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
       {/* CONTENIDO PRINCIPAL */}
       <main className="max-w-4xl mx-auto px-4 pt-6 space-y-6">
         {/* TARJETA DE CERTIFICADO PRINCIPAL */}
-        <div className="bg-white rounded-2xl shadow-md border border-slate-200 overflow-hidden">
-          {/* Banda de Identidad Tilapia Pro */}
-          <div className="bg-linear-to-r from-sky-700 via-sky-600 to-cyan-600 p-6 text-white">
-            <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
-              <span className="inline-flex items-center space-x-1.5 bg-white/20 backdrop-blur-xs text-white text-xs font-bold px-3 py-1 rounded-full border border-white/30">
-                <Award className="w-3.5 h-3.5 text-amber-300" />
-                <span>CERTIFICADO OFICIAL DE TRAZABILIDAD</span>
-              </span>
-
-              <span
-                className={`text-xs font-bold px-3 py-1 rounded-full ${
-                  esCerrado
-                    ? 'bg-emerald-500 text-white shadow-xs'
-                    : 'bg-amber-400 text-slate-900 font-semibold'
-                }`}
-              >
-                {esCerrado ? '✓ Lote Cosechado y Cerrado' : '● Lote en Cultivo Activo'}
+        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+          {/* Identidad del certificado */}
+          <div className="bg-slate-900 p-6 text-white">
+            <div className="flex flex-wrap items-baseline justify-between gap-3">
+              <h2 className="text-3xl sm:text-4xl tabular-nums">{lote.codigo}</h2>
+              <span className={`rotulo flex items-center gap-1.5 ${esCerrado ? 'text-amber-300' : 'text-emerald-300'}`}>
+                <Award className="w-3.5 h-3.5" aria-hidden="true" />
+                {esCerrado ? 'Certificado · lote sellado' : 'Lote en cultivo'}
               </span>
             </div>
 
-            <p className="text-xs uppercase tracking-wider text-sky-200 font-bold">Código Único de Lote</p>
-            <h2 className="text-2xl sm:text-3xl font-extrabold font-mono tracking-wider text-white mt-0.5">
-              {lote.codigo}
-            </h2>
-
-            <p className="text-sm text-sky-100 mt-2 font-medium">
+            <p className="text-sm text-slate-200 mt-3 pt-3 border-t-[3px] border-double border-amber-500">
               {lote.producto}
             </p>
           </div>
@@ -331,11 +312,11 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
               <strong className="text-slate-800 text-sm">{lote.estanque}</strong>
             </div>
             <div>
-              <span className="text-slate-500 block">Fecha de Siembra:</span>
+              <span className="text-slate-500 block">Fecha de siembra:</span>
               <strong className="text-slate-800 text-sm">{lote.fechaSiembra}</strong>
             </div>
             <div>
-              <span className="text-slate-500 block">Fecha Cosecha/Cierre:</span>
+              <span className="text-slate-500 block">Fecha de cosecha:</span>
               <strong className="text-slate-800 text-sm">{lote.fechaCierre || 'En progreso'}</strong>
             </div>
           </div>
@@ -351,7 +332,7 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
               className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs shadow-md shadow-emerald-700/20 transition-all disabled:opacity-50"
             >
               <Download className="w-4 h-4" />
-              <span>{descargandoPdf ? 'Generando PDF...' : 'Descargar Certificado Oficial (PDF)'}</span>
+              <span>{descargandoPdf ? 'Generando PDF...' : 'Descargar certificado (PDF)'}</span>
             </button>
             {errorPdf && <p className="text-xs text-red-600 mt-2">{errorPdf}</p>}
           </div>
@@ -366,7 +347,7 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
               </div>
               <div>
                 <h3 className="text-sm font-bold text-slate-900">
-                  Autenticidad Criptográfica Inalterable
+                  Autenticidad verificable
                 </h3>
                 <p className="text-xs text-slate-500">
                   Cada fase del lote está encadenada mediante hash SHA-256 matemáticamente verificable.
@@ -380,7 +361,7 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
               className="inline-flex items-center justify-center space-x-2 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-semibold transition-colors disabled:opacity-50"
             >
               <ShieldCheck className="w-4 h-4 text-emerald-400" />
-              <span>{verificandoHash ? 'Verificando hashes...' : 'Auditar Integridad Criptográfica'}</span>
+              <span>{verificandoHash ? 'Verificando hashes...' : 'Verificar integridad'}</span>
             </button>
           </div>
 
@@ -415,7 +396,7 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
 
           {/* Visualización del Hash Final */}
           <div className="bg-slate-50 rounded-xl p-3 border border-slate-200">
-            <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">
+            <span className="text-[11px] uppercase font-bold text-slate-400 block mb-1">
               Sello Hash SHA-256 de Cierre del Lote
             </span>
             <code className="text-[11px] font-mono text-slate-700 break-all select-all block">
@@ -427,11 +408,11 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
         {/* MÉTRICAS PRODUCTIVAS CLAVE */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs text-center">
-            <span className="text-[11px] text-slate-500 font-medium block">Peces Sembrados</span>
+            <span className="text-[11px] text-slate-500 font-medium block">Peces sembrados</span>
             <strong className="text-lg font-bold text-slate-900 mt-1 block">
               {lote.cantidadSembrada.toLocaleString()}
             </strong>
-            <span className="text-[10px] text-slate-400">Alevinos iniciales</span>
+            <span className="text-[11px] text-slate-400">Alevinos iniciales</span>
           </div>
 
           <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs text-center">
@@ -439,25 +420,25 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
             <strong className="text-lg font-bold text-emerald-600 mt-1 block">
               {r ? `${r.supervivencia.toFixed(1)}%` : '—'}
             </strong>
-            <span className="text-[10px] text-slate-400">
+            <span className="text-[11px] text-slate-400">
               {r ? `${r.pecesVivos.toLocaleString()} vivos` : ''}
             </span>
           </div>
 
           <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs text-center">
-            <span className="text-[11px] text-slate-500 font-medium block">Peso Promedio</span>
+            <span className="text-[11px] text-slate-500 font-medium block">Peso promedio</span>
             <strong className="text-lg font-bold text-sky-600 mt-1 block">
               {r ? `${Math.round(r.pesoPromedioActualG)} g` : '—'}
             </strong>
-            <span className="text-[10px] text-slate-400">Calibre 450 - 500 g</span>
+            <span className="text-[11px] text-slate-400">Calibre 450 - 500 g</span>
           </div>
 
           <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs text-center">
-            <span className="text-[11px] text-slate-500 font-medium block">Biomasa Total</span>
+            <span className="text-[11px] text-slate-500 font-medium block">Biomasa total</span>
             <strong className="text-lg font-bold text-slate-900 mt-1 block">
               {r ? `${(r.biomasaEstimadaKg || 0).toFixed(0)} kg` : '—'}
             </strong>
-            <span className="text-[10px] text-slate-400">
+            <span className="text-[11px] text-slate-400">
               FCA: {r?.FCA ? r.FCA.toFixed(2) : '1.20'}
             </span>
           </div>
@@ -468,7 +449,7 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
           <div className="flex items-center justify-between pb-3 border-b border-slate-100">
             <div>
               <h3 className="text-sm font-bold text-slate-900">
-                Historial Cronológico de Vida del Lote
+                Historial del lote, fase por fase
               </h3>
               <p className="text-xs text-slate-500">
                 {lote.eventos?.length || 0} fases registradas cronológicamente
@@ -493,7 +474,7 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
             <div className="space-y-3 relative before:absolute before:inset-0 before:left-3.5 before:w-0.5 before:bg-slate-200 pt-2">
               {(lote.eventos || []).map((ev) => (
                 <div key={ev.id} className="relative flex items-start space-x-3 pl-1">
-                  <div className="w-6 h-6 rounded-full bg-sky-600 text-white flex items-center justify-center font-bold text-[10px] shrink-0 z-10 shadow-xs">
+                  <div className="w-6 h-6 rounded-full bg-sky-600 text-white flex items-center justify-center font-bold text-[11px] shrink-0 z-10 shadow-xs">
                     {ev.indice + 1}
                   </div>
                   <div
@@ -510,7 +491,7 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
                       <strong className="text-slate-900 font-bold">
                         {ev.tipo}
                         {anotacionesAprobadas.some((a) => Number(a.propuesta.datos.fase) === ev.indice) && (
-                          <span className="ml-2 text-[10px] bg-sky-100 text-sky-800 px-2 py-0.5 rounded-full font-semibold">
+                          <span className="ml-2 text-[11px] bg-sky-100 text-sky-800 px-2 py-0.5 rounded-sm font-semibold">
                             Ver anotación N.º{' '}
                             {anotacionesAprobadas
                               .filter((a) => Number(a.propuesta.datos.fase) === ev.indice)
@@ -537,9 +518,12 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
                       </div>
                     )}
 
-                    <div className="mt-2 text-[10px] text-slate-400 flex items-center justify-between">
-                      <span>Registrado por: {quienRegistro(ev, true)}</span>
-                      <span className="font-mono text-[9px]">Hash: {ev.hash.substring(0, 12)}...</span>
+                    <div className="mt-2 text-[11px] text-slate-400 flex items-center justify-between">
+                      <span className="text-slate-700">
+                        <span className="rotulo text-slate-500 mr-2">Registró</span>
+                        <span className="firma text-sm">{quienRegistro(ev, true)}</span>
+                      </span>
+                      <span className="font-mono text-[11px]">Hash: {ev.hash.substring(0, 12)}...</span>
                     </div>
                   </div>
                 </div>
@@ -578,7 +562,7 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
                       )}
                     </p>
                     <p className="text-slate-600">Motivo: {d.motivo}</p>
-                    <p className="text-[10px] text-slate-400">
+                    <p className="text-[11px] text-slate-400">
                       Propuesta por {quienRegistro(a.propuesta, true)} · aprobada por {a.resolucion ? quienRegistro(a.resolucion, true) : '—'} ·{' '}
                       {formatearFechaColombia(a.resolucion?.fecha || a.propuesta.fecha)}
                     </p>
@@ -599,7 +583,7 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
           <div className="flex items-center space-x-2">
             <Apple className="w-5 h-5 text-emerald-600" />
             <h3 className="text-sm font-bold text-slate-900">
-              Información Nutricional (Porción 100 g de filete crudo)
+              Información nutricional (Porción 100 g de filete crudo)
             </h3>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
@@ -612,7 +596,7 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
               <strong className="text-base text-emerald-600">{config.fichaNutricional.proteinaG} g</strong>
             </div>
             <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 text-center">
-              <span className="text-slate-500 block">Grasa Total</span>
+              <span className="text-slate-500 block">Grasa total</span>
               <strong className="text-base text-slate-900">{config.fichaNutricional.grasaTotalG} g</strong>
             </div>
             <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 text-center">
@@ -635,7 +619,7 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
       <footer className="max-w-4xl mx-auto px-4 mt-8 pt-6 border-t border-slate-200 text-center text-xs text-slate-500">
         <p className="font-semibold text-slate-700">Cultivos Loré • Turbaco, Bolívar, Colombia</p>
         <p className="mt-1">
-          Acuicultura de precisión • Tilapia Roja Pro • Cadena Criptográfica Inalterable
+          Acuicultura de precisión • Tilapia roja • Cadena criptográfica verificable
         </p>
       </footer>
     </div>

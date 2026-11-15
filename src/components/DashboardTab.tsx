@@ -73,15 +73,9 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
   return (
     <div className="space-y-6">
       {/* Banner de Bienvenida y Acción Principal */}
-      <div className="bg-gradient-to-r from-slate-900 via-sky-950 to-slate-900 text-white rounded-2xl p-6 sm:p-8 shadow-md border border-slate-800 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div className="bg-slate-900 text-white p-6 sm:p-8 border-b-4 border-double border-amber-600 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center space-x-2 text-sky-400 text-xs font-semibold uppercase tracking-wider mb-1">
-            <Fish className="w-4 h-4" />
-            <span>Sistema Oficial de Trazabilidad</span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-            Cultivos Loré — Tilapia Pro
-          </h1>
+          <h1 className="text-3xl sm:text-4xl">Cultivos Loré</h1>
           <p className="text-sm text-slate-300 mt-1 max-w-xl">
             Monitoreo en tiempo real, registro tipo blockchain con hash SHA-256 y certificados QR para Turbaco, Bolívar.
           </p>
@@ -90,7 +84,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
         {puedeCrearLote && (
           <button
             onClick={onNuevoLote}
-            className="inline-flex items-center space-x-2 px-5 py-3 bg-sky-500 hover:bg-sky-400 text-white rounded-xl text-sm font-bold shadow-lg shadow-sky-500/20 transition-all shrink-0"
+            className="inline-flex items-center space-x-2 px-5 py-3 bg-slate-50 hover:bg-white text-slate-900 rounded-xl text-sm font-bold transition-colors shrink-0"
           >
             <Plus className="w-5 h-5" />
             <span>Registrar Nuevo Lote</span>
@@ -149,7 +143,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
               <div key={est.codigo}>
                 <span className="text-xs font-bold text-slate-500">{est.codigo}: </span>
                 <span className="text-xl font-bold text-slate-900">{conteoEstanques[est.codigo] || 0}</span>
-                <span className="text-[10px] text-slate-400 block">{est.nombre.split(' ')[0]}</span>
+                <span className="text-[11px] text-slate-400 block">{est.nombre.split(' ')[0]}</span>
               </div>
             ))}
           </div>
@@ -180,7 +174,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
       <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
         <div className="p-5 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h2 className="text-base font-bold text-slate-900">Últimos Lotes Modificados</h2>
+            <h2 className="text-base font-bold text-slate-900">Últimos lotes modificados</h2>
             <p className="text-xs text-slate-500">
               Accede directamente al historial o continúa registrando fases
             </p>
@@ -242,7 +236,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                     </td>
                     <td className="px-4 py-3.5 text-slate-600">
                       <div>{lote.fechaSiembra}</div>
-                      <div className="text-[10px] text-slate-400">{lote.resumen.diasDeCultivo} días</div>
+                      <div className="text-[11px] text-slate-400">{lote.resumen.diasDeCultivo} días</div>
                     </td>
                     <td className="px-4 py-3.5 text-right font-medium">
                       <span className={lote.resumen.supervivencia >= 85 ? 'text-emerald-600 font-bold' : 'text-amber-600'}>
@@ -257,7 +251,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                     </td>
                     <td className="px-4 py-3.5 text-center">
                       <span
-                        className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                        className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider ${
                           lote.estado === 'activo'
                             ? 'bg-emerald-100 text-emerald-800'
                             : 'bg-slate-200 text-slate-700'
@@ -278,7 +272,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                       )}
                       <button
                         onClick={() => onSeleccionarLote(lote)}
-                        className="px-2.5 py-1 text-xs font-medium text-sky-700 bg-sky-50 hover:bg-sky-100 rounded-md border border-sky-200 transition-colors inline-flex items-center space-x-1"
+                        className="px-3 py-1.5 text-xs font-semibold text-white bg-sky-600 hover:bg-sky-700 rounded-md transition-colors inline-flex items-center space-x-1"
                       >
                         <span>Detalle</span>
                         <ExternalLink className="w-3 h-3" />

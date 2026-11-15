@@ -37,7 +37,7 @@ const SelectorRapidoFuncion: React.FC<{
         aria-pressed={f === activa}
         title={f === activa ? `Trabajando como ${ETIQUETA_ROL[f]}` : `Cambiar a ${ETIQUETA_ROL[f]}`}
         className={`flex items-center space-x-1 rounded-md font-semibold transition-colors ${compacto ? 'px-2 py-1 text-[11px]' : 'px-2.5 py-1 text-xs'} ${
-          f === activa ? 'bg-sky-600 text-white' : 'text-slate-300 hover:text-white hover:bg-slate-700'
+          f === activa ? 'bg-slate-50 text-slate-900' : 'text-slate-300 hover:text-white hover:bg-slate-700'
         }`}
       >
         {ICONO_FUNCION[f]}
@@ -61,18 +61,18 @@ const TABS: Record<TabTipo, DefinicionTab> = {
   lotes: { id: 'lotes', etiqueta: 'Lotes', etiquetaMovil: 'Lotes' },
   pedidos: { id: 'pedidos', etiqueta: 'Entregas', etiquetaMovil: 'Entregas' },
   analitica: { id: 'analitica', etiqueta: 'Analítica', etiquetaMovil: 'Analítica' },
-  configuracion: { id: 'configuracion', etiqueta: 'Configuración & Estanques', etiquetaMovil: 'Configuración' },
+  configuracion: { id: 'configuracion', etiqueta: 'Configuración', etiquetaMovil: 'Configuración' },
   usuarios: {
     id: 'usuarios',
-    etiqueta: 'Personal & Permisos',
+    etiqueta: 'Personal',
     etiquetaMovil: 'Personal & Permisos',
-    icono: <Users className="w-4 h-4 text-sky-400" />
+    icono: <Users className="w-4 h-4" strokeWidth={1.75} />
   },
   reparto: {
     id: 'reparto',
     etiqueta: 'Mis entregas',
     etiquetaMovil: 'Mis entregas',
-    icono: <Truck className="w-4 h-4 text-sky-400" />
+    icono: <Truck className="w-4 h-4" strokeWidth={1.75} />
   }
 };
 
@@ -125,35 +125,26 @@ export const Navbar: React.FC<NavbarProps> = ({
   const tabInicial = tabsDeFuncion(funcionActiva, perfilUsuario)[0];
 
   return (
-    <header className="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-40">
+    <header className="bg-slate-900 text-white border-b-4 border-double border-amber-600 sticky top-0 z-40">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          {/* Logo y Nombre de la Granja */}
-          <div className="flex items-center space-x-3 cursor-pointer shrink-0" onClick={() => setTabActiva(tabInicial)}>
-            <div className="w-10 h-10 rounded-lg bg-sky-600 flex items-center justify-center shadow-inner">
-              <Fish className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <div className="flex items-center space-x-2">
-                <span className="font-bold text-lg tracking-tight">Cultivos Loré</span>
-                <span className="text-xs font-semibold px-2 py-0.5 rounded bg-sky-500/20 text-sky-400 border border-sky-500/30">
-                  Tilapia Pro
-                </span>
-              </div>
-              <p className="text-xs text-slate-400">Turbaco, Bolívar • Trazabilidad Inalterable</p>
-            </div>
-          </div>
+          {/* Nombre de la granja */}
+          <button type="button" className="flex items-center space-x-3 shrink-0 text-left" onClick={() => setTabActiva(tabInicial)}>
+            <Fish className="w-6 h-6 text-amber-400" strokeWidth={1.5} aria-hidden="true" />
+            <span>
+              <span className="block font-serif text-xl leading-tight">Cultivos Loré</span>
+              <span className="rotulo hidden sm:block text-slate-300">Trazabilidad Tilapia Pro · Turbaco, Bolívar</span>
+            </span>
+          </button>
 
           {/* Navegación por pestañas de la función activa (Desktop) */}
-          <nav className="hidden md:flex items-center space-x-1">
+          <nav className="hidden md:flex items-center self-stretch">
             {tabs.map((t) => (
               <button
                 key={t.id}
                 onClick={() => setTabActiva(t.id)}
-                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${t.icono ? 'flex items-center space-x-1.5' : ''} ${
-                  tabActiva === t.id
-                    ? 'bg-slate-800 text-sky-400 border-b-2 border-sky-400 font-bold'
-                    : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+                className={`rotulo h-full px-3 border-b-2 transition-colors ${t.icono ? 'flex items-center space-x-1.5' : ''} ${
+                  tabActiva === t.id ? 'text-white border-amber-400' : 'text-slate-300 border-transparent hover:text-white'
                 }`}
               >
                 {t.icono}
@@ -174,12 +165,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                   </div>
                   <div className="hidden lg:block text-left text-xs">
                     <p className="font-semibold text-slate-200 truncate max-w-[150px]" title={usuario.email || undefined}>{perfilUsuario?.displayName || usuario.email}</p>
-                    <p className={`text-[10px] flex items-center truncate max-w-[150px] ${
-                      funcionActiva === 'admin'
-                        ? 'text-amber-400 font-bold'
-                        : funcionActiva
-                        ? 'text-emerald-400 font-semibold'
-                        : 'text-amber-400'
+                    <p className={`text-[11px] flex items-center truncate max-w-[150px] ${
+                      funcionActiva ? 'text-amber-400 font-semibold' : 'text-slate-300'
                     }`}>
                       {funcionActiva ? (
                         <>{nombreFuncion(perfilUsuario, funcionActiva)}</>
@@ -211,7 +198,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             ) : (
               <button
                 onClick={onAbrirAuth}
-                className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 text-sm font-medium rounded-md bg-sky-600 hover:bg-sky-500 text-white shadow-sm transition-colors"
+                className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 text-sm font-semibold rounded-md bg-slate-50 hover:bg-white text-slate-900 transition-colors"
               >
                 <LogIn className="w-4 h-4" />
                 <span>Ingresar</span>
@@ -234,7 +221,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               key={t.id}
               onClick={() => setTabActiva(t.id)}
-              className={`px-3 py-1 text-xs rounded font-medium whitespace-nowrap ${tabActiva === t.id ? 'bg-sky-600 text-white font-bold' : 'text-slate-300'}`}
+              className={`px-3 py-1 text-xs rounded font-medium whitespace-nowrap ${tabActiva === t.id ? 'bg-slate-50 text-slate-900 font-bold' : 'text-slate-300'}`}
             >
               {t.etiquetaMovil}
             </button>

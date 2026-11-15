@@ -238,9 +238,7 @@ export const PedidosTab: React.FC<PedidosTabProps> = ({ lotes, perfilActual }) =
     <div className="space-y-5">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-slate-900 tracking-tight flex items-center space-x-2">
-            <ClipboardList className="w-5 h-5 text-sky-600" />
-            <span>Gestión de entregas</span>
+          <h1 className="text-2xl text-slate-900"><span>Gestión de entregas</span>
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
             Órdenes de entrega de la granja, avance de los repartidores, solicitudes, novedades e historial (en tiempo real)
@@ -326,7 +324,7 @@ export const PedidosTab: React.FC<PedidosTabProps> = ({ lotes, perfilActual }) =
                   )}
                 </div>
               ))}
-              <p className="text-[10px] text-slate-500">
+              <p className="text-[11px] text-slate-500">
                 Las alertas se calculan con condiciones verificables (sin fecha programada no se marca retraso). Al resolverse
                 desaparecen; lo ocurrido queda en el historial de cada pedido.
               </p>
@@ -348,7 +346,7 @@ export const PedidosTab: React.FC<PedidosTabProps> = ({ lotes, perfilActual }) =
             {p.icono}
             <span>{p.etiqueta}</span>
             {p.contador !== undefined && p.contador > 0 && (
-              <span className={`px-1.5 rounded-full text-[10px] ${vista === p.id ? 'bg-white/20' : 'bg-slate-100'}`}>{p.contador}</span>
+              <span className={`px-1.5 rounded-full text-[11px] ${vista === p.id ? 'bg-white/20' : 'bg-slate-100'}`}>{p.contador}</span>
             )}
           </button>
         ))}
@@ -397,7 +395,7 @@ export const PedidosTab: React.FC<PedidosTabProps> = ({ lotes, perfilActual }) =
           ) : (
             <div className="text-xs">
               {/* Encabezado (pantallas medianas en adelante) */}
-              <div className="hidden xl:grid grid-cols-[1.3fr_1.3fr_0.9fr_0.8fr_1fr_repeat(4,0.7fr)_1fr_0.2fr] gap-2 px-4 py-2 bg-slate-50 text-[10px] uppercase text-slate-500 font-semibold">
+              <div className="hidden xl:grid grid-cols-[1.3fr_1.3fr_0.9fr_0.8fr_1fr_repeat(4,0.7fr)_1fr_0.2fr] gap-2 px-4 py-2 bg-slate-50 text-[11px] uppercase text-slate-500 font-semibold">
                 <span>Pedido</span>
                 <span>Cliente</span>
                 <span>Creación</span>
@@ -492,7 +490,7 @@ export const PedidosTab: React.FC<PedidosTabProps> = ({ lotes, perfilActual }) =
             <span className="font-bold text-slate-800">Producción registrada, reservas y disponibilidad por lote</span>
           </div>
           <table className="w-full text-xs text-left min-w-[760px]">
-            <thead className="bg-slate-50 text-[10px] uppercase text-slate-500">
+            <thead className="bg-slate-50 text-[11px] uppercase text-slate-500">
               <tr>
                 <th className="px-4 py-2">Lote</th>
                 <th className="px-4 py-2">Piscina</th>
@@ -514,7 +512,7 @@ export const PedidosTab: React.FC<PedidosTabProps> = ({ lotes, perfilActual }) =
                   <tr key={lote.codigo} className="align-top">
                     <td className="px-4 py-2 font-mono font-bold">
                       {lote.codigo}
-                      <span className="block text-[10px] font-sans font-normal text-slate-400">
+                      <span className="block text-[11px] font-sans font-normal text-slate-400">
                         {lote.estado === 'cerrado' ? 'sellado' : 'activo'}
                       </span>
                     </td>

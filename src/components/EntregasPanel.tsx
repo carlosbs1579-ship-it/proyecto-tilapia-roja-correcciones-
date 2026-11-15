@@ -147,7 +147,7 @@ export const EntregasPanel: React.FC<EntregasPanelProps> = ({ lote, userEmail, p
           <div className="flex items-center space-x-2">
             <Truck className="w-4 h-4 text-indigo-600" />
             <h3 className="font-bold text-slate-900 text-sm">Entregas a Clientes</h3>
-            <span className="text-[10px] bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full font-semibold uppercase tracking-wider">
+            <span className="text-[11px] bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-sm font-semibold uppercase tracking-wider">
               Posterior al sellado
             </span>
           </div>
@@ -229,7 +229,7 @@ export const EntregasPanel: React.FC<EntregasPanelProps> = ({ lote, userEmail, p
                 <div>
                   <div className="flex items-center space-x-2">
                     <span className="font-bold text-sm text-slate-900">{e.cliente}</span>
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full border font-semibold ${ESTILO_ESTADO[e.estado]}`}>
+                    <span className={`text-[11px] px-2 py-0.5 rounded-full border font-semibold ${ESTILO_ESTADO[e.estado]}`}>
                       {ETIQUETA_ESTADO[e.estado]}
                     </span>
                   </div>
@@ -300,7 +300,7 @@ export const EntregasPanel: React.FC<EntregasPanelProps> = ({ lote, userEmail, p
                         {r.datos.motivo && <p>Motivo: {r.datos.motivo}</p>}
                         {r.descripcion && <p>Observaciones: {r.descripcion}</p>}
                       </div>
-                      <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2 text-[10px] text-slate-400">
+                      <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-400">
                         <span>
                           {r.registradoPor} • {formatearFechaColombia(r.registradoEn)}
                         </span>
@@ -319,7 +319,7 @@ export const EntregasPanel: React.FC<EntregasPanelProps> = ({ lote, userEmail, p
 
       {/* Formulario de acción */}
       {formulario && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4 overflow-y-auto">
           <div className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-lg w-full overflow-hidden my-6">
             <div className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between">
               <div className="flex items-center space-x-2">

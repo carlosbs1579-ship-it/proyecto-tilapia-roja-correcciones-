@@ -244,28 +244,19 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
 
   return (
     <>
-      <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur-xs p-3 md:p-6 overflow-y-auto">
+      <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/55 p-3 md:p-6 overflow-y-auto">
         <div className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-5xl w-full max-h-[92vh] flex flex-col overflow-hidden">
           {/* BARRA SUPERIOR DEL LOTE */}
           <div className="bg-slate-900 text-white px-6 py-4 flex flex-wrap items-center justify-between gap-3 shrink-0">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 rounded-lg bg-sky-600 flex items-center justify-center font-mono font-bold text-lg text-white">
-                {lote.estanque}
-              </div>
               <div>
-                <div className="flex items-center space-x-2">
-                  <h2 className="text-xl font-bold font-mono tracking-wide">{lote.codigo}</h2>
-                  <span
-                    className={`px-2.5 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wider ${
-                      lote.estado === 'activo'
-                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
-                        : 'bg-slate-700 text-slate-300 border border-slate-600'
-                    }`}
-                  >
-                    {lote.estado === 'activo' ? 'En cultivo activo' : 'Cerrado / Cosechado'}
+                <div className="flex flex-wrap items-baseline gap-x-3">
+                  <h2 className="text-2xl tabular-nums">{lote.codigo}</h2>
+                  <span className={`rotulo ${lote.estado === 'activo' ? 'text-emerald-300' : 'text-amber-300'}`}>
+                    {lote.estado === 'activo' ? 'En cultivo' : 'Sellado · cosechado'}
                   </span>
                 </div>
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-slate-300">
                   Estanque {lote.estanque} • Siembra: {lote.fechaSiembra} • Consecutivo #{lote.consecutivo}
                 </p>
               </div>
@@ -345,21 +336,18 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
           <div className="p-6 overflow-y-auto space-y-6 flex-1 bg-slate-50">
             {/* AVISO DE LOTE SELLADO / CERRADO */}
             {lote.estado === 'cerrado' && (
-              <div className="bg-slate-900 text-slate-100 p-4 rounded-xl border border-slate-800 shadow-xs flex items-start space-x-3">
-                <div className="p-2 bg-amber-500/20 text-amber-400 rounded-lg shrink-0 mt-0.5 border border-amber-500/30">
-                  <Lock className="w-5 h-5" />
-                </div>
-                <div className="space-y-1">
-                  <div className="flex items-center space-x-2">
-                    <span className="font-bold text-sm text-white">Lote Sellado y Cerrado</span>
-                    <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider">
-                      Trazabilidad Inalterable
-                    </span>
-                  </div>
-                  <p className="text-xs text-slate-300">
-                    Este lote culminó su ciclo de producción y ha sido sellado de forma permanente. Toda modificación e incorporación de nuevos registros de producción está bloqueada. La consulta de su información, descarga de certificados y la verificación criptográfica mediante hashes SHA-256 continúan plenamente disponibles.
-                  </p>
-                </div>
+              <div className="bg-slate-900 text-white rounded-md px-6 py-5 space-y-3">
+                <p className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+                  <span className="flex items-center gap-3">
+                    <Lock className="w-5 h-5 text-amber-400" aria-hidden="true" />
+                    <span className="font-serif text-2xl">Lote sellado</span>
+                  </span>
+                  {lote.fechaCierre && <span className="rotulo text-amber-300">{formatearFechaColombia(lote.fechaCierre)}</span>}
+                </p>
+                <p className="text-sm text-slate-200 border-t-[3px] border-double border-amber-500 pt-3">
+                  El ciclo de producción terminó y el registro quedó sellado: no admite cambios ni fases nuevas. La consulta, los certificados y la
+                  verificación de la cadena siguen disponibles.
+                </p>
               </div>
             )}
 
@@ -468,7 +456,7 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
                   <Clock className="w-3.5 h-3.5 text-slate-400" />
                 </div>
                 <p className="text-lg font-bold text-slate-900">{r.diasDeCultivo} d</p>
-                <p className="text-[10px] text-slate-400">Desde {lote.fechaSiembra}</p>
+                <p className="text-[11px] text-slate-400">Desde {lote.fechaSiembra}</p>
               </div>
 
               {/* Supervivencia & Peces Vivos */}
@@ -478,7 +466,7 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
                   <Activity className="w-3.5 h-3.5 text-emerald-500" />
                 </div>
                 <p className="text-lg font-bold text-emerald-600">{r.supervivencia}%</p>
-                <p className="text-[10px] text-slate-400">{r.pecesVivos.toLocaleString()} vivos / {lote.cantidadSembrada.toLocaleString()}</p>
+                <p className="text-[11px] text-slate-400">{r.pecesVivos.toLocaleString()} vivos / {lote.cantidadSembrada.toLocaleString()}</p>
               </div>
 
               {/* Peso Promedio Actual */}
@@ -488,7 +476,7 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
                   <TrendingUp className="w-3.5 h-3.5 text-sky-500" />
                 </div>
                 <p className="text-lg font-bold text-slate-900">{r.pesoPromedioActualG} g</p>
-                <p className="text-[10px] text-slate-400">Inicial: {lote.pesoInicialPromedioG} g (+{r.gananciaDiariaG} g/d)</p>
+                <p className="text-[11px] text-slate-400">Inicial: {lote.pesoInicialPromedioG} g (+{r.gananciaDiariaG} g/d)</p>
               </div>
 
               {/* Biomasa Estimada Viva */}
@@ -498,7 +486,7 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
                   <Layers className="w-3.5 h-3.5 text-indigo-500" />
                 </div>
                 <p className="text-lg font-bold text-slate-900">{r.biomasaEstimadaKg.toLocaleString()} kg</p>
-                <p className="text-[10px] text-slate-400">
+                <p className="text-[11px] text-slate-400">
                   {r.densidadKgM3 ? `Densidad: ${r.densidadKgM3} kg/m³` : `Inicial: ${r.biomasaInicialKg} kg`}
                 </p>
               </div>
@@ -507,10 +495,10 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
               <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-xs">
                 <div className="flex items-center justify-between text-slate-500 mb-1">
                   <span className="text-[11px] font-medium uppercase">FCA / Alimento</span>
-                  <span className="text-[10px] font-bold text-sky-600">{r.FCA ?? 'N/A'}</span>
+                  <span className="text-[11px] font-bold text-sky-600">{r.FCA ?? 'N/A'}</span>
                 </div>
                 <p className="text-lg font-bold text-slate-900">{r.alimentoAcumuladoKg} kg</p>
-                <p className="text-[10px] text-slate-400">Alimento acumulado</p>
+                <p className="text-[11px] text-slate-400">Alimento acumulado</p>
               </div>
 
               {/* Alertas de Calidad de Agua */}
@@ -522,7 +510,7 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
                 <p className={`text-lg font-bold ${r.alertasAgua > 0 ? 'text-amber-600' : 'text-slate-900'}`}>
                   {r.alertasAgua}
                 </p>
-                <p className="text-[10px] text-slate-400">Mediciones fuera de rango</p>
+                <p className="text-[11px] text-slate-400">Mediciones fuera de rango</p>
               </div>
             </div>
 
@@ -552,7 +540,7 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
               <div className="px-6 py-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center space-x-2">
                   <h3 className="font-bold text-slate-900 text-sm">Línea de Tiempo Inalterable</h3>
-                  <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-semibold">
+                  <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-sm font-semibold">
                     {lote.eventos?.length || 0} fases
                   </span>
                 </div>
@@ -631,7 +619,7 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
                         key={ev.id}
                         className={`p-4 transition-colors ${
                           diagnostico[ev.indice] && diagnostico[ev.indice].estado !== 'integra'
-                            ? 'bg-red-50 border-l-4 border-red-500'
+                            ? 'bg-red-50 ring-1 ring-inset ring-red-300'
                             : 'hover:bg-slate-50/80'
                         }`}
                       >
@@ -650,7 +638,7 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
                               <div className="flex items-center space-x-2">
                                 <span className="font-bold text-sm text-slate-900">{ev.tipo}</span>
                                 {anotacionesAprobadasPorFase[ev.indice] && (
-                                  <span className="text-[10px] bg-sky-100 text-sky-800 px-2 py-0.5 rounded-full font-semibold">
+                                  <span className="rotulo text-amber-700 border-b border-amber-600">
                                     Ver anotación N.º {anotacionesAprobadasPorFase[ev.indice].join(', ')}
                                   </span>
                                 )}
@@ -658,7 +646,7 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
                                   {ev.fechaEvento}
                                 </span>
                                 {alertasDelEvento.length > 0 && (
-                                  <span className="text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-semibold flex items-center space-x-1">
+                                  <span className="text-[11px] bg-red-100 text-red-700 px-2 py-0.5 rounded-sm font-semibold flex items-center space-x-1">
                                     <AlertTriangle className="w-3 h-3 mr-0.5" />
                                     <span>{alertasDelEvento.length} alerta(s) de agua</span>
                                   </span>
@@ -693,10 +681,13 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
                           </div>
 
                           <div className="text-right shrink-0">
-                            <p className="text-[11px] text-slate-500">{quienRegistro(ev)}</p>
+                            <p className="text-sm text-slate-800">
+                              <span className="firma">{quienRegistro(ev)}</span>
+                            </p>
+                            <p className="rotulo text-slate-500 mt-1">Registró</p>
                             <span
                               title={`SHA-256: ${ev.hash}`}
-                              className="font-mono text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded block mt-1 max-w-[120px] truncate"
+                              className="font-mono text-[11px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded block mt-1 max-w-[120px] truncate"
                             >
                               {ev.hash.substring(0, 10)}...
                             </span>
@@ -746,7 +737,7 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
       )}
 
       {modalEditarSiembraOpen && lote.estado === 'activo' && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4 overflow-y-auto">
           <div className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-lg w-full overflow-hidden my-6">
             <div className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between">
               <div className="flex items-center space-x-2">

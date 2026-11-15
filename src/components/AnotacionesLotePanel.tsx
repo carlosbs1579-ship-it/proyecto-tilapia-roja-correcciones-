@@ -138,7 +138,7 @@ export const AnotacionesLotePanel: React.FC<{
           {faseSel && (
             <label className="block">
               <span className="font-semibold text-slate-700">Dato</span>
-              <select value={dato} onChange={(e) => setDato(e.target.value)} className="mt-1 w-full px-2 py-1.5 border border-slate-300 rounded bg-white">
+              <select aria-label="Dato" value={dato} onChange={(e) => setDato(e.target.value)} className="mt-1 w-full px-2 py-1.5 border border-slate-300 rounded bg-white">
                 <option value="">Selecciona el dato</option>
                 {datosFase.map((k) => (
                   <option key={k} value={k}>

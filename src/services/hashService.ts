@@ -292,6 +292,7 @@ const NOMBRE_DATO: Record<string, string> = {
   pctProteina: 'Proteína (%)',
   numeroRaciones: 'Número de raciones',
   pesoInicialPromedioG: 'Peso inicial promedio',
+  pesoInicialG: 'Peso inicial',
   proveedorAlevinos: 'Proveedor de alevinos',
   observacionesIniciales: 'Observaciones iniciales'
 };

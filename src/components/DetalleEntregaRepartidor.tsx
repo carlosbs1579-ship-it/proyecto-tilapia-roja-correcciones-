@@ -377,7 +377,7 @@ export const DetalleEntregaRepartidor: React.FC<DetalleEntregaRepartidorProps> =
             {lotes.map(([codigo, p]) => (
               <div key={codigo} className="flex flex-wrap items-center justify-between gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm">
                 <span>
-                  <strong className="font-mono">{codigo}</strong>
+                  <strong className="font-serif text-base">{codigo}</strong>
                   <span className="text-slate-500"> · piscina {p.estanque}</span>
                 </span>
                 <span className="text-slate-800">
@@ -455,7 +455,7 @@ export const DetalleEntregaRepartidor: React.FC<DetalleEntregaRepartidorProps> =
               {lotes.map(([codigo, p]) => (
                 <label key={codigo} className="flex flex-wrap items-center justify-between gap-2 text-sm">
                   <span>
-                    <strong className="font-mono">{codigo}</strong>
+                    <strong className="font-serif text-base">{codigo}</strong>
                     <span className="text-slate-500"> · piscina {p.estanque} · máximo {num(saldoLote(orden, codigo))} {orden.unidad}</span>
                   </span>
                   <input
@@ -589,7 +589,7 @@ export const DetalleEntregaRepartidor: React.FC<DetalleEntregaRepartidorProps> =
           {lotes.map(([codigo, p]) => (
             <label key={codigo} className="flex flex-wrap items-center justify-between gap-2 text-sm">
               <span>
-                <strong className="font-mono">{codigo}</strong>
+                <strong className="font-serif text-base">{codigo}</strong>
                 <span className="text-slate-500"> · autorizado {num(p.cantidad)} {orden.unidad}</span>
               </span>
               <input

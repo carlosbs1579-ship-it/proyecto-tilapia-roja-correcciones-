@@ -224,7 +224,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                     </td>
                     <td className="px-4 py-3.5 text-slate-600">
                       <div>{lote.fechaSiembra}</div>
-                      <div className="text-[11px] text-slate-400">{lote.resumen.diasDeCultivo != null ? `${lote.resumen.diasDeCultivo} días` : '—'}</div>
+                      {lote.resumen.diasDeCultivo != null && <div className="text-[11px] text-slate-500">{lote.resumen.diasDeCultivo} días</div>}
                     </td>
                     <td className="px-4 py-3.5 text-right font-medium">
                       <span className={lote.resumen.supervivencia >= 85 ? 'text-slate-900 font-bold' : 'text-amber-700 font-bold'}>

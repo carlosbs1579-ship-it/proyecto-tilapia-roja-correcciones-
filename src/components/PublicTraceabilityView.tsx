@@ -418,7 +418,7 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
 
           <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs text-center">
             <span className="text-[11px] text-slate-500 font-medium block">Supervivencia</span>
-            <strong className="text-lg font-bold text-emerald-600 mt-1 block">
+            <strong className="text-lg font-bold text-slate-900 mt-1 block">
               {r ? `${r.supervivencia.toFixed(1)}%` : '—'}
             </strong>
             <span className="text-[11px] text-slate-400">
@@ -593,7 +593,7 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
             </div>
             <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 text-center">
               <span className="text-slate-500 block">Proteína</span>
-              <strong className="text-base text-emerald-600">{config.fichaNutricional.proteinaG} g</strong>
+              <strong className="text-base text-slate-900">{config.fichaNutricional.proteinaG} g</strong>
             </div>
             <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 text-center">
               <span className="text-slate-500 block">Grasa total</span>

@@ -466,7 +466,7 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
                   <span className="text-[11px] font-medium uppercase">Supervivencia</span>
                   <Activity className="w-3.5 h-3.5 text-emerald-500" />
                 </div>
-                <p className="text-lg font-bold text-emerald-600">{r.supervivencia}%</p>
+                <p className="text-lg font-bold text-slate-900">{r.supervivencia}%</p>
                 <p className="text-[11px] text-slate-400">{r.pecesVivos.toLocaleString()} vivos / {lote.cantidadSembrada.toLocaleString()}</p>
               </div>
 

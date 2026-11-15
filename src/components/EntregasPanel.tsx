@@ -229,7 +229,7 @@ export const EntregasPanel: React.FC<EntregasPanelProps> = ({ lote, userEmail, p
                 <div>
                   <div className="flex items-center space-x-2">
                     <span className="font-bold text-sm text-slate-900">{e.cliente}</span>
-                    <span className={`text-[11px] px-2 py-0.5 rounded-full border font-semibold ${ESTILO_ESTADO[e.estado]}`}>
+                    <span className={`text-[11px] px-2 py-0.5 rounded-sm border font-semibold ${ESTILO_ESTADO[e.estado]}`}>
                       {ETIQUETA_ESTADO[e.estado]}
                     </span>
                   </div>

@@ -331,7 +331,7 @@ export const DetalleEntregaRepartidor: React.FC<DetalleEntregaRepartidorProps> =
       <div className="bg-white rounded-xl border border-slate-200 shadow-xs p-5 space-y-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h1 className="text-lg font-bold text-slate-900">{orden.clienteNombre}</h1>
-          <span className="px-3 py-1 rounded-full bg-sky-100 text-sky-800 border border-sky-300 text-xs font-bold">{etiquetaEstado}</span>
+          <span className="rotulo text-sky-800 border-b border-sky-600">{etiquetaEstado}</span>
         </div>
         <p className="text-xs text-slate-500 font-mono">{orden.id}</p>
         <p className="flex items-start space-x-2 text-sm text-slate-800">

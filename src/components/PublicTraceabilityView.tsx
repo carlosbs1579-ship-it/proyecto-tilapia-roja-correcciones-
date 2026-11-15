@@ -457,7 +457,7 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
               </p>
               {Object.values(diagnostico).some((f) => f.estado !== 'integra') && (
                 <p className="mt-1 text-xs font-semibold text-red-700">
-                  ⚠ Se detectaron fases alteradas después de su registro (marcadas en rojo).
+                  Se detectaron fases alteradas después de su registro (marcadas en rojo).
                 </p>
               )}
             </div>

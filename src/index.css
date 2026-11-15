@@ -93,6 +93,32 @@
   /* Curvas de movimiento (salida fuerte para entradas de interfaz) */
   --ease-salida: cubic-bezier(0.23, 1, 0.32, 1);
 
+  /* Escalas que no tienen papel propio se llevan a tonos del sistema:
+     violeta (en ruta) a pizarra, naranja (revisión, novedades) al oro, morado a pizarra */
+  --color-violet-50: #eff1f5;
+  --color-violet-100: #dfe3ec;
+  --color-violet-200: #bfc7d8;
+  --color-violet-300: #96a3bd;
+  --color-violet-500: #4a5a7d;
+  --color-violet-600: #3a4a6b;
+  --color-violet-700: #2f3c57;
+  --color-violet-800: #252f44;
+  --color-purple-50: #eff1f5;
+  --color-purple-100: #dfe3ec;
+  --color-purple-200: #bfc7d8;
+  --color-purple-600: #3a4a6b;
+  --color-purple-700: #2f3c57;
+  --color-purple-800: #252f44;
+  --color-orange-50: #faf5e8;
+  --color-orange-100: #f2e6c6;
+  --color-orange-200: #e6cf92;
+  --color-orange-300: #d5b262;
+  --color-orange-500: #a07a2c;
+  --color-orange-600: #8a6624;
+  --color-orange-700: #6e501d;
+  --color-orange-800: #553e18;
+  --color-orange-900: #3f2e13;
+
   /* Esquinas pequeñas y sombras mínimas */
   --radius-md: 0.25rem;
   --radius-lg: 0.3125rem;

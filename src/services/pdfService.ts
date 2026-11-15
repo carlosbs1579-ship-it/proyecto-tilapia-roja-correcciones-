@@ -148,7 +148,7 @@ function estiloTabla(): Record<string, any> {
 function marcaDeAgua(doc: any, texto: string, color: RGB) {
   const ancho = doc.internal.pageSize.getWidth();
   const alto = doc.internal.pageSize.getHeight();
-  const angulo = 45;
+  const angulo = 30;
   const rad = (angulo * Math.PI) / 180;
   const tamano = 72;
   const espacio = 4; // mm entre letras
@@ -161,8 +161,15 @@ function marcaDeAgua(doc: any, texto: string, color: RGB) {
   const cy = alto / 2;
   const x = cx - (largo / 2) * Math.cos(rad) + (altoLetra / 2) * Math.sin(rad);
   const y = cy + (largo / 2) * Math.sin(rad) + (altoLetra / 2) * Math.cos(rad);
+  // Primera pasada: el color de la marca, que es la que se lee sobre el papel.
   if (doc.GState) doc.setGState(new doc.GState({ opacity: 0.16 }));
   doc.setTextColor(...color);
+  doc.text(palabra, x, y, { angle: angulo, charSpace: espacio });
+  // Segunda pasada, en un tono claro del mismo color: sobre el blanco casi no se nota, pero evita que
+  // las letras se vean cortadas al cruzar los encabezados tinta de las tablas.
+  const claro = color.map((c) => Math.round(c + (255 - c) * 0.75)) as unknown as RGB;
+  if (doc.GState) doc.setGState(new doc.GState({ opacity: 0.2 }));
+  doc.setTextColor(...claro);
   doc.text(palabra, x, y, { angle: angulo, charSpace: espacio });
   if (doc.GState) doc.setGState(new doc.GState({ opacity: 1 }));
 }

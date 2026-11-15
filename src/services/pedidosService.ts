@@ -644,7 +644,7 @@ export async function cambiarEstadoOrden(ordenId: string, nuevoEstado: EstadoOrd
         );
       }
       if ((nuevoEstado === 'cancelado' || nuevoEstado === 'requiere_revision') && !motivo.trim()) {
-        throw new Error('Indica el motivo.');
+        throw new Error('Escribe el motivo en el campo Motivo: es obligatorio para cancelar o enviar a revisión.');
       }
 
       const ahora = new Date().toISOString();

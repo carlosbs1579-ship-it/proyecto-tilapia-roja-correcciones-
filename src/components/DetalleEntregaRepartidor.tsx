@@ -417,7 +417,7 @@ export const DetalleEntregaRepartidor: React.FC<DetalleEntregaRepartidorProps> =
                   if (!registrar({ ordenId: orden.id, tipo: 'Inicio de ruta' })) return;
                   avisar('Ruta iniciada.');
                 },
-                orden.rutaIniciadaEn ? `Iniciada: ${formatearFechaColombia(orden.rutaIniciadaEn)}` : pendiente('Inicio de ruta') ? 'Guardada en el teléfono' : 'Cuando salgas con el pedido'
+                orden.rutaIniciadaEn ? `Iniciada: ${formatearFechaColombia(orden.rutaIniciadaEn)}` : pendiente('Inicio de ruta') ? 'Guardada en el teléfono' : puedeIniciar ? 'Cuando salgas con el pedido' : 'El pedido aún no está listo para salir'
               )}
               {botonPaso(
                 2,
@@ -429,7 +429,7 @@ export const DetalleEntregaRepartidor: React.FC<DetalleEntregaRepartidorProps> =
                   if (!registrar({ ordenId: orden.id, tipo: 'Llegada' })) return;
                   avisar('Llegada registrada.');
                 },
-                orden.llegadaEn ? `Llegada: ${formatearFechaColombia(orden.llegadaEn)}` : pendiente('Llegada') ? 'Guardada en el teléfono' : 'Cuando llegues al cliente'
+                orden.llegadaEn ? `Llegada: ${formatearFechaColombia(orden.llegadaEn)}` : pendiente('Llegada') ? 'Guardada en el teléfono' : !rutaIniciada ? 'Primero toca "Iniciar ruta" (paso 1)' : 'Cuando llegues al cliente'
               )}
               {botonPaso(
                 3,
@@ -438,7 +438,13 @@ export const DetalleEntregaRepartidor: React.FC<DetalleEntregaRepartidorProps> =
                 entregaEnviada,
                 puedeEntregar,
                 abrirEntrega,
-                entregaEnviada ? 'Guardada en el teléfono' : 'Indica cuánto recibió el cliente'
+                entregaEnviada
+                  ? 'Guardada en el teléfono'
+                  : !rutaIniciada
+                  ? 'Primero toca "Iniciar ruta" (paso 1)'
+                  : !llegadaRegistrada
+                  ? 'Primero toca "Registrar llegada" (paso 2)'
+                  : 'Indica cuánto recibió el cliente'
               )}
             </>
           )}
@@ -561,7 +567,7 @@ export const DetalleEntregaRepartidor: React.FC<DetalleEntregaRepartidorProps> =
           <textarea
             rows={3}
             maxLength={900}
-            placeholder="¿Qué pasó?"
+            placeholder="Describe qué pasó (obligatorio)"
             value={descripcionNovedad}
             onChange={(e) => setDescripcionNovedad(e.target.value)}
             className="w-full px-3 py-2 text-base border border-slate-300 rounded-lg"

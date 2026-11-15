@@ -1,3 +1,4 @@
+import { svgLogo } from '../components/LogoLore';
 import QRCode from 'qrcode';
 import { firebaseConfig } from '../firebase/firebaseConfig';
 
@@ -52,7 +53,7 @@ export async function generarQrDataUrl(texto: string): Promise<string> {
       width: 400,
       margin: 2,
       color: {
-        dark: '#0f172a',
+        dark: '#16213a',
         light: '#ffffff'
       },
       errorCorrectionLevel: 'H'
@@ -64,57 +65,78 @@ export async function generarQrDataUrl(texto: string): Promise<string> {
 }
 
 /**
- * Descarga el código QR con el código del lote escrito en la parte inferior para imprimir
+ * Descarga el código QR como etiqueta para imprimir, con la identidad de la plataforma:
+ * banda tinta con el logo y el nombre en serif, doble filete dorado, QR y código del lote.
  */
-export function descargarQrConEtiqueta(qrDataUrl: string, codigoLote: string): void {
+export async function descargarQrConEtiqueta(qrDataUrl: string, codigoLote: string): Promise<void> {
+  const cargar = (src: string) =>
+    new Promise<HTMLImageElement>((resolver, rechazar) => {
+      const img = new Image();
+      img.onload = () => resolver(img);
+      img.onerror = rechazar;
+      img.src = src;
+    });
+  try {
+    await document.fonts?.load?.('400 40px "Libre Caslon Text"');
+  } catch {}
+  const [qr, logo] = await Promise.all([
+    cargar(qrDataUrl),
+    cargar('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgLogo('#d1ac5c'))).catch(() => null)
+  ]);
+
   const canvas = document.createElement('canvas');
+  const escala = 2; // nitidez al imprimir
+  const ancho = 480;
+  const alto = 640;
+  canvas.width = ancho * escala;
+  canvas.height = alto * escala;
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
+  ctx.scale(escala, escala);
+  const serif = '"Libre Caslon Text", Georgia, "Times New Roman", serif';
+  const sans = '"Public Sans", system-ui, sans-serif';
 
-  const img = new Image();
-  img.onload = () => {
-    // Dimensiones con margen y texto inferior
-    canvas.width = 460;
-    canvas.height = 540;
+  // Papel y banda superior
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, ancho, alto);
+  ctx.fillStyle = '#16213a';
+  ctx.fillRect(0, 0, ancho, 104);
+  if (logo) ctx.drawImage(logo, 36, 30, 58, 45);
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#ffffff';
+  ctx.font = `400 30px ${serif}`;
+  ctx.fillText('Cultivos Loré', 108, 58);
+  ctx.fillStyle = '#d1ac5c';
+  ctx.font = `600 11px ${sans}`;
+  if ('letterSpacing' in ctx) (ctx as any).letterSpacing = '2px';
+  ctx.fillText('TRAZABILIDAD TILAPIA PRO', 109, 80);
+  if ('letterSpacing' in ctx) (ctx as any).letterSpacing = '0px';
+  // Doble filete dorado bajo la banda
+  ctx.fillStyle = '#8a6624';
+  ctx.fillRect(0, 104, ancho, 2);
+  ctx.fillRect(0, 109, ancho, 1);
 
-    // Fondo blanco
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  // QR
+  ctx.drawImage(qr, 60, 132, 360, 360);
 
-    // Borde elegante
-    ctx.strokeStyle = '#cbd5e1';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(10, 10, canvas.width - 20, canvas.height - 20);
+  // Código del lote y ayuda
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#16213a';
+  ctx.font = `400 30px ${serif}`;
+  ctx.fillText(`Lote ${codigoLote}`, ancho / 2, 540);
+  ctx.fillStyle = '#d8dbe0';
+  ctx.fillRect(140, 560, ancho - 280, 1);
+  ctx.fillStyle = '#4a5160';
+  ctx.font = `400 13px ${sans}`;
+  ctx.fillText('Escanee para ver la historia del lote, fase por fase.', ancho / 2, 590);
+  ctx.fillStyle = '#5d6470';
+  ctx.font = `400 11px ${sans}`;
+  ctx.fillText('Turbaco, Bolívar · Colombia', ancho / 2, 610);
 
-    // Cabecera de la etiqueta
-    ctx.fillStyle = '#0369a1';
-    ctx.font = 'bold 20px system-ui, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('CULTIVOS LORÉ', canvas.width / 2, 45);
-
-    ctx.fillStyle = '#0284c7';
-    ctx.font = 'bold 14px system-ui, sans-serif';
-    ctx.fillText('TILAPIA PRO • TRAZABILIDAD', canvas.width / 2, 68);
-
-    // Imagen del QR
-    ctx.drawImage(img, 30, 85, 400, 400);
-
-    // Texto del código del lote al pie
-    ctx.fillStyle = '#0f172a';
-    ctx.font = 'bold 18px monospace';
-    ctx.fillText(codigoLote, canvas.width / 2, 505);
-
-    ctx.fillStyle = '#64748b';
-    ctx.font = '11px system-ui, sans-serif';
-    ctx.fillText('Escanee para ver historial inalterable en línea', canvas.width / 2, 525);
-
-    // Disparar descarga
-    const a = document.createElement('a');
-    a.download = `QR-Etiqueta-${codigoLote}.png`;
-    a.href = canvas.toDataURL('image/png');
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-  };
-  img.src = qrDataUrl;
+  const a = document.createElement('a');
+  a.download = `QR-Etiqueta-${codigoLote}.png`;
+  a.href = canvas.toDataURL('image/png');
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
 }

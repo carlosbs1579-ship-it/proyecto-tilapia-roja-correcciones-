@@ -151,25 +151,6 @@ export default function App() {
       setFuncionActiva(null);
       return;
     }
-    // Preferencia del ingreso: se evalúa cuando ya cargó el perfil de esta cuenta
-    if (funcionPedida && perfilUsuario?.uid !== usuario.uid) return;
-    // Solo si la cuenta tiene esa función (un administrador entra como tal al elegir Operador)
-    if (funcionPedida) {
-      const aplicable = funciones.includes(funcionPedida)
-        ? funcionPedida
-        : funcionPedida === 'operator' && funciones.includes('admin')
-        ? 'admin'
-        : null;
-      setFuncionPedida(null);
-      if (aplicable) {
-        guardarFuncion(usuario.uid, aplicable);
-        setFuncionActiva(aplicable);
-        return;
-      }
-      setAvisoFuncionPedida(
-        `Tu cuenta no tiene la función de ${funcionPedida === 'courier' ? 'repartidor' : 'operador'}. Entraste con las funciones que te asignó el administrador.`
-      );
-    }
     if (funciones.length === 1) {
       setFuncionActiva(funciones[0]);
       return;
@@ -180,6 +161,32 @@ export default function App() {
       return guardada && funciones.includes(guardada) ? guardada : null;
     });
   }, [usuario?.uid, clavefunciones, perfilUsuario?.uid]);
+
+  // 1b. Preferencia elegida en el ingreso. El perfil puede llegar en dos pasos (primero la copia
+  // sincronizada, luego la de tiempo real con todos los roles), así que se aplica en cuanto la cuenta
+  // tiene la función; el aviso solo aparece si después de unos segundos sigue sin tenerla.
+  useEffect(() => {
+    if (!funcionPedida || !usuario || !perfilUsuario) return;
+    const aplicable = funciones.includes(funcionPedida)
+      ? funcionPedida
+      : funcionPedida === 'operator' && funciones.includes('admin')
+      ? 'admin'
+      : null;
+    if (aplicable) {
+      setFuncionPedida(null);
+      setAvisoFuncionPedida(null);
+      guardarFuncion(usuario.uid, aplicable);
+      setFuncionActiva(aplicable);
+      return;
+    }
+    const t = setTimeout(() => {
+      setFuncionPedida(null);
+      setAvisoFuncionPedida(
+        `Tu cuenta no tiene la función de ${funcionPedida === 'courier' ? 'repartidor' : 'operador'}. Entraste con las funciones que te asignó el administrador.`
+      );
+    }, 3000);
+    return () => clearTimeout(t);
+  }, [funcionPedida, usuario?.uid, clavefunciones, Boolean(perfilUsuario)]);
 
   // Los registros nuevos guardan el nombre visible de quien los hace (no solo el correo)
   useEffect(() => {

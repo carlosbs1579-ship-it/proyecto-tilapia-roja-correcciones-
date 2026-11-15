@@ -235,7 +235,7 @@ export const EntregasPanel: React.FC<EntregasPanelProps> = ({ lote, userEmail, p
                     </span>
                   </div>
                   <p className="text-xs text-slate-500 mt-1">
-                    {e.cantidadKg.toLocaleString()} kg •{' '}
+                    {e.cantidadKg.toLocaleString()} kg ·{' '}
                     {e.estado === 'entregada' ? `Entregado el ${e.fechaEntrega}` : `Programado para ${e.fechaProgramada}`}
                   </p>
                 </div>
@@ -295,7 +295,7 @@ export const EntregasPanel: React.FC<EntregasPanelProps> = ({ lote, userEmail, p
                         )}
                         {r.tipo !== 'Reasignación de cliente' && (
                           <p>
-                            Cliente: <strong>{r.datos.cliente}</strong> • {Number(r.datos.cantidadKg).toLocaleString()} kg
+                            Cliente: <strong>{r.datos.cliente}</strong> · {Number(r.datos.cantidadKg).toLocaleString()} kg
                           </p>
                         )}
                         {r.datos.motivo && <p>Motivo: {r.datos.motivo}</p>}
@@ -303,7 +303,7 @@ export const EntregasPanel: React.FC<EntregasPanelProps> = ({ lote, userEmail, p
                       </div>
                       <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
                         <span>
-                          {r.registradoPor} • {formatearFechaColombia(r.registradoEn)}
+                          {r.registradoPor} · {formatearFechaColombia(r.registradoEn)}
                         </span>
                         <span title={`SHA-256: ${r.hash}`} className="font-mono">
                           {r.hash.substring(0, 12)}...
@@ -329,14 +329,14 @@ export const EntregasPanel: React.FC<EntregasPanelProps> = ({ lote, userEmail, p
                   <h3 className="font-semibold text-base">{formulario.tipo}</h3>
                   <p className="text-xs text-slate-500">
                     Lote sellado: {lote.codigo}
-                    {formulario.entrega ? ` • Cliente actual: ${formulario.entrega.cliente}` : ''}
+                    {formulario.entrega ? ` · Cliente actual: ${formulario.entrega.cliente}` : ''}
                   </p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setFormulario(null)}
-                className="text-slate-500 hover:text-white p-1 rounded transition-colors"
+                className="text-slate-500 hover:text-white p-1 rounded-md transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>

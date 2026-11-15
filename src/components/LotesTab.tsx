@@ -83,7 +83,7 @@ export const LotesTab: React.FC<LotesTabProps> = ({
         <div>
           <h1 className="text-2xl text-slate-900">Gestión de lotes de cultivo</h1>
           <p className="text-xs text-slate-500">
-            Modalidad Tilapia Pro • Registro incremental de siembra a despacho
+            Modalidad Tilapia Pro · Registro incremental de siembra a despacho
           </p>
         </div>
       </div>
@@ -97,7 +97,7 @@ export const LotesTab: React.FC<LotesTabProps> = ({
               Buscar por Código
             </label>
             <div className="relative">
-              <Search className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
+              <Search className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
               <input
                 type="text"
                 placeholder="ej: 20261023, E1, A-E2..."

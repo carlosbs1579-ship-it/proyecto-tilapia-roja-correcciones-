@@ -9,8 +9,15 @@ export const DURACION = {
   base: 0.22, // pestañas, interruptores, menús
   entrada: 0.32, // pantallas, modales
   salida: 0.18, // siempre más corta que la entrada
-  reducido: 0.12
+  reducido: 0.12,
+  velo: 0.2,
+  interruptor: 0.2
 } as const;
+
+/** Escalonado entre bloques de la pantalla de ingreso, temblor de error y retraso del logo de verificación */
+export const ESCALON_BLOQUES = 0.08;
+export const TEMBLOR = { distancia: 4, duracion: 0.32 } as const;
+export const RETRASO_VERIFICANDO = 0.15;
 
 export const CURVA = {
   entrada: [0.22, 1, 0.36, 1] as [number, number, number, number],

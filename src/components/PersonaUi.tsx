@@ -26,7 +26,7 @@ export const Interruptor: React.FC<{
   >
     <span
       aria-hidden="true"
-      className={`interruptor-circulo absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white ${
+      className={`interruptor-circulo absolute top-1 left-1 h-4 w-4 rounded-full bg-white ${
         activo ? 'translate-x-4' : indeterminado ? 'translate-x-2' : 'translate-x-0'
       }`}
     />
@@ -116,7 +116,7 @@ export const MenuTresPuntos: React.FC<{
             animate="visible"
             exit="salida"
             style={{ transformOrigin: 'top right' }}
-            className="absolute right-0 top-full mt-1 z-20 w-56 rounded-lg border border-slate-200 bg-white py-1 shadow-lg"
+            className="absolute right-0 top-full mt-1 z-20 w-56 rounded-lg border border-slate-300 bg-white py-1 shadow-sm"
           >
             {acciones.map((a) => (
               <button

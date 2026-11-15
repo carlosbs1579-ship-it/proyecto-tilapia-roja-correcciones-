@@ -13,6 +13,7 @@
   --mov-salida: 180ms; /* siempre más corta que la entrada */
   --mov-reducido: 120ms;
   --mov-velo: 200ms; /* fondo oscuro detrás de las ventanas */
+  --mov-interruptor: 200ms; /* círculo de los interruptores */
 
   /* Curvas */
   --curva-entrada: cubic-bezier(0.22, 1, 0.36, 1);

@@ -256,13 +256,13 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
           <div>
             <h3 className="font-semibold text-base">Registrar Fase de Trazabilidad</h3>
             <p className="text-xs text-slate-500">
-              Lote: <strong className="text-sky-400">{lote.codigo}</strong> • Evento #{lote.eventos?.length || 0}
+              Lote: <strong className="text-sky-400">{lote.codigo}</strong> · Evento #{lote.eventos?.length || 0}
             </p>
           </div>
           <button
             onClick={onClose}
             disabled={cargando}
-            className="text-slate-500 hover:text-white p-1 rounded transition-colors"
+            className="text-slate-500 hover:text-white p-1 rounded-md transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -324,7 +324,7 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                 Fecha de la Fase (Bogotá) *
               </label>
               <div className="relative">
-                <Calendar className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
+                <Calendar className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
                 <input
                   type="date"
                   required
@@ -354,9 +354,9 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                   <div className="flex items-center justify-between mb-1">
                     <label className="text-xs font-medium text-slate-700">Temperatura (°C)</label>
                     {evalTemp.fueraDeRango ? (
-                      <span className="text-xs bg-red-100 text-red-700 px-2 py-0.2 rounded font-semibold">Fuera</span>
+                      <span className="text-xs bg-red-100 text-red-700 px-2 py-0.2 rounded-md font-semibold">Fuera</span>
                     ) : (
-                      <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.2 rounded font-semibold">Óptimo</span>
+                      <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.2 rounded-md font-semibold">Óptimo</span>
                     )}
                   </div>
                   <input
@@ -375,9 +375,9 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                   <div className="flex items-center justify-between mb-1">
                     <label className="text-xs font-medium text-slate-700">O₂ Disuelto (mg/L)</label>
                     {evalOx.fueraDeRango ? (
-                      <span className="text-xs bg-red-100 text-red-700 px-2 py-0.2 rounded font-semibold">Crítico</span>
+                      <span className="text-xs bg-red-100 text-red-700 px-2 py-0.2 rounded-md font-semibold">Crítico</span>
                     ) : (
-                      <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.2 rounded font-semibold">Óptimo</span>
+                      <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.2 rounded-md font-semibold">Óptimo</span>
                     )}
                   </div>
                   <input
@@ -396,9 +396,9 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                   <div className="flex items-center justify-between mb-1">
                     <label className="text-xs font-medium text-slate-700">pH</label>
                     {evalPh.fueraDeRango ? (
-                      <span className="text-xs bg-red-100 text-red-700 px-2 py-0.2 rounded font-semibold">Fuera</span>
+                      <span className="text-xs bg-red-100 text-red-700 px-2 py-0.2 rounded-md font-semibold">Fuera</span>
                     ) : (
-                      <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.2 rounded font-semibold">Óptimo</span>
+                      <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.2 rounded-md font-semibold">Óptimo</span>
                     )}
                   </div>
                   <input
@@ -417,9 +417,9 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                   <div className="flex items-center justify-between mb-1">
                     <label className="text-xs font-medium text-slate-700">Amonio total (mg/L)</label>
                     {evalAm.fueraDeRango ? (
-                      <span className="text-xs bg-red-100 text-red-700 px-2 py-0.2 rounded font-semibold">Alto</span>
+                      <span className="text-xs bg-red-100 text-red-700 px-2 py-0.2 rounded-md font-semibold">Alto</span>
                     ) : (
-                      <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.2 rounded font-semibold">Óptimo</span>
+                      <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.2 rounded-md font-semibold">Óptimo</span>
                     )}
                   </div>
                   <input
@@ -438,9 +438,9 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                   <div className="flex items-center justify-between mb-1">
                     <label className="text-xs font-medium text-slate-700">Nitritos (mg/L)</label>
                     {evalNit.fueraDeRango ? (
-                      <span className="text-xs bg-red-100 text-red-700 px-2 py-0.2 rounded font-semibold">Tóxico</span>
+                      <span className="text-xs bg-red-100 text-red-700 px-2 py-0.2 rounded-md font-semibold">Tóxico</span>
                     ) : (
-                      <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.2 rounded font-semibold">Óptimo</span>
+                      <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.2 rounded-md font-semibold">Óptimo</span>
                     )}
                   </div>
                   <input
@@ -459,9 +459,9 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                   <div className="flex items-center justify-between mb-1">
                     <label className="text-xs font-medium text-slate-700">Transp. Secchi (cm)</label>
                     {evalSec.fueraDeRango ? (
-                      <span className="text-xs bg-red-100 text-red-700 px-2 py-0.2 rounded font-semibold">Fuera</span>
+                      <span className="text-xs bg-red-100 text-red-700 px-2 py-0.2 rounded-md font-semibold">Fuera</span>
                     ) : (
-                      <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.2 rounded font-semibold">Óptimo</span>
+                      <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.2 rounded-md font-semibold">Óptimo</span>
                     )}
                   </div>
                   <input
@@ -749,7 +749,7 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                   id="escamado"
                   checked={escamadoEviscerado}
                   onChange={(e) => setEscamadoEviscerado(e.target.checked)}
-                  className="rounded text-sky-600 focus:ring-sky-500 h-4 w-4"
+                  className="rounded-md text-sky-600 focus:ring-sky-500 h-4 w-4"
                 />
                 <label htmlFor="escamado" className="text-xs font-medium text-slate-700">
                   Escamado y eviscerado completo verificado (Calibre 450 - 500 g)
@@ -818,7 +818,7 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                     id="hielo"
                     checked={usoHielo}
                     onChange={(e) => setUsoHielo(e.target.checked)}
-                    className="rounded text-sky-600 focus:ring-sky-500 h-4 w-4"
+                    className="rounded-md text-sky-600 focus:ring-sky-500 h-4 w-4"
                   />
                   <label htmlFor="hielo" className="ml-2 text-xs font-medium text-slate-700">
                     Uso de hielo en escamas para cadena de frío
@@ -878,7 +878,7 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                     id="isotermico"
                     checked={contenedorIsotermico}
                     onChange={(e) => setContenedorIsotermico(e.target.checked)}
-                    className="rounded text-sky-600 focus:ring-sky-500 h-4 w-4"
+                    className="rounded-md text-sky-600 focus:ring-sky-500 h-4 w-4"
                   />
                   <label htmlFor="isotermico" className="ml-2 text-xs font-medium text-slate-700">
                     Contenedor isotérmico con hielo
@@ -906,7 +906,7 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                 >
                   {(lote.eventos || []).map((ev) => (
                     <option key={ev.id} value={ev.id}>
-                      #{ev.indice} • {ev.fechaEvento} • {ev.tipo} · {ev.descripcion || 'Sin descripción'}
+                      #{ev.indice} · {ev.fechaEvento} · {ev.tipo} · {ev.descripcion || 'Sin descripción'}
                     </option>
                   ))}
                 </select>

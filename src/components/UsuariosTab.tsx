@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { EsqueletoTarjetas } from './Esqueleto';
 import { AnimatePresence, motion } from 'motion/react';
 import { AvatarIniciales, Interruptor, MenuTresPuntos } from './PersonaUi';
@@ -124,6 +124,14 @@ export const UsuariosTab: React.FC<UsuariosTabProps> = ({
   const [mensajeExito, setMensajeExito] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [usuarioAEliminar, setUsuarioAEliminar] = useState<string | null>(null);
+  const temporizadorAviso = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const avisar = () => {
+    if (temporizadorAviso.current) clearTimeout(temporizadorAviso.current);
+    temporizadorAviso.current = setTimeout(() => setMensajeExito(null), 3000);
+  };
+  useEffect(() => () => {
+    if (temporizadorAviso.current) clearTimeout(temporizadorAviso.current);
+  }, []);
 
   const [filtroTexto, setFiltroTexto] = useState('');
   const [filtroEstado, setFiltroEstado] = useState<'todos' | 'activo' | 'pendiente' | 'inactivo'>('todos');
@@ -210,7 +218,7 @@ export const UsuariosTab: React.FC<UsuariosTabProps> = ({
       await cambiarEstadoOperario(u.uid, nuevoEstado, userEmail, u);
       const etiqueta = nuevoEstado === 'activo' ? 'Activo' : nuevoEstado === 'pendiente' ? 'Pendiente' : 'Inactivo';
       setMensajeExito(`Estado de "${u.displayName || u.email}" actualizado a ${etiqueta}.`);
-      setTimeout(() => setMensajeExito(null), 3000);
+      avisar();
     } catch (err: any) {
       console.error('Error al actualizar estado:', err);
       setErrorMsg(err.message || 'No se pudo actualizar el estado.');
@@ -326,7 +334,7 @@ export const UsuariosTab: React.FC<UsuariosTabProps> = ({
     try {
       await actualizarPerfilOperario(u.uid, edit, userEmail);
       setMensajeExito(`Perfil y permisos de "${u.displayName || u.email}" guardados.`);
-      setTimeout(() => setMensajeExito(null), 3000);
+      avisar();
     } catch (err: any) {
       console.error('Error guardando usuario:', err);
       setErrorMsg(err.message || 'No se pudo guardar el usuario.');
@@ -345,7 +353,7 @@ export const UsuariosTab: React.FC<UsuariosTabProps> = ({
     try {
       await eliminarPerfilUsuario(uid);
       setMensajeExito(`Usuario "${email}" retirado exitosamente del sistema.`);
-      setTimeout(() => setMensajeExito(null), 3000);
+      avisar();
     } catch (err: any) {
       console.error('Error eliminando usuario:', err);
       setErrorMsg(err.message || 'No se pudo eliminar el usuario.');
@@ -372,7 +380,7 @@ export const UsuariosTab: React.FC<UsuariosTabProps> = ({
         guardados++;
       }
       setMensajeExito(guardados ? `Se guardaron ${guardados} perfil(es) con cambios.` : 'No había cambios por guardar.');
-      setTimeout(() => setMensajeExito(null), 3000);
+      avisar();
     } catch (err: any) {
       console.error('Error guardando perfiles:', err);
       setErrorMsg(err.message || 'Error al guardar perfiles.');
@@ -830,7 +838,7 @@ export const UsuariosTab: React.FC<UsuariosTabProps> = ({
                 {funcionesDisponibles(perfilActual).map((f) => (
                   <li key={f} className="text-sm text-slate-900">
                     <strong>{nombreFuncion(perfilActual, f)}</strong>
-                    <span className="text-xs text-slate-500"> • {ETIQUETA_ROL[f]}</span>
+                    <span className="text-xs text-slate-500"> · {ETIQUETA_ROL[f]}</span>
                   </li>
                 ))}
               </ul>
@@ -913,7 +921,7 @@ export const UsuariosTab: React.FC<UsuariosTabProps> = ({
             initial={{ opacity: 0, y: DISTANCIA.pantalla }}
             animate={{ opacity: 1, y: 0, transition: entrada(DURACION.base) }}
             exit={{ opacity: 0, y: DISTANCIA.pequena, transition: salida() }}
-            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 max-w-[calc(100vw-2rem)] flex items-center gap-2 rounded-md bg-slate-900 text-white px-4 py-3 text-sm shadow-lg"
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 max-w-[calc(100vw-2rem)] flex items-center gap-2 rounded-md bg-slate-900 text-white px-4 py-3 text-sm shadow-sm"
           >
             <Check className="w-4 h-4 shrink-0 text-emerald-300" strokeWidth={1.75} />
             <span>{mensajeExito}</span>

@@ -125,7 +125,7 @@ export const AnotacionesLotePanel: React.FC<{
                 setFase(Number(e.target.value));
                 setDato('');
               }}
-              className="mt-1 w-full px-2 py-2 border border-slate-300 rounded bg-white"
+              className="mt-1 w-full px-2 py-2 border border-slate-300 rounded-md bg-white"
             >
               <option value={-1}>Selecciona la fase</option>
               {eventos.map((ev) => (
@@ -138,7 +138,7 @@ export const AnotacionesLotePanel: React.FC<{
           {faseSel && (
             <label className="block">
               <span className="font-semibold text-slate-700">Dato</span>
-              <select aria-label="Dato" value={dato} onChange={(e) => setDato(e.target.value)} className="mt-1 w-full px-2 py-2 border border-slate-300 rounded bg-white">
+              <select aria-label="Dato" value={dato} onChange={(e) => setDato(e.target.value)} className="mt-1 w-full px-2 py-2 border border-slate-300 rounded-md bg-white">
                 <option value="">Selecciona el dato</option>
                 {datosFase.map((k) => (
                   <option key={k} value={k}>
@@ -158,7 +158,7 @@ export const AnotacionesLotePanel: React.FC<{
                 value={valorCorrecto}
                 onChange={(e) => setValorCorrecto(e.target.value)}
                 placeholder={`Registrado: ${valorRegistrado}`}
-                className="mt-1 w-full px-2 py-2 border border-slate-300 rounded"
+                className="mt-1 w-full px-2 py-2 border border-slate-300 rounded-md"
               />
             </label>
           )}
@@ -170,7 +170,7 @@ export const AnotacionesLotePanel: React.FC<{
               value={motivo}
               onChange={(e) => setMotivo(e.target.value)}
               placeholder="Por qué se hace esta anotación (mínimo 10 caracteres)"
-              className="mt-1 w-full px-2 py-2 border border-slate-300 rounded"
+              className="mt-1 w-full px-2 py-2 border border-slate-300 rounded-md"
             />
           </label>
           {faltante && <p className="text-amber-700">Para enviar: {faltante}.</p>}
@@ -250,7 +250,7 @@ export const AnotacionesLotePanel: React.FC<{
                       placeholder="Comentario (obligatorio para rechazar)"
                       value={respuestas[a.propuesta.indice] || ''}
                       onChange={(e) => setRespuestas((prev) => ({ ...prev, [a.propuesta.indice]: e.target.value }))}
-                      className="flex-1 min-w-[10rem] px-2 py-1 border border-slate-300 rounded"
+                      className="flex-1 min-w-[10rem] px-2 py-1 border border-slate-300 rounded-md"
                     />
                     <button
                       type="button"
@@ -261,7 +261,7 @@ export const AnotacionesLotePanel: React.FC<{
                           `Anotación N.º ${a.numero} aprobada.`
                         )
                       }
-                      className="flex items-center px-2 py-1 rounded bg-slate-900 text-white font-semibold disabled:opacity-40"
+                      className="flex items-center px-2 py-1 rounded-md bg-slate-900 text-white font-semibold disabled:opacity-40"
                     >
                       <Check className="w-3.5 h-3.5 mr-1" /> Aprobar
                     </button>
@@ -274,7 +274,7 @@ export const AnotacionesLotePanel: React.FC<{
                           `Anotación N.º ${a.numero} rechazada.`
                         )
                       }
-                      className="flex items-center px-2 py-1 rounded border border-slate-300 font-semibold disabled:opacity-40"
+                      className="flex items-center px-2 py-1 rounded-md border border-slate-300 font-semibold disabled:opacity-40"
                     >
                       <X className="w-3.5 h-3.5 mr-1" /> Rechazar
                     </button>

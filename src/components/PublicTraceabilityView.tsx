@@ -186,7 +186,7 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
     if (navigator.share) {
       try {
         await navigator.share({
-          title: `Trazabilidad Lote ${lote?.codigo} • Cultivos Loré`,
+          title: `Trazabilidad Lote ${lote?.codigo} · Cultivos Loré`,
           text: `Certificado oficial de trazabilidad inalterable para Tilapia Pro de Cultivos Loré (Turbaco, Bolívar).`,
           url
         });
@@ -210,8 +210,8 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
         <div className="max-w-4xl mx-auto px-4 pt-6 space-y-6">
           <div className="rounded-2xl border border-slate-200 overflow-hidden">
             <div className="bg-slate-900 p-6 space-y-4">
-              <span className="esqueleto block h-9 w-56 rounded bg-slate-800" />
-              <span className="esqueleto block h-3 w-72 max-w-full rounded bg-slate-800" />
+              <span className="esqueleto block h-9 w-56 rounded-md bg-slate-800" />
+              <span className="esqueleto block h-3 w-72 max-w-full rounded-md bg-slate-800" />
             </div>
             <div className="p-6 grid grid-cols-2 sm:grid-cols-4 gap-4">
               {Array.from({ length: 4 }).map((_, i) => (
@@ -640,9 +640,9 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
 
       {/* PIE DE PÁGINA */}
       <footer className="max-w-4xl mx-auto px-4 mt-8 pt-6 border-t border-slate-200 text-center text-xs text-slate-500">
-        <p className="font-semibold text-slate-700">Cultivos Loré • Turbaco, Bolívar, Colombia</p>
+        <p className="font-semibold text-slate-700">Cultivos Loré · Turbaco, Bolívar, Colombia</p>
         <p className="mt-1">
-          Acuicultura de precisión • Tilapia roja • Cadena criptográfica verificable
+          Acuicultura de precisión · Tilapia roja · Cadena criptográfica verificable
         </p>
       </footer>
     </div>

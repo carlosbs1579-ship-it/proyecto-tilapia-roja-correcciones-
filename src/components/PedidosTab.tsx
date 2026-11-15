@@ -359,7 +359,7 @@ export const PedidosTab: React.FC<PedidosTabProps> = ({ lotes, perfilActual }) =
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
               <label className="relative col-span-2 md:col-span-1">
-                <Search className="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-2.5" />
+                <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-3" />
                 <input className={campo + ' w-full pl-8'} placeholder="Pedido o cliente" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
               </label>
               <select className={campo} value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value as any)}>
@@ -556,7 +556,7 @@ export const PedidosTab: React.FC<PedidosTabProps> = ({ lotes, perfilActual }) =
                                 {orden.id}
                               </button>
                               <span className="text-slate-500">
-                                {' '}• {num(cantidad)} {orden.unidad} • {ETIQUETA_ESTADO_ORDEN[orden.estado]}
+                                {' '}· {num(cantidad)} {orden.unidad} · {ETIQUETA_ESTADO_ORDEN[orden.estado]}
                               </span>
                             </li>
                           ))}

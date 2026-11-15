@@ -5,7 +5,7 @@ import React from 'react';
  * de izquierda a derecha en 1,5 s (solo transform). Con movimiento reducido queda quieto.
  */
 export const Bloque: React.FC<{ className?: string }> = ({ className = '' }) => (
-  <span aria-hidden="true" className={`esqueleto block rounded bg-slate-100 ${className}`} />
+  <span aria-hidden="true" className={`esqueleto block rounded-md bg-slate-100 ${className}`} />
 );
 
 /** Tabla: cabecera y filas con barras de distinto ancho y una etiqueta a la derecha */

@@ -260,7 +260,7 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
                   </span>
                 </div>
                 <p className="text-xs text-slate-300">
-                  Estanque {lote.estanque} • Siembra: {lote.fechaSiembra} • Consecutivo #{lote.consecutivo}
+                  Estanque {lote.estanque} · Siembra: {lote.fechaSiembra} · Consecutivo #{lote.consecutivo}
                 </p>
               </div>
             </div>
@@ -426,7 +426,7 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
                       <button
                         onClick={handleCerrarLote}
                         disabled={procesandoAccion}
-                        className="px-3 py-1 bg-amber-600 text-white font-semibold rounded hover:bg-amber-700"
+                        className="px-3 py-1 bg-amber-600 text-white font-semibold rounded-md hover:bg-amber-700"
                       >
                         {procesandoAccion ? 'Cerrando...' : 'Sí, Cerrar'}
                       </button>
@@ -607,7 +607,7 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
                         )}
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex items-start space-x-3">
-                            <span className="font-mono text-xs font-semibold text-slate-500 bg-slate-100 px-2 py-1 rounded">
+                            <span className="font-mono text-xs font-semibold text-slate-500 bg-slate-100 px-2 py-1 rounded-md">
                               #{ev.indice}
                             </span>
                             <div>
@@ -639,7 +639,7 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
                                   {Object.entries(ev.datos).map(([k, v]) => (
                                     <span
                                       key={k}
-                                      className="text-xs bg-slate-100 text-slate-700 px-2 py-1 rounded border border-slate-200"
+                                      className="text-xs bg-slate-100 text-slate-700 px-2 py-1 rounded-md border border-slate-200"
                                     >
                                       <strong className="text-slate-900">{nombreDato(k)}:</strong> {typeof v === 'boolean' ? (v ? 'SÍ' : 'NO') : String(v)}
                                     </span>
@@ -649,8 +649,8 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
 
                               {/* Alertas específicas de calidad de agua */}
                               {alertasDelEvento.length > 0 && (
-                                <div className="mt-2 text-xs text-red-700 bg-red-50 p-2 rounded border border-red-200">
-                                  {alertasDelEvento.join(' • ')}
+                                <div className="mt-2 text-xs text-red-700 bg-red-50 p-2 rounded-md border border-red-200">
+                                  {alertasDelEvento.join(' · ')}
                                 </div>
                               )}
                             </div>
@@ -663,7 +663,7 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
                             <p className="rotulo text-slate-500 mt-1">Registró</p>
                             <span
                               title={`SHA-256: ${ev.hash}`}
-                              className="font-mono text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded block mt-1 max-w-[120px] truncate"
+                              className="font-mono text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded-md block mt-1 max-w-[120px] truncate"
                             >
                               {ev.hash.substring(0, 10)}...
                             </span>
@@ -726,7 +726,7 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
               <button
                 type="button"
                 onClick={() => setModalEditarSiembraOpen(false)}
-                className="text-slate-500 hover:text-white p-1 rounded transition-colors"
+                className="text-slate-500 hover:text-white p-1 rounded-md transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>

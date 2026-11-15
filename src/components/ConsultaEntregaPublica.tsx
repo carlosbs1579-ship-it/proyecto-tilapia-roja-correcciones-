@@ -89,7 +89,7 @@ export const ConsultaEntregaPublica: React.FC<{
                   <span className="font-mono font-semibold">{actual.ordenId}</span>
                 </div>
                 <span
-                  className={`px-2 py-1 rounded text-xs font-semibold ${
+                  className={`px-2 py-1 rounded-md text-xs font-semibold ${
                     actual.estadoEntrega === 'entregado' && actual.cantidadPendiente <= 0
                       ? 'bg-emerald-100 text-emerald-800'
                       : 'bg-amber-100 text-amber-800'
@@ -159,23 +159,23 @@ export const ConsultaEntregaPublica: React.FC<{
               })()}
               {bloques.map((b) =>
                 esAnulacion(b) ? (
-                  <li key={b.id} className="border border-red-100 bg-red-50/40 rounded p-2 text-xs text-red-700">
+                  <li key={b.id} className="border border-red-100 bg-red-50/40 rounded-md p-2 text-xs text-red-700">
                     Registro N.º {b.version} · Anulación del comprobante N.º {b.versionAnulada} · {formatearFechaColombia(b.emitidoEn)}
                   </li>
                 ) : ((c: ComprobanteEntrega) => (
-                <div key={c.id} className="border border-slate-100 rounded p-2 space-y-1 text-xs">
+                <div key={c.id} className="border border-slate-100 rounded-md p-2 space-y-1 text-xs">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <span>
                       <strong>Comprobante N.º {c.version}</strong>
-                      {anulaciones[c.id] && <strong className="ml-1 px-1 rounded bg-red-100 text-red-700">ANULADO</strong>} · {formatearFechaColombia(c.emitidoEn)} ·{' '}
+                      {anulaciones[c.id] && <strong className="ml-1 px-1 rounded-md bg-red-100 text-red-700">ANULADO</strong>} · {formatearFechaColombia(c.emitidoEn)} ·{' '}
                       {c.estadoEntrega === 'entregado' ? 'entrega completa' : 'entrega parcial'} · entregado {num(c.cantidadEntregada)} {c.unidad}
                     </span>
                     <span className="flex gap-1">
-                      <button type="button" onClick={() => verComprobantePdf(c, false, anulaciones[c.id])} className="flex items-center px-2 py-1 rounded border border-slate-300 hover:bg-slate-100">
+                      <button type="button" onClick={() => verComprobantePdf(c, false, anulaciones[c.id])} className="flex items-center px-2 py-1 rounded-md border border-slate-300 hover:bg-slate-100">
                         <FileText className="w-3 h-3 mr-1" />
                         Ver
                       </button>
-                      <button type="button" onClick={() => descargarComprobantePdf(c, false, anulaciones[c.id])} className="flex items-center px-2 py-1 rounded border border-slate-300 hover:bg-slate-100">
+                      <button type="button" onClick={() => descargarComprobantePdf(c, false, anulaciones[c.id])} className="flex items-center px-2 py-1 rounded-md border border-slate-300 hover:bg-slate-100">
                         <Download className="w-3 h-3 mr-1" />
                         PDF
                       </button>

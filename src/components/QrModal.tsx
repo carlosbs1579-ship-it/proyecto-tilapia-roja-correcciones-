@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Bloque } from './Esqueleto';
 import { usePresencia } from '../lib/presencia';
 import { X, Download, Copy, Check, ExternalLink, QrCode } from 'lucide-react';
 import { Lote, ConfiguracionGeneral } from '../types';
@@ -71,7 +72,7 @@ export const QrModal: React.FC<QrModalProps> = ({
           </div>
           <button
             onClick={onClose}
-            className="text-slate-500 hover:text-white p-1 rounded transition-colors"
+            className="text-slate-500 hover:text-white p-1 rounded-md transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
@@ -80,7 +81,7 @@ export const QrModal: React.FC<QrModalProps> = ({
         <div className="p-6">
           <div className="mb-3">
             <span className="text-xs uppercase font-semibold text-sky-700 bg-sky-50 px-3 py-1 rounded-full border border-sky-200">
-              Cultivos Loré • Tilapia Pro
+              Cultivos Loré · Tilapia Pro
             </span>
           </div>
 
@@ -91,9 +92,7 @@ export const QrModal: React.FC<QrModalProps> = ({
           {/* Recuadro del QR */}
           <div className="bg-white p-4 rounded-xl border-2 border-slate-200 inline-block shadow-inner mb-3">
             {cargando ? (
-              <div className="w-56 h-56 flex items-center justify-center">
-                <div className="w-8 h-8 border-3 border-sky-600 border-t-transparent rounded-full animate-spin" />
-              </div>
+              <Bloque className="w-56 h-56" />
             ) : qrDataUrl ? (
               <img
                 src={qrDataUrl}
@@ -114,7 +113,7 @@ export const QrModal: React.FC<QrModalProps> = ({
               {lote.codigo}
             </p>
             <p className="text-xs text-slate-500 mt-1">
-              Estanque {lote.estanque} • Siembra: {lote.fechaSiembra}
+              Estanque {lote.estanque} · Siembra: {lote.fechaSiembra}
             </p>
           </div>
 

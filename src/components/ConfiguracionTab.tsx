@@ -283,14 +283,14 @@ export const ConfiguracionTab: React.FC<ConfiguracionTabProps> = ({
                     /* Modo edición inline */
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
-                        <span className="font-mono font-semibold text-xs bg-sky-200 text-sky-900 px-2 py-1 rounded">
+                        <span className="font-mono font-semibold text-xs bg-sky-200 text-sky-900 px-2 py-1 rounded-md">
                           {est.codigo}
                         </span>
                         <div className="flex items-center space-x-1">
                           <button
                             type="button"
                             onClick={() => handleGuardarEdicion(est.codigo)}
-                            className="p-1 text-emerald-600 hover:bg-emerald-100 rounded"
+                            className="p-1 text-emerald-600 hover:bg-emerald-100 rounded-md"
                             title="Guardar cambios"
                           >
                             <Check className="w-4 h-4" />
@@ -298,7 +298,7 @@ export const ConfiguracionTab: React.FC<ConfiguracionTabProps> = ({
                           <button
                             type="button"
                             onClick={() => setEditandoCodigo(null)}
-                            className="p-1 text-slate-500 hover:bg-slate-200 rounded"
+                            className="p-1 text-slate-500 hover:bg-slate-200 rounded-md"
                             title="Cancelar"
                           >
                             <X className="w-4 h-4" />
@@ -311,7 +311,7 @@ export const ConfiguracionTab: React.FC<ConfiguracionTabProps> = ({
                           type="text"
                           value={editNombre}
                           onChange={(e) => setEditNombre(e.target.value)}
-                          className="w-full px-2 py-1 text-xs border border-slate-300 rounded bg-white"
+                          className="w-full px-2 py-1 text-xs border border-slate-300 rounded-md bg-white"
                         />
                       </div>
                       <div>
@@ -320,7 +320,7 @@ export const ConfiguracionTab: React.FC<ConfiguracionTabProps> = ({
                           type="number"
                           value={editVolumen}
                           onChange={(e) => setEditVolumen(e.target.value === '' ? '' : Number(e.target.value))}
-                          className="w-full px-2 py-1 text-xs border border-slate-300 rounded bg-white"
+                          className="w-full px-2 py-1 text-xs border border-slate-300 rounded-md bg-white"
                         />
                       </div>
                     </div>
@@ -339,14 +339,14 @@ export const ConfiguracionTab: React.FC<ConfiguracionTabProps> = ({
                           type="button"
                           onClick={() => handleConfirmarEliminar(est.codigo)}
                           disabled={guardando}
-                          className="px-3 py-1 bg-red-600 hover:bg-red-500 text-white rounded text-xs font-semibold transition-colors shadow-xs"
+                          className="px-3 py-1 bg-red-600 hover:bg-red-500 text-white rounded-md text-xs font-semibold transition-colors shadow-xs"
                         >
                           Sí, eliminar
                         </button>
                         <button
                           type="button"
                           onClick={handleCancelarEliminar}
-                          className="px-3 py-1 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded text-xs font-medium transition-colors"
+                          className="px-3 py-1 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-md text-xs font-medium transition-colors"
                         >
                           Cancelar
                         </button>
@@ -373,7 +373,7 @@ export const ConfiguracionTab: React.FC<ConfiguracionTabProps> = ({
                           <button
                             type="button"
                             onClick={() => handleIniciarEdicion(est)}
-                            className="text-slate-500 hover:text-sky-600 p-1 rounded hover:bg-slate-200/60 transition-colors"
+                            className="text-slate-500 hover:text-sky-600 p-1 rounded-md hover:bg-slate-200/60 transition-colors"
                             title="Editar estanque"
                           >
                             <Edit2 className="w-3.5 h-3.5" />
@@ -381,7 +381,7 @@ export const ConfiguracionTab: React.FC<ConfiguracionTabProps> = ({
                           <button
                             type="button"
                             onClick={() => handleSolicitarEliminar(est.codigo)}
-                            className="text-slate-500 hover:text-red-500 p-1 rounded hover:bg-slate-200/60 transition-colors"
+                            className="text-slate-500 hover:text-red-500 p-1 rounded-md hover:bg-slate-200/60 transition-colors"
                             title="Eliminar estanque"
                           >
                             <Trash2 className="w-3.5 h-3.5" />

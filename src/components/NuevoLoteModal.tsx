@@ -114,7 +114,7 @@ export const NuevoLoteModal: React.FC<NuevoLoteModalProps> = ({
             <PlusCircle className="w-5 h-5 text-sky-400" />
             <div>
               <h3 className="font-semibold text-base">Crear nuevo lote productivo</h3>
-              <p className="text-xs text-slate-500">Modalidad Tilapia Pro • Cultivos Loré</p>
+              <p className="text-xs text-slate-500">Modalidad Tilapia Pro · Cultivos Loré</p>
             </div>
           </div>
           <button
@@ -181,7 +181,7 @@ export const NuevoLoteModal: React.FC<NuevoLoteModalProps> = ({
                 Fecha de siembra (Bogotá) *
               </label>
               <div className="relative">
-                <Calendar className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
+                <Calendar className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
                 <input
                   type="date"
                   required
@@ -200,7 +200,7 @@ export const NuevoLoteModal: React.FC<NuevoLoteModalProps> = ({
                 Cantidad sembrada (alevinos) *
               </label>
               <div className="relative">
-                <Hash className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
+                <Hash className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
                 <input
                   type="number"
                   required
@@ -221,7 +221,7 @@ export const NuevoLoteModal: React.FC<NuevoLoteModalProps> = ({
                 Peso inicial promedio (gramos) *
               </label>
               <div className="relative">
-                <Scale className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
+                <Scale className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
                 <input
                   type="number"
                   required
@@ -243,7 +243,7 @@ export const NuevoLoteModal: React.FC<NuevoLoteModalProps> = ({
               Proveedor de alevinos (opcional)
             </label>
             <div className="relative">
-              <Building2 className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
+              <Building2 className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
               <input
                 type="text"
                 placeholder="ej: Estación Piscícola del Caribe SAS"
@@ -261,7 +261,7 @@ export const NuevoLoteModal: React.FC<NuevoLoteModalProps> = ({
               Observaciones iniciales de siembra (opcional)
             </label>
             <div className="relative">
-              <FileText className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
+              <FileText className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
               <textarea
                 rows={2}
                 placeholder="Condiciones de aclimatación, lote de origen, temperatura al recibir..."

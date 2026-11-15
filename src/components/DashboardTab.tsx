@@ -171,7 +171,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
           </div>
 
           <div className={`relative max-w-xs w-full ${puedeBuscar ? '' : 'hidden'}`}>
-            <Search className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
+            <Search className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
             <input
               type="text"
               placeholder="Buscar por código..."

@@ -63,7 +63,7 @@ export const CorreccionEntrega: React.FC<{ orden: OrdenEntrega; procesando: bool
             step={o.unidad === 'peces' ? 1 : 0.01}
             value={valores[codigo] ?? ''}
             onChange={(e) => setValores((prev) => ({ ...prev, [codigo]: e.target.value === '' ? '' : Number(e.target.value) }))}
-            className="w-28 px-2 py-1 border border-slate-300 rounded text-right"
+            className="w-28 px-2 py-1 border border-slate-300 rounded-md text-right"
           />
         </label>
       ))}
@@ -77,7 +77,7 @@ export const CorreccionEntrega: React.FC<{ orden: OrdenEntrega; procesando: bool
         placeholder="Motivo de la corrección (obligatorio, mínimo 10 caracteres)"
         value={motivo}
         onChange={(e) => setMotivo(e.target.value)}
-        className="w-full px-2 py-1 border border-slate-300 rounded"
+        className="w-full px-2 py-1 border border-slate-300 rounded-md"
       />
       <p className="text-xs text-slate-500">
         Si esta orden tiene un comprobante vigente con los datos anteriores, anúlalo en "Documentación de entrega" y emite uno nuevo después de corregir.

@@ -100,3 +100,13 @@ Sistema visual vigente: `DESIGN.md` (paleta tinta, verde solo íntegro, oro viej
 - `transition-all` reemplazado por transiciones de color.
 - Hover solo con puntero: Tailwind 4 ya lo limita a `@media (hover: hover)`; la fila de Personal usa además `(pointer: fine)`.
 - Estados vacíos con texto útil y acción: Inicio (registrar el primer lote o borrar la búsqueda), Lotes y Entregas (limpiar filtros), Repartidor (ver mis entregas por hacer), Analítica, Personal (ver a todos).
+
+## Verificación final
+
+- [x] Capturas revisadas: ingreso a 1440, 390 y 360 px (Operador, Repartidor, error de campo vacío y de contraseña), cambio de pestañas (cuadro intermedio), Configuración, Personal (menú abierto, detalle con interruptores y aviso al guardar), Personal a 360 px, comparativo en escritorio y a 360 px.
+- [x] Errores encontrados al verificar y corregidos: aviso falso de "sin función de repartidor" (la preferencia se aplicaba antes de cargar el perfil); barra superior que no cabía en escritorio; desvanecido que tapaba la primera pestaña; gráficas con colores fuera de la paleta.
+- [x] Subagente verificador independiente: corregidos el interruptor que no se animaba (Tailwind 4 usa la propiedad translate), radios mezclados (4 y 6 px), sombras grandes del menú y del aviso, spinners de contenido en QR e integridad, valores sueltos pasados a tokens (`--mov-interruptor`, `ESCALON_BLOQUES`, `TEMBLOR`, `RETRASO_VERIFICANDO`), curva por defecto de Tailwind igual a la de entrada, medios pasos en posiciones, separador "•" unificado a "·", punto con pulso infinito y temporizador del aviso que no se limpiaba.
+- [x] Movimiento reducido: tokens a 120 ms sin desplazamiento y `MotionConfig reducedMotion="user"`. No se pudo activar en el navegador de pruebas; revisar en un teléfono.
+- [x] Búsquedas: sin emojis, sin "(2)" en el título, sin "E1 VS E2", sin colores fuera de la paleta (excepto el logo de Google, que ya existía).
+- [x] Compila sin errores ni avisos nuevos (el aviso de `__dirname` en vite.config.ts ya existía).
+- Pendiente consciente: la salida de fila de Personal dura 220 ms (pedido del usuario) aunque las salidas generales son de 180 ms; el texto "—" de correcciones de siembra ya guardadas y el nombre de empresa de los comprobantes son datos encadenados y no se modifican.

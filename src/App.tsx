@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { EsqueletoPantalla } from './components/Esqueleto';
 import { PantallaVerificando } from './components/PantallaVerificando';
 const PantallaIngreso = lazy(() => import('./components/PantallaIngreso').then((m) => ({ default: m.PantallaIngreso })));
-import { VAR_CONTENIDO_TAB } from './lib/motion';
+import { DISTANCIA, VAR_CONTENIDO_TAB, entrada } from './lib/motion';
 import { useConservar, usePresencia } from './lib/presencia';
 import { onAuthStateChanged, signOut, User } from 'firebase/auth';
 import { auth, db } from './firebase/firebaseConfig';
@@ -434,7 +434,7 @@ export default function App() {
   if (authCargando && !usuario) return <PantallaVerificando />;
   if (!usuario || ingreso.saliendo) {
     return (
-      <div className={ingreso.saliendo ? "opacity-0 transition-opacity duration-[180ms] ease-[cubic-bezier(0.4,0,1,1)]" : ""}>
+      <div className={ingreso.saliendo ? "opacity-0 transition-opacity duration-(--mov-salida) ease-(--curva-salida)" : ""}>
         <Suspense fallback={<PantallaVerificando />}>
           <PantallaIngreso onRolElegido={(rol) => setFuncionPedida(rol)} />
         </Suspense>
@@ -444,8 +444,8 @@ export default function App() {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0, transition: { duration: 0.32, ease: [0.22, 1, 0.36, 1] } }}
+      initial={{ opacity: 0, y: DISTANCIA.tarjeta }}
+      animate={{ opacity: 1, y: 0, transition: entrada() }}
       className="min-h-dvh bg-white flex flex-col font-sans"
     >
       {/* NAVBAR */}

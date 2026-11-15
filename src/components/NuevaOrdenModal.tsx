@@ -174,7 +174,7 @@ export const NuevaOrdenModal: React.FC<NuevaOrdenModalProps> = ({
               {ordenEditar ? `Modificar borrador ${ordenEditar.id}` : 'Nueva orden de entrega'}
             </h3>
           </div>
-          <button onClick={onClose} className="text-slate-500 hover:text-white p-1 rounded transition-colors">
+          <button onClick={onClose} className="text-slate-500 hover:text-white p-1 rounded-md transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -336,7 +336,7 @@ export const NuevaOrdenModal: React.FC<NuevaOrdenModalProps> = ({
                                   [lote.codigo]: e.target.value === '' ? '' : Number(e.target.value)
                                 }))
                               }
-                              className={`w-24 px-2 py-1 border rounded text-right focus:outline-none focus:ring-2 focus:ring-sky-500 ${
+                              className={`w-24 px-2 py-1 border rounded-md text-right focus:outline-none focus:ring-2 focus:ring-sky-500 ${
                                 excede ? 'border-red-400 bg-red-50' : 'border-slate-300'
                               }`}
                             />

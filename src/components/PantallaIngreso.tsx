@@ -10,7 +10,7 @@ import {
 import { Factory, Truck, Eye, EyeOff, AlertCircle, CheckCircle } from 'lucide-react';
 import { auth } from '../firebase/firebaseConfig';
 import { LogoLore } from './LogoLore';
-import { RESORTE, DURACION, CURVA } from '../lib/motion';
+import { RESORTE, DURACION, CURVA, DISTANCIA, ESCALON_BLOQUES, TEMBLOR } from '../lib/motion';
 
 export type RolIngreso = 'operator' | 'courier';
 
@@ -54,7 +54,8 @@ export const PantallaIngreso: React.FC<{ onRolElegido: (rol: RolIngreso) => void
   // Un error hace temblar el formulario una sola vez (4 px a cada lado)
   useEffect(() => {
     if (!error || reducido) return;
-    temblor.start({ x: [0, -4, 4, -4, 4, 0], transition: { duration: 0.32 } });
+    const d = TEMBLOR.distancia;
+    temblor.start({ x: [0, -d, d, -d, d, 0], transition: { duration: TEMBLOR.duracion } });
   }, [error, reducido, temblor]);
 
   const ingresar = async (e: React.FormEvent) => {
@@ -114,8 +115,8 @@ export const PantallaIngreso: React.FC<{ onRolElegido: (rol: RolIngreso) => void
   };
 
   const bloque = (i: number) => ({
-    initial: { opacity: 0, y: reducido ? 0 : 12 },
-    animate: { opacity: 1, y: 0, transition: { duration: reducido ? DURACION.reducido : DURACION.entrada, ease: CURVA.entrada, delay: reducido ? 0 : i * 0.08 } }
+    initial: { opacity: 0, y: reducido ? 0 : DISTANCIA.tarjeta },
+    animate: { opacity: 1, y: 0, transition: { duration: reducido ? DURACION.reducido : DURACION.entrada, ease: CURVA.entrada, delay: reducido ? 0 : i * ESCALON_BLOQUES } }
   });
   const anillo =
     'w-full min-h-11 px-3 text-base sm:text-sm border rounded-md bg-white outline-none transition-[box-shadow,border-color] duration-150 focus:ring-2 focus:ring-sky-500 focus:border-sky-500';
@@ -164,14 +165,14 @@ export const PantallaIngreso: React.FC<{ onRolElegido: (rol: RolIngreso) => void
                       role="radio"
                       aria-checked={sel}
                       onClick={() => setRol(r.id)}
-                      className={`pestana relative min-h-11 rounded text-sm font-semibold ${sel ? 'text-white' : 'text-slate-700 hover:text-slate-900'}`}
+                      className={`pestana relative min-h-11 rounded-md text-sm font-semibold ${sel ? 'text-white' : 'text-slate-700 hover:text-slate-900'}`}
                     >
                       {sel && (
                         <motion.span
                           layoutId="rol-ingreso-indicador"
                           transition={reducido ? { duration: 0 } : RESORTE}
                           aria-hidden="true"
-                          className="absolute inset-0 rounded bg-slate-900"
+                          className="absolute inset-0 rounded-md bg-slate-900"
                         />
                       )}
                       <span className="relative inline-flex items-center justify-center gap-2">

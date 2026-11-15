@@ -135,7 +135,7 @@ export const RepartidorPanel: React.FC<RepartidorPanelProps> = ({ perfil }) => {
         <div>
           <h1 className="text-2xl text-slate-900">Mis entregas</h1>
           <p className="text-sm text-slate-500">
-            {perfil.displayName || perfil.email} • {nombreFuncion(perfil, 'courier')}
+            {perfil.displayName || perfil.email} · {nombreFuncion(perfil, 'courier')}
           </p>
         </div>
       </div>

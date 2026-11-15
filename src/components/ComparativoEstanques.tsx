@@ -46,7 +46,7 @@ export const ComparativoEstanques: React.FC<{ datos: DatoComparativo[]; estanque
                 type="button"
                 aria-pressed={activo}
                 onClick={() => alternar(d.estanque)}
-                className={`inline-flex items-center gap-2 min-h-10 px-3 rounded-md border text-sm transition-colors duration-150 active:scale-[0.97] ${
+                className={`inline-flex items-center gap-2 min-h-10 px-3 rounded-md border text-sm pestana active:scale-[0.97] [transition-property:color,background-color,border-color,scale] ${
                   activo ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-300 bg-white text-slate-700 hover:border-slate-500'
                 }`}
               >

@@ -37,7 +37,7 @@ export const NovedadTarjeta: React.FC<{
         </span>
         <EstadoAtencionBadge estado={n.atencion} />
       </div>
-      <p className="text-slate-800 bg-orange-50 border border-orange-100 rounded p-2">{n.evento.descripcion}</p>
+      <p className="text-slate-800 bg-orange-50 border border-orange-100 rounded-md p-2">{n.evento.descripcion}</p>
       <p className="text-slate-500">
         {quienRegistro(n.evento)} · {formatearFechaColombia(n.evento.fecha)} · Pedido de {n.orden.clienteNombre}
         {' · '}Evidencias: no adjuntas (las novedades se registran solo con texto)

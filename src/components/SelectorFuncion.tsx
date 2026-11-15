@@ -36,7 +36,7 @@ export const SelectorFuncion: React.FC<SelectorFuncionProps> = ({
     <div>
       <h1 className="text-base font-semibold text-slate-900">¿Con qué función deseas trabajar?</h1>
       <p className="text-xs text-slate-500 mt-1">
-        {perfil.displayName || perfil.email} • Puedes cambiar de función en cualquier momento desde la barra superior.
+        {perfil.displayName || perfil.email} · Puedes cambiar de función en cualquier momento desde la barra superior.
       </p>
     </div>
 
@@ -55,7 +55,7 @@ export const SelectorFuncion: React.FC<SelectorFuncionProps> = ({
             <div>
               <span className="block text-sm font-semibold text-slate-900">{nombreFuncion(perfil, f)}</span>
               <span className="block text-xs text-slate-500">
-                {ETIQUETA_ROL[f]} • {DESCRIPCION_FUNCION[f]}
+                {ETIQUETA_ROL[f]} · {DESCRIPCION_FUNCION[f]}
               </span>
             </div>
           </div>

@@ -216,17 +216,19 @@ export const Navbar: React.FC<NavbarProps> = ({
         )}
 
         {/* Navegación móvil */}
-        <div className="md:hidden flex border-t border-slate-800 py-2 space-x-1 overflow-x-auto">
+        {tabs.length > 1 && (
+        <div className="md:hidden flex border-t border-slate-800 -mx-4 px-2 overflow-x-auto sin-barra">
           {tabs.map((t) => (
             <button
               key={t.id}
               onClick={() => setTabActiva(t.id)}
-              className={`px-3 py-1 text-xs rounded font-medium whitespace-nowrap ${tabActiva === t.id ? 'bg-slate-50 text-slate-900 font-bold' : 'text-slate-300'}`}
+              className={`rotulo px-3 py-3 whitespace-nowrap border-b-2 ${tabActiva === t.id ? 'text-white border-amber-400' : 'text-slate-300 border-transparent'}`}
             >
               {t.etiquetaMovil}
             </button>
           ))}
         </div>
+        )}
       </div>
     </header>
   );

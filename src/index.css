@@ -147,6 +147,18 @@
   a {
     text-underline-offset: 3px;
   }
+  button,
+  a {
+    -webkit-tap-highlight-color: transparent;
+  }
+  /* En el celular los campos usan 16 px para que el teléfono no haga zoom al escribir */
+  @media (max-width: 640px) {
+    input,
+    select,
+    textarea {
+      font-size: 16px;
+    }
+  }
   * {
     scrollbar-color: #c5cad3 transparent;
     scrollbar-width: thin;
@@ -154,6 +166,14 @@
 }
 
 @layer components {
+  /* Franja desplazable sin barra visible (pestañas y filtros en el celular) */
+  .sin-barra {
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .sin-barra::-webkit-scrollbar {
+    display: none;
+  }
   /* Rótulo en versalitas espaciadas */
   .rotulo {
     font-size: 0.6875rem;

@@ -93,7 +93,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
       </div>
 
       {/* TARJETAS DE INDICADORES GENERALES */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {/* Lotes Activos */}
         <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-xs">
           <div className="flex items-center justify-between text-slate-500 mb-2">

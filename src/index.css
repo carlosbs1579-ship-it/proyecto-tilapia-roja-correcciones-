@@ -426,3 +426,19 @@
     transform: translateY(var(--dist-pequena));
   }
 }
+
+/* Interruptor: el círculo se desliza en 200 ms y el fondo cambia suave */
+.interruptor {
+  transition: background-color 200ms var(--curva-entrada);
+}
+.interruptor-circulo {
+  transition: transform 200ms var(--curva-entrada);
+  box-shadow: 0 1px 2px rgb(20 33 61 / 0.2);
+}
+
+/* Hover de fila solo con puntero (en el celular no quedan estados pegados) */
+@media (hover: hover) and (pointer: fine) {
+  .fila-hover:hover {
+    background-color: rgb(20 33 61 / 0.03);
+  }
+}

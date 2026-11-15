@@ -10,7 +10,7 @@ Sistema visual vigente: `DESIGN.md` (paleta tinta, verde solo íntegro, oro viej
 - [x] Fase 2. Limpieza visual (emojis, "(2)", comparativo de estanques, rayas largas)
 - [x] Fase 3. Animaciones de apertura y esqueletos
 - [x] Fase 4. Pestañas
-- [ ] Fase 5. Personal y permisos
+- [x] Fase 5. Personal y permisos
 - [ ] Fase 6. Pantalla de inicio de sesión
 - [ ] Fase 7. Pulido general
 - [ ] Verificación final
@@ -71,3 +71,11 @@ Sistema visual vigente: `DESIGN.md` (paleta tinta, verde solo íntegro, oro viej
 - `src/components/Pestanas.tsx`: indicador compartido con layoutId y resorte 400/35; respuesta al toque 0,97; color en 150 ms; desvanecido de borde y la activa se lleva a la vista. Usado en la barra (escritorio y móvil), subpestañas de Entregas, filtros del repartidor y filtros de la línea de tiempo del lote. Selector de función con el mismo indicador.
 - `App.tsx`: el contenido de pestaña sale con fundido de 150 ms y entra con fundido y 8 px según la dirección (AnimatePresence popLayout); scroll guardado por pestaña; altura mínima de 60vh para que no salte.
 - `vite.config.ts`: motion en su propio archivo (evita el aviso nuevo de paquete mayor a 500 kB).
+
+## Fase 5 hecha
+
+- `src/components/PersonaUi.tsx`: `Interruptor` (role="switch", círculo en 200 ms), `AvatarIniciales` (iniciales con tonos claros de la paleta, estables por persona) y `MenuTresPuntos` (escala y opacidad desde la esquina, cierra al tocar fuera o con Escape).
+- Personal y permisos: encabezado con el conteo en una frase y aviso de cuentas pendientes; búsqueda y filtro por estado con el indicador común; lista de filas (avatar, nombre en peso medio, función como etiqueta discreta, correo secundario, estado en texto de color); acciones en el menú (editar, aprobar, desactivar, eliminar); detalle desplegable con nombre visible, funciones con interruptor y cargo, permisos agrupados por pestaña con interruptores y rótulos en versalitas, plantillas y botón de guardar con carga interna sin cambiar de tamaño.
+- Filas que entran desde arriba con fundido y salen encogiéndose (layout de motion); aviso inferior de 3 s; estado vacío con texto útil y acción "Ver a todos".
+- Toda la lógica (guardar, estados, roles, permisos, plantillas, eliminar, reglas de quién edita a quién) se conserva.
+- No hecho: la matriz rol por permiso en escritorio (alternativa opcional); se mantuvieron los interruptores por persona.

@@ -4,6 +4,8 @@
 | Despliegue 5: CSP completa en vercel.json (PR #26, merge d6cf67d; Vercel jp99odnvo; anterior f7k78vu2a) | 2026-11-16 | Bien. Probada antes en la vista previa: consulta pública, PDF, ingreso y ventana de Google sin violaciones. En producción, con sesión: panel, detalle del lote (carga diferida) y QR sin violaciones de CSP. |
 | Despliegue 6: reglas de órdenes y comprobantes (commit 9e55330) | 2026-11-16 21:12 UTC | Bien. Publicadas iguales al repo; antes 162/162 y 71/71; 4 comprobantes, 4 órdenes y 4 consultas reales verificadas sin alarmas (solo lectura). Un primer intento falló por corte de internet sin publicar nada. |
 | Despliegue 7: web de órdenes y comprobantes (PR #27, merge d328d52; Vercel 4f7a9z6fu; anterior jp99odnvo) | 2026-11-16 | Bien. Consulta pública ?entrega= de un comprobante real: sin dirección del cliente, "Cadena verificada al abrir" y "Bloque íntegro". |
+| Despliegue 8: reglas de lotes y anotaciones (commit 39b6996) | 2026-11-16 21:43 UTC | Bien. Publicadas iguales al repo; antes 170/170 y 73/73; lote real, sus anotaciones, 4 comprobantes y 4 consultas reales verificados sin alarmas (solo lectura). |
+| Despliegue 9: web de lotes (PR #28, merge 3815528; Vercel 3glwrrqkr; anterior 4f7a9z6fu) | 2026-11-16 | Bien. Lote real "Cadena verificada al abrir" y anotaciones íntegras; detalle del lote con sesión sin errores. |
 # Reporte de auditoría: integridad, seguridad y regresiones
 
 Fecha: 2026-11-16. Rama `correciones-claude`. Une los reportes de `auditoria/agente1-integridad.md`, `agente2-alteraciones.md`, `agente3-seguridad.md`, `agente4-funcional.md`, `agente5-regresiones.md` y `tests/integridad/resultados.md`. Ningún archivo de la app se modificó durante la auditoría.

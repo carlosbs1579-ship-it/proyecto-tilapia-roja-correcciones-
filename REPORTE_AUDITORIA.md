@@ -548,7 +548,7 @@ Los 5 riesgos principales:
 - Severidad: informativa · Área: CONFIG-EXTERNA · Origen: Agente3 S18
 - Archivos: `storage.rules`.
 - Arreglo: confirmar las reglas vigentes del bucket (sección 5); publicar `storage.rules` con `get` en vez de `read`, o negar todo si los PDF antiguos no se usan.
-- Estado: Pendiente de tu revisión en la consola: Storage no tiene reglas publicadas desde el repo
+- Estado: Cerrado, no aplica: el proyecto no tiene ningún bucket (lista vacía) y el servicio Firebase Storage está bloqueado por una política de la organización (verificado el 2026-11-16)
 
 #### H65. Secretos: no hay llaves privadas en repo ni historial; cambio de `.gitignore` sin confirmar
 - Severidad: informativa · Área: CONFIG-EXTERNA · Origen: Agente3 S19

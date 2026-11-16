@@ -1,5 +1,5 @@
 // Pruebas de seguridad de fotosEntrega y clientes (auditoría, agente 3). Emulador en el puerto 8285.
-// Las marcadas "HUECO" pasan cuando el hueco EXISTE.
+// Las marcadas "HUECO" pasan cuando el hueco EXISTE; las "CERRADO" son huecos que las reglas ya rechazan.
 import { readFileSync } from 'node:fs';
 import { after, before, beforeEach, describe, test } from 'node:test';
 import { initializeTestEnvironment, assertFails, assertSucceeds } from '@firebase/rules-unit-testing';
@@ -96,26 +96,31 @@ beforeEach(async () => {
 });
 
 describe('fotosEntrega: contenido y reemplazo', () => {
-  test('HUECO: la "foto" puede ser una URL externa (o cualquier texto), no solo data:image/jpeg', async () => {
+  test('CERRADO (H13): la "foto" solo puede ser data:image/jpeg en base64, nunca una URL externa', async () => {
     await enLlegada('PED-S1');
     const fotoId = 'foto_externa' + 'x'.repeat(20);
-    await assertSucceeds(entregarConFoto('PED-S1', fotoId, 'https://atacante.example/pixel.png?' + 'q'.repeat(120)));
+    await assertFails(entregarConFoto('PED-S1', fotoId, 'https://atacante.example/pixel.png?' + 'q'.repeat(120)));
+    await assertFails(entregarConFoto('PED-S1', fotoId, 'data:image/png;base64,' + 'A'.repeat(200)));
+    await assertFails(entregarConFoto('PED-S1', fotoId, 'data:image/jpeg;base64,' + 'A'.repeat(200) + '"><script>'));
+    // La entrega con una foto real sigue pasando
+    await assertSucceeds(entregarConFoto('PED-S1', fotoId, 'data:image/jpeg;base64,/9j/' + 'A'.repeat(200) + '=='));
   });
-  test('HUECO: vencida la foto (TTL), el repartidor la vuelve a crear con otro contenido', async () => {
+  test('CERRADO (H13): vencida la foto (TTL), ya no se puede volver a crear con otro contenido', async () => {
     await enLlegada('PED-S2');
     const fotoId = 'foto_original' + 'x'.repeat(20);
     await assertSucceeds(entregarConFoto('PED-S2', fotoId, 'data:image/jpeg;base64,' + 'A'.repeat(200)));
     await env.withSecurityRulesDisabled((ctx) => deleteDoc(doc(ctx.firestore(), 'fotosEntrega', fotoId)));
     const o = await leer('ordenes/PED-S2');
     const ev = o.historial[o.historial.length - 1];
-    await assertSucceeds(setDoc(doc(como('repartidor'), 'fotosEntrega', fotoId), registroFoto(fotoId, 'PED-S2', ev.eventoId, 'data:image/jpeg;base64,' + 'B'.repeat(200))));
+    await assertFails(setDoc(doc(como('repartidor'), 'fotosEntrega', fotoId), registroFoto(fotoId, 'PED-S2', ev.eventoId, 'data:image/jpeg;base64,' + 'B'.repeat(200))));
   });
 });
 
 describe('clientes: límites en la edición', () => {
-  test('HUECO: al editar, contacto no tiene límite de tamaño ni de tipo', async () => {
-    await assertSucceeds(updateDoc(doc(como('vendedor'), 'clientes', 'CLI1'), { contacto: 'x'.repeat(900000), actualizadoEn: 'z' }));
-    await assertSucceeds(updateDoc(doc(como('vendedor'), 'clientes', 'CLI1'), { contacto: { objeto: true }, actualizadoEn: 'z2' }));
+  test('CERRADO (H49): al editar, contacto tiene límite de tamaño y debe ser texto', async () => {
+    await assertFails(updateDoc(doc(como('vendedor'), 'clientes', 'CLI1'), { contacto: 'x'.repeat(900000), actualizadoEn: 'z' }));
+    await assertFails(updateDoc(doc(como('vendedor'), 'clientes', 'CLI1'), { contacto: { objeto: true }, actualizadoEn: 'z2' }));
+    await assertSucceeds(updateDoc(doc(como('vendedor'), 'clientes', 'CLI1'), { contacto: '3001112233', actualizadoEn: 'z3' }));
   });
   test('el repartidor no lee ni edita clientes', async () => {
     await assertFails(getDoc(doc(como('repartidor'), 'clientes', 'CLI1')));

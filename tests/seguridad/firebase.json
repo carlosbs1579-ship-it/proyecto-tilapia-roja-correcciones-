@@ -1,6 +1,6 @@
 {
   "emulators": {
-    "firestore": { "port": 8285 },
+    "firestore": { "port": 8285, "websocketPort": 9285 },
     "ui": { "enabled": false },
     "hub": { "port": 4485 },
     "logging": { "port": 4585 }

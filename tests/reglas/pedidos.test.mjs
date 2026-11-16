@@ -69,7 +69,7 @@ const como = (uid) =>
 before(async () => {
   env = await initializeTestEnvironment({
     projectId: 'demo-tilapia-pedidos',
-    firestore: { rules: readFileSync(new URL('../../firestore.rules', import.meta.url), 'utf8'), host: '127.0.0.1', port: 8085 }
+    firestore: { rules: readFileSync(new URL('../../firestore.rules', import.meta.url), 'utf8'), host: '127.0.0.1', port: Number((process.env.FIRESTORE_EMULATOR_HOST || '').split(':')[1] || 8085) }
   });
 });
 after(async () => env?.cleanup());

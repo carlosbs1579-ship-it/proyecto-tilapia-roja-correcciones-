@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { usePresencia } from '../lib/presencia';
+import { useVentana } from '../lib/ventana';
 import { X, ClipboardList, AlertCircle, Save, Send, UserPlus } from 'lucide-react';
 import { Cliente, InventarioLote, Lote, OrdenEntrega, UnidadMedida } from '../types';
 import {
@@ -97,6 +98,7 @@ export const NuevaOrdenModal: React.FC<NuevaOrdenModalProps> = ({
   const solicitada = Number(cantidadSolicitada) || 0;
 
   const presencia = usePresencia(isOpen);
+  const ventana = useVentana(isOpen, onClose, { bloqueada: guardando, cerrarAlTocarVelo: false });
   if (!presencia.montado) return null;
 
   const datosOrden = async () => {
@@ -165,16 +167,16 @@ export const NuevaOrdenModal: React.FC<NuevaOrdenModalProps> = ({
   };
 
   return (
-    <div role="dialog" aria-modal="true" data-saliendo={presencia.saliendo || undefined} className="velo fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4">
+    <div {...ventana.propsVelo} role="dialog" aria-modal="true" aria-labelledby="titulo-nueva-orden" data-saliendo={presencia.saliendo || undefined} className="velo fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4">
       <div className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-3xl w-full max-h-[92dvh] overflow-y-auto">
         <div className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between sticky top-0 z-10">
           <div className="flex items-center space-x-2">
             <ClipboardList className="w-5 h-5 text-sky-400" />
-            <h3 className="font-semibold text-base">
+            <h3 id="titulo-nueva-orden" className="font-semibold text-base">
               {ordenEditar ? `Modificar borrador ${ordenEditar.id}` : 'Nueva orden de entrega'}
             </h3>
           </div>
-          <button onClick={onClose} className="text-slate-500 hover:text-white p-1 rounded-md transition-colors">
+          <button type="button" onClick={onClose} disabled={guardando} aria-label="Cerrar" className="text-slate-500 hover:text-white p-1 rounded-md transition-colors disabled:opacity-40">
             <X className="w-5 h-5" />
           </button>
         </div>

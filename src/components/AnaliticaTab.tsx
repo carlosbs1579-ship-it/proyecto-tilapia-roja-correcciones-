@@ -186,17 +186,25 @@ export const AnaliticaTab: React.FC<AnaliticaTabProps> = ({
       l.pdfUrl || ''
     ]);
 
-    const csvContent =
-      'data:text/csv;charset=utf-8,' +
-      [encabezados.join(','), ...filas.map((f) => f.map((c) => `"${c}"`).join(','))].join('\n');
+    // Cada celda va entre comillas con las comillas internas duplicadas (así las comas, saltos de
+    // línea y comillas no rompen las columnas). Un texto que empieza con = + - @ (o tabulador o
+    // retorno) lleva un apóstrofo delante para que la hoja de cálculo no lo ejecute como fórmula (H51).
+    const celda = (valor: unknown) => {
+      let t = valor === null || valor === undefined ? '' : String(valor);
+      if (typeof valor !== 'number' && /^[=+\-@\t\r]/.test(t)) t = `'${t}`;
+      return `"${t.replace(/"/g, '""')}"`;
+    };
+    const csvContent = [encabezados, ...filas].map((f) => f.map(celda).join(',')).join('\r\n');
 
-    const encodedUri = encodeURI(csvContent);
+    // Blob con BOM para que Excel reconozca las tildes; la URL se libera después de la descarga
+    const url = URL.createObjectURL(new Blob(['﻿', csvContent], { type: 'text/csv;charset=utf-8' }));
     const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
+    link.setAttribute('href', url);
     link.setAttribute('download', `CultivosLore_Lotes_Trazabilidad_${new Date().toISOString().substring(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
   };
 
   return (

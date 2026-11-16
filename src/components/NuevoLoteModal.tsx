@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { usePresencia } from '../lib/presencia';
+import { useVentana } from '../lib/ventana';
 import { X, PlusCircle, AlertCircle, Calendar, Hash, Scale, Building2, FileText } from 'lucide-react';
 import { ConfiguracionGeneral, Lote, UsuarioPerfil } from '../types';
 import { getFechaHoyBogota } from '../utils/constants';
@@ -45,6 +46,8 @@ export const NuevoLoteModal: React.FC<NuevoLoteModalProps> = ({
   }, [config.estanques, estanque]);
 
   const presencia = usePresencia(isOpen);
+  // Mientras se guarda no se puede cerrar: así no queda un envío en curso con el botón habilitado
+  const ventana = useVentana(isOpen, onClose, { bloqueada: cargando, cerrarAlTocarVelo: false });
   if (!presencia.montado) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -106,25 +109,24 @@ export const NuevoLoteModal: React.FC<NuevoLoteModalProps> = ({
   };
 
   return (
-    <div role="dialog" aria-modal="true" data-saliendo={presencia.saliendo || undefined} className="velo fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4 overflow-y-auto">
+    <div {...ventana.propsVelo} role="dialog" aria-modal="true" aria-labelledby="titulo-nuevo-lote" data-saliendo={presencia.saliendo || undefined} className="velo fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4 overflow-y-auto">
       <div className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-xl w-full overflow-hidden my-6">
         {/* Encabezado */}
         <div className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <PlusCircle className="w-5 h-5 text-sky-400" />
             <div>
-              <h3 className="font-semibold text-base">Crear nuevo lote productivo</h3>
+              <h3 id="titulo-nuevo-lote" className="font-semibold text-base">Crear nuevo lote productivo</h3>
               <p className="text-xs text-slate-500">Modalidad Tilapia Pro · Cultivos Loré</p>
             </div>
           </div>
           <button
             type="button"
-            onClick={() => {
-              setCargando(false);
-              onClose();
-            }}
-            className="text-slate-300 hover:text-white p-2 rounded-lg hover:bg-slate-800 transition-colors"
+            onClick={onClose}
+            disabled={cargando}
+            className="text-slate-300 hover:text-white p-2 rounded-lg hover:bg-slate-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             title="Cerrar ventana"
+            aria-label="Cerrar"
           >
             <X className="w-5 h-5" />
           </button>
@@ -276,11 +278,9 @@ export const NuevoLoteModal: React.FC<NuevoLoteModalProps> = ({
           <div className="pt-3 border-t border-slate-100 flex items-center justify-end space-x-3">
             <button
               type="button"
-              onClick={() => {
-                setCargando(false);
-                onClose();
-              }}
-              className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+              onClick={onClose}
+              disabled={cargando}
+              className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors disabled:opacity-50"
             >
               Cancelar
             </button>

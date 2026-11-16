@@ -19,10 +19,11 @@ import {
   calcularHashEvento,
   calcularSha256,
   huellasFase,
+  revisarLote,
   verificarIntegridadLote
 } from '../../src/services/hashService';
 import { recalcularResumenLote } from '../../src/services/calculosService';
-import { cerrarLote, registrarEventoEnLote } from '../../src/services/lotesService';
+import { cerrarLote, crearNuevoLote, registrarEventoEnLote } from '../../src/services/lotesService';
 import { crearCliente, crearOrden, establecerFuncionActiva } from '../../src/services/pedidosService';
 import { leerBandeja, registrarAccion } from '../../src/services/repartoService';
 import {
@@ -30,13 +31,15 @@ import {
   calcularHashComprobante,
   emitirComprobanteDefinitivo,
   leerConsultaEntrega,
+  revisarConsultaEntrega,
   separarBloques,
   verificarCadena,
   verificarComprobante
 } from '../../src/services/comprobantesService';
 import { anotacionesDe, hashRegistroAnotacion, proponerAnotacion, resolverAnotacion, verificarAnotaciones } from '../../src/services/anotacionesService';
-import { verificarFoto } from '../../src/services/fotosService';
-import { CONFIG_DEFAULT } from '../../src/utils/constants';
+import { revisarFoto, verificarFoto } from '../../src/services/fotosService';
+import { CONFIG_DEFAULT, ORIGEN_FIJO, PRODUCTO_FIJO } from '../../src/utils/constants';
+import { fragmentoSello } from '../../src/lib/integridad';
 
 const aqui = path.dirname(fileURLToPath(import.meta.url));
 const OWNER = { authorization: 'Bearer owner', 'content-type': 'application/json' };
@@ -45,8 +48,9 @@ const AUTH = `http://127.0.0.1:${PUERTO_AUTH}`;
 const CLAVE = 'prueba123';
 const GRANJA = 'cultivos-lore';
 const sello = Date.now().toString(36).toUpperCase();
-const COD = `PRUEBA-${sello}-A-E1`;
-const COD2 = `PRUEBA-${sello}-B-E2`;
+// Los lotes se crean con crearNuevoLote (código real AAAAMMDD-LETRA-ESTANQUE, contadores y reglas)
+let COD = '';
+let COD2 = '';
 
 // ---------- Conversión Firestore REST <-> JS ----------
 const aFs = (v: any): any =>
@@ -144,28 +148,13 @@ const OPER = 'operador-prueba@prueba.co', VEND = 'vendedor-prueba@prueba.co', RE
 const JPEG_A = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP////////////////////////////////////////////////////////////////////////////////////8AAAsIAAEAAQEBEQD/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/9oACAEBAAA/AKp//9k=';
 const JPEG_B = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AKp//2Q==';
 
-async function crearLoteActivo(codigo: string, email: string, uid: string) {
-  const fechaSiembra = '2026-08-01';
-  const ahora = new Date().toISOString();
-  const descripcion = 'PRUEBA: siembra inicial del lote en estanque E1';
-  const datos = { cantidad: 1000, pesoPromedioInicialG: 5, proveedor: 'Proveedor PRUEBA' };
-  const ev0: any = {
-    id: 'ev-' + crypto.randomUUID(), indice: 0, tipo: 'Siembra', fechaEvento: fechaSiembra, descripcion, datos,
-    registradoPor: email, registradoEn: ahora, hashAnterior: HASH_GENESIS
-  };
-  ev0.hash = await calcularHashEvento({ codigoLote: codigo, ...ev0 });
-  ev0.huellas = await huellasFase(ev0);
-  const resumen = recalcularResumenLote({
-    fechaSiembra, cantidadSembrada: 1000, pesoInicialPromedioG: 5, eventos: [ev0], estado: 'activo', fechaCierre: null,
-    volumenEstanqueM3: 250, rangos: CONFIG_DEFAULT.rangosReferencia
-  } as any);
-  // Misma forma que crearNuevoLote (src/services/lotesService.ts), con el código PRUEBA-
-  await setDoc(doc(db, 'lotes', codigo), {
-    codigo, consecutivo: 1, estanque: codigo.endsWith('E2') ? 'E2' : 'E1', producto: 'Tilapia roja entera fresca', modalidad: 'Tilapia Pro',
-    origen: 'Cultivos Loré, Turbaco, Bolívar', fechaSiembra, cantidadSembrada: 1000, pesoInicialPromedioG: 5, proveedorAlevinos: 'Proveedor PRUEBA',
-    estado: 'activo', fechaCierre: null, eventos: [ev0], resumen, pdfPath: `lotes/${codigo}.pdf`, pdfUrl: '', versionPdf: 1,
-    pdfActualizadoEn: ahora, granjaId: GRANJA, creadoPor: email, creadoPorUid: uid, creadoEn: ahora, actualizadoEn: ahora, observacionesIniciales: ''
+async function crearLoteActivo(estanque: 'E1' | 'E2', email: string): Promise<string> {
+  // Servicio real de la app: transacción con contadores, evento de Siembra y resumen (reglas activas)
+  const lote = await crearNuevoLote({
+    estanque, fechaSiembra: '2026-08-01', cantidadSembrada: 1000, pesoInicialPromedioG: 5, proveedorAlevinos: 'Proveedor PRUEBA',
+    observaciones: '', userEmail: email, config: CONFIG_DEFAULT
   });
+  return lote.codigo;
 }
 
 const FASES: [string, Record<string, any>][] = [
@@ -186,23 +175,25 @@ async function esperarAccion(uid: string, id: string) {
   throw new Error('La acción no se envió a tiempo');
 }
 
-const ctx: { ordenId: string; fotoId: string; comprobanteId: string; token: string } = { ordenId: '', fotoId: '', comprobanteId: '', token: '' };
+// selloQr: el sello que se imprimió en la etiqueta QR al cerrar el lote (?s=); es el ancla externa
+const ctx: { ordenId: string; fotoId: string; comprobanteId: string; token: string; selloQr: string } = { ordenId: '', fotoId: '', comprobanteId: '', token: '', selloQr: '' };
 
 async function sembrarDatos() {
   await crearCuentas();
   // Lote: creación, cinco fases y cierre, como operador (reglas activas)
   await entrar(OPER);
-  await crearLoteActivo(COD, OPER, UID[OPER]);
+  COD = await crearLoteActivo('E1', OPER);
   for (const [i, [tipo, datos]] of FASES.entries()) {
     await registrarEventoEnLote({ codigoLote: COD, tipo: tipo as any, fechaEvento: `2026-0${8 + Math.floor(i / 3)}-1${i}`, descripcion: `PRUEBA ${tipo}`, datos, userEmail: OPER, config: CONFIG_DEFAULT });
   }
   await cerrarLote(COD, OPER, CONFIG_DEFAULT);
+  ctx.selloQr = fragmentoSello(((await getDocFromServer(doc(db, 'lotes', COD))).data() as any).resumen.hashFinal);
 
   // Orden confirmada con reserva, como vendedor
   await entrar(VEND);
   const cli = await crearCliente('PRUEBA-Restaurante Integridad', '3000000000', 'Calle PRUEBA 1');
   const orden = await crearOrden({
-    clienteId: cli.id, clienteNombre: cli.nombre, clienteDireccion: cli.direccion, clienteContacto: cli.contacto, unidad: 'kg',
+    clienteId: cli.id, clienteNombre: cli.nombre, clienteDireccion: cli.direccion || '', clienteContacto: cli.contacto || '', unidad: 'kg',
     cantidadSolicitada: 50, fechaProgramada: '2026-11-16', cantidades: { [COD]: 50 },
     repartidor: { uid: UID[REP], nombre: 'Repartidor PRUEBA', cargo: 'PRUEBA' }, observaciones: 'PRUEBA'
   }, true);
@@ -258,61 +249,69 @@ async function evaluar(): Promise<Senales> {
   const loteSnap = await getDocFromServer(doc(db, 'lotes', COD));
   const lote = loteSnap.exists() ? (loteSnap.data() as any) : null;
   if (lote) {
-    const an = await analizarCadenaLote(lote);
-    const malas = an.fases.filter((f) => f.estado !== 'integra');
-    if (malas.length) s.automaticas.push(`QR lote: fases en rojo (${malas.map((f) => f.mensaje).join(' | ')})`);
-    const ver = await verificarIntegridadLote(lote);
-    if (!ver.valido) s.manuales.push(`Botón "Verificar integridad" / IntegrityCheckModal: ${ver.mensaje}`);
     const anotSnap = await getDocFromServer(doc(db, 'anotacionesLote', COD));
     const anot = anotSnap.exists() ? (anotSnap.data() as any) : null;
     const va = await verificarAnotaciones(lote, anot);
+    // Revisión automática de PublicTraceabilityView y LoteDetailModal (misma función): sin sello en el
+    // QR (etiquetas antiguas) y con el sello impreso al cerrar (?s=)
+    const sinSello = await revisarLote(lote, { config: CONFIG_DEFAULT, anotacionesSelloCambiado: va.selloCambiado });
+    const conSello = await revisarLote(lote, { config: CONFIG_DEFAULT, selloQr: ctx.selloQr, anotacionesSelloCambiado: va.selloCambiado });
+    if (sinSello.estado !== 'integro') s.automaticas.push(`QR lote y detalle: ${sinSello.avisos.join(' | ')}`);
+    else if (conSello.estado !== 'integro') s.automaticas.push(`Solo QR con sello impreso: ${conSello.avisos.join(' | ')}`);
+    s.datos.qrAntiguoSinSello = sinSello.estado === 'integro' ? 'sin aviso' : 'avisado';
+    const ver = await verificarIntegridadLote(lote);
+    if (!ver.valido) s.manuales.push(`Botón "Verificar integridad" / IntegrityCheckModal: ${ver.mensaje}`);
     const aprobadas = anotacionesDe(anot).filter((a) => a.estado === 'aprobada' && !va.alteradas.includes(a.numero));
     const sinValidez = anotacionesDe(anot).filter((a) => va.alteradas.includes(a.numero));
     if (!va.integra && (aprobadas.length || sinValidez.length)) s.automaticas.push(`QR lote, sección anotaciones: ${va.mensaje}`);
+    // Lo que ve el público: cabecera y resumen derivados de la cadena (no los campos guardados)
     s.datos.lote = {
-      estanque: lote.estanque, fechaSiembra: lote.fechaSiembra, fechaCierre: lote.fechaCierre, producto: lote.producto,
-      cantidadSembrada: lote.cantidadSembrada, supervivencia: lote.resumen?.supervivencia, pesoPromedioActualG: lote.resumen?.pesoPromedioActualG,
-      biomasaEstimadaKg: lote.resumen?.biomasaEstimadaKg, hashFinal: lote.resumen?.hashFinal, fases: (lote.eventos || []).length,
-      alimentoFase2: lote.eventos?.[2]?.datos?.cantidadKg, anotacionesValidas: aprobadas.length
+      estanque: conSello.cabecera.estanque, fechaSiembra: conSello.cabecera.fechaSiembra, fechaCierre: lote.fechaCierre, producto: conSello.cabecera.producto.slice(0, 26),
+      cantidadSembrada: conSello.cabecera.cantidadSembrada, supervivencia: conSello.resumen.supervivencia, pesoPromedioActualG: conSello.resumen.pesoPromedioActualG,
+      biomasaEstimadaKg: conSello.resumen.biomasaEstimadaKg, fases: (lote.eventos || []).length,
+      alimentoFase2: lote.eventos?.[2]?.datos?.cantidadKg, anotacionesValidas: aprobadas.length, qrAntiguoSinSello: s.datos.qrAntiguoSinSello
     };
   } else s.automaticas.push('QR lote: "Lote no disponible"');
 
   // Orden y foto: FotosEntregaOrden (interno; verificar es un botón)
   const orden = (await getDocFromServer(doc(db, 'ordenes', ctx.ordenId))).data() as any;
-  const ref = orden.historial.find((e: any) => e.tipo === 'Entrega' && e.datos?.foto?.id)?.datos.foto;
+  const evEntrega = orden.historial.find((e: any) => e.tipo === 'Entrega' && e.datos?.foto?.id);
+  const ref = evEntrega?.datos.foto;
   const fotoSnap = await getDocFromServer(doc(db, 'fotosEntrega', ref.id)).catch(() => null);
-  if (fotoSnap?.exists()) {
-    const f = fotoSnap.data() as any;
-    const ok = await verificarFoto(f, ref.hash);
-    if (!ok) s.manuales.push('Botón "Verificar foto": "La foto no coincide con el hash registrado."');
-    s.datos.foto = { mostrada: f.datos.slice(0, 40) + '…', hashDoc: f.hash.slice(0, 12), hashEvento: ref.hash.slice(0, 12) };
-  } else {
-    s.datos.foto = { mostrada: 'La imagen ya no está disponible (se conserva 15 días). Queda el registro de la foto en el historial.' };
-  }
+  const bloquesOrden = (await getDocsFromServer(query(collection(db, 'comprobantes'), where('granjaId', '==', GRANJA), where('ordenId', '==', ctx.ordenId)))).docs.map((d) => d.data() as any);
+  const fotoHashComp = bloquesOrden.filter((b) => b.tipoBloque !== 'anulacion').flatMap((b) => b.entregas || []).find((e: any) => e.eventoId === evEntrega.eventoId)?.fotoHash;
+  const f = fotoSnap?.exists() ? (fotoSnap.data() as any) : undefined;
+  // FotosEntregaOrden verifica cada foto sola al mostrarse
+  const rf = await revisarFoto(f, ref, { fecha: evEntrega.fecha, eventoId: evEntrega.eventoId, ordenId: ctx.ordenId }, fotoHashComp);
+  if (rf.estado === 'alterada' || rf.estado === 'borrada') s.automaticas.push(`Fotos de la orden: ${rf.mensaje}`);
+  if (f && !(await verificarFoto(f, ref.hash))) s.manuales.push('Botón "Verificar foto" (anterior): "La foto no coincide con el hash registrado."');
+  s.datos.foto = f
+    ? { mostrada: f.datos.slice(0, 40) + '…', hashDoc: f.hash.slice(0, 12), hashEvento: ref.hash.slice(0, 12), estado: rf.estado }
+    : { mostrada: rf.mensaje, estado: rf.estado };
 
   // Comprobante: ConsultaEntregaPublica (verificación automática) y DocumentacionEntrega (interno)
   const r = await leerConsultaEntrega(ctx.token).catch(() => null);
-  if (!r || !r.bloques.length) s.automaticas.push('QR entrega: "No se encontró ninguna entrega con este código."');
+  if (!r) s.automaticas.push('QR entrega: "No se encontró ninguna entrega con este código."');
   else {
-    for (const c of r.bloques) {
-      const v = await verificarComprobante(c, { consulta: r.consulta });
-      if (!(v.contenidoIntegro && v.indiceCoincide !== false)) s.automaticas.push(`QR entrega, comprobante N.º ${c.version}: ${v.mensaje}`);
-    }
-    const cad = verificarCadena(r.bloques);
-    if (!cad.integra) s.automaticas.push(`QR entrega: ${cad.mensaje}`);
-    const { comprobantes, anulaciones } = separarBloques(r.bloques);
-    const actual = comprobantes.find((c) => !anulaciones[c.id]) || comprobantes[0];
+    // ConsultaEntregaPublica: revisión automática de la cadena pública completa
+    const rev = await revisarConsultaEntrega(r.consulta, r.bloques, r.faltantes);
+    if (!r.bloques.length) s.automaticas.push(`QR entrega: "Falta el comprobante registrado" (${rev.avisos.join(' | ')})`);
+    else if (rev.avisos.length) s.automaticas.push(`QR entrega: ${rev.avisos.join(' | ')}`);
+    const { comprobantes } = separarBloques(r.bloques);
+    const vigente = comprobantes.find((c) => c.id === rev.vigenteId);
+    const actual = vigente || comprobantes.find((c) => !rev.anulados.has(c.id)) || comprobantes[0];
     s.datos.entregaPublica = actual
-      ? { cantidadEntregada: actual.cantidadEntregada, cliente: actual.cliente.nombre, vigente: anulaciones[actual.id] ? 'ninguno (todos anulados)' : `N.º ${actual.version}`, versionesIndice: Object.keys(r.consulta.versiones).length, bloquesLeidos: r.bloques.length }
+      ? { cantidadEntregada: actual.cantidadEntregada, cliente: actual.cliente.nombre, vigente: vigente ? `N.º ${vigente.version}` : rev.avisos.length ? 'ninguno (la cadena tiene problemas)' : 'ninguno (todos anulados)', versionesIndice: Object.keys(r.consulta.versiones).length, bloquesLeidos: r.bloques.length }
       : null;
   }
-  const bloques = (await getDocsFromServer(query(collection(db, 'comprobantes'), where('granjaId', '==', GRANJA), where('ordenId', '==', ctx.ordenId)))).docs.map((d) => d.data() as any);
+  const bloques = bloquesOrden;
   const esperados = orden.historial.filter((e: any) => e.tipo === 'Comprobante emitido' || e.tipo === 'Comprobante anulado').length;
   if (bloques.length < esperados) s.automaticas.push(`Panel interno de la orden: "Cadena incompleta: el historial registra ${esperados}, existen ${bloques.length}"`);
   else if (!verificarCadena(bloques).integra) s.automaticas.push(`Panel interno de la orden: ${verificarCadena(bloques).mensaje}`);
+  // DocumentacionEntrega verifica cada comprobante solo al abrir la orden (con la orden completa)
   for (const c of separarBloques(bloques).comprobantes) {
     const v = await verificarComprobante(c, { orden });
-    if (!(v.contenidoIntegro && v.eventosIntegros !== false)) s.manuales.push(`Botón "Verificar" del comprobante N.º ${c.version} (interno): ${v.mensaje}`);
+    if (!v.ok) s.automaticas.push(`Panel interno de la orden, comprobante N.º ${c.version}: ${v.mensaje}`);
   }
   return s;
 }
@@ -333,6 +332,13 @@ async function recalcularCadenaLote(codigo: string, eventos: any[]) {
     prev = ev.hash;
   }
   return prev;
+}
+// Recalcula también el resumen guardado (como haría quien conoce la app y tiene la consola)
+function recalcularResumenGuardado(l: any) {
+  l.resumen = recalcularResumenLote({
+    fechaSiembra: l.fechaSiembra, cantidadSembrada: l.cantidadSembrada, pesoInicialPromedioG: l.pesoInicialPromedioG, eventos: l.eventos,
+    estado: 'cerrado', fechaCierre: l.fechaCierre, volumenEstanqueM3: 250, rangos: CONFIG_DEFAULT.rangosReferencia
+  } as any);
 }
 async function recalcularAnotaciones(codigo: string, d: any, ancla: string) {
   d.hashAnclaje = ancla;
@@ -388,6 +394,12 @@ const ATAQUES: Ataque[] = [
       await alterarJs(rLote(), async (l) => { l.eventos[2].datos.cantidadKg = 80; l.resumen.hashFinal = await recalcularCadenaLote(COD, l.eventos); });
       await borrarCrudo(rAnot());
     } },
+  { id: '6d', nombre: 'Igual que 6b y además recalcular el resumen guardado (reescritura completa)', rutas: () => [rLote(), rAnot()],
+    ejecutar: async () => {
+      let ancla = '';
+      await alterarJs(rLote(), async (l) => { l.eventos[2].datos.cantidadKg = 80; ancla = await recalcularCadenaLote(COD, l.eventos); recalcularResumenGuardado(l); });
+      await alterarJs(rAnot(), (d) => recalcularAnotaciones(COD, d, ancla));
+    } },
   { id: '7', nombre: 'Editar la cabecera del lote mostrada al público (estanque, siembra, producto, peces, supervivencia, peso, biomasa)', rutas: () => [rLote()],
     ejecutar: () => alterarJs(rLote(), (l) => {
       l.estanque = 'E9'; l.cantidadSembrada = 5000; l.fechaSiembra = '2026-01-01'; l.producto = 'Tilapia roja orgánica certificada';
@@ -401,6 +413,12 @@ const ATAQUES: Ataque[] = [
     ejecutar: async () => {
       let ancla = '';
       await alterarJs(rLote(), (l) => { l.eventos.pop(); ancla = l.resumen.hashFinal = l.eventos[l.eventos.length - 1].hash; });
+      await alterarJs(rAnot(), (d) => recalcularAnotaciones(COD, d, ancla));
+    } },
+  { id: '8d', nombre: 'Igual que 8c y además recalcular el resumen guardado (reescritura completa)', rutas: () => [rLote(), rAnot()],
+    ejecutar: async () => {
+      let ancla = '';
+      await alterarJs(rLote(), (l) => { l.eventos.pop(); recalcularResumenGuardado(l); ancla = l.resumen.hashFinal; });
       await alterarJs(rAnot(), (d) => recalcularAnotaciones(COD, d, ancla));
     } },
   { id: '9a', nombre: 'Alterar la cantidad entregada del comprobante (sin recalcular)', rutas: () => [rComp()],
@@ -419,6 +437,20 @@ const ATAQUES: Ataque[] = [
     ejecutar: () => borrarCrudo(rComp()) },
   { id: '10', nombre: 'Borrar la foto de entrega antes de su vencimiento', rutas: () => [rFoto()],
     ejecutar: () => borrarCrudo(rFoto()) },
+  { id: 'A1-b', nombre: 'Vaciar los eventos del lote cerrado y dejar resumen.hashFinal vacío', rutas: () => [rLote()],
+    ejecutar: () => alterarJs(rLote(), (l) => { l.eventos = []; l.resumen.hashFinal = ''; }) },
+  { id: 'A1-b2', nombre: 'Dejar vacío solo resumen.hashFinal del lote cerrado', rutas: () => [rLote()],
+    ejecutar: () => alterarJs(rLote(), (l) => { l.resumen.hashFinal = ''; }) },
+  { id: 'A1-c', nombre: 'Cambiar estanque y peces sembrados en la cabecera sin evento de corrección', rutas: () => [rLote()],
+    ejecutar: () => alterarJs(rLote(), (l) => { l.estanque = 'E7'; l.cantidadSembrada = 1200; }) },
+  { id: 'A1-h', nombre: 'Quitar la última resolución de una anotación (el índice "resueltas" la sigue declarando)', rutas: () => [rAnot()],
+    ejecutar: () => alterarJs(rAnot(), (d) => { d.registros.pop(); }) },
+  { id: 'A1-i', nombre: 'Quitar hashAnterior del comprobante y recalcular su hash y el índice', rutas: () => [rComp(), rCons()],
+    ejecutar: async () => {
+      let h = '';
+      await alterarJs(rComp(), async (c) => { delete c.hashAnterior; h = c.hashComprobante = await calcularHashComprobante(c); });
+      await alterarJs(rCons(), (k) => { for (const v of Object.values<any>(k.versiones)) v.hashComprobante = h; });
+    } },
   { id: 'A1', nombre: 'Alterar el valor correcto de la anotación aprobada', rutas: () => [rAnot()],
     ejecutar: () => alterarJs(rAnot(), (d) => { d.registros[0].datos.valorCorrecto = '999'; }) },
   { id: 'A2', nombre: 'Alterar la anotación y recalcular la cadena de anotaciones', rutas: () => [rAnot()],
@@ -439,15 +471,19 @@ async function ataqueAnulacion(resultados: any[]) {
 
 // ---------- 11: parámetros ?lote= y ?entrega= ----------
 async function simularLote(param: string) {
-  // Copia literal de PublicTraceabilityView.cargarLote (líneas 76-112), sin sesión
+  // Copia de PublicTraceabilityView (codigoSeguro + validación del código + cargarLote), sin sesión
   const codigoLote = new URLSearchParams('?lote=' + param).get('lote') || '';
   if (!codigoLote) return 'sin parámetro: App muestra el panel normal';
-  let codigoLimpio: string;
-  try {
-    codigoLimpio = decodeURIComponent(codigoLote || '').trim();
-  } catch (e: any) {
-    return `EXCEPCIÓN fuera del try (${e.name}): cargarLote() rechaza, setCargando(false) nunca corre: esqueleto de carga infinito`;
+  let codigoLimpio = codigoLote;
+  if (/%[0-9A-Fa-f]{2}/.test(codigoLimpio)) {
+    try {
+      codigoLimpio = decodeURIComponent(codigoLimpio);
+    } catch {
+      /* se usa tal cual */
+    }
   }
+  codigoLimpio = codigoLimpio.trim();
+  if (!/^(?!__.*__$)[A-Za-z0-9_-]{1,64}$/.test(codigoLimpio)) return '"Lote no disponible": El código del lote no es válido (sin consultar el servidor)';
   try {
     let snap = await getDocFromServer(doc(db, 'lotes', codigoLimpio));
     if (!snap.exists() && codigoLimpio !== codigoLimpio.toUpperCase()) snap = await getDocFromServer(doc(db, 'lotes', codigoLimpio.toUpperCase()));
@@ -511,13 +547,13 @@ async function pruebasReglas() {
   out.push(await intento('anota-a@prueba.co', 'Anotación: borrar el documento', () => deleteDoc(doc(db, 'anotacionesLote', COD))));
   out.push(await intento(null, 'Anónimo: alterar el lote', () => updateDoc(doc(db, 'lotes', COD), { estanque: 'E9' })));
   out.push(await intento(null, 'Anónimo: crear un lote falso', () => setDoc(doc(db, 'lotes', 'PRUEBA-FALSO'), { codigo: 'PRUEBA-FALSO', estado: 'cerrado', eventos: [] })));
-  out.push(await intento('intruso@prueba.co', 'Operador sin permisos: crear un lote', () => crearLoteActivo(`PRUEBA-${sello}-X-E1`, 'intruso@prueba.co', UID['intruso@prueba.co'])));
+  out.push(await intento('intruso@prueba.co', 'Operador sin permisos: crear un lote', () => crearLoteActivo('E1', 'intruso@prueba.co')));
   out.push(await intento('intruso@prueba.co', 'Operador sin permisos: leer la foto', () => getDocFromServer(doc(db, 'fotosEntrega', ctx.fotoId))));
   out.push(await intento(null, 'Anónimo: leer la foto', () => getDocFromServer(doc(db, 'fotosEntrega', ctx.fotoId))));
 
   // Huecos con permisos legítimos: lote activo nuevo de un operador con permisos de producción
   await entrar(OPER);
-  await crearLoteActivo(COD2, OPER, UID[OPER]);
+  COD2 = await crearLoteActivo('E2', OPER);
   out.push(await intento(OPER, 'Lote ACTIVO: cambiar resumen (supervivencia 99.9, peso 900 g, biomasa 4500 kg) sin registrar ningún evento', () =>
     updateDoc(doc(db, 'lotes', COD2), { 'resumen.supervivencia': 99.9, 'resumen.pesoPromedioActualG': 900, 'resumen.biomasaEstimadaKg': 4500, 'resumen.pecesVivos': 999 })));
   out.push(await intento(OPER, 'Lote ACTIVO: cambiar producto y origen sin evento', () => updateDoc(doc(db, 'lotes', COD2), { producto: 'Tilapia orgánica certificada' })));
@@ -526,15 +562,17 @@ async function pruebasReglas() {
   const l2 = await leerJs(`lotes/${COD2}`);
   const v2 = await verificarIntegridadLote(l2);
   const a2 = await analizarCadenaLote(l2);
-  out.push({ quien: '(verificación)', intento: `Lote ${COD2} tras el cierre manipulado: estado=${l2.estado}, estanque=${l2.estanque}, cantidadSembrada=${l2.cantidadSembrada}, producto="${l2.producto}", supervivencia=${l2.resumen?.supervivencia}`, resultado: `verificarIntegridadLote: ${v2.valido ? 'ÍNTEGRO' : 'alterado'} · analizarCadenaLote: ${a2.valido ? 'ÍNTEGRO' : 'alterado'}` });
+  const r2 = await revisarLote(l2, { config: CONFIG_DEFAULT });
+  out.push({ quien: '(verificación)', intento: `Lote ${COD2} tras el cierre manipulado: estado=${l2.estado}, estanque=${l2.estanque}, cantidadSembrada=${l2.cantidadSembrada}, producto="${l2.producto}", supervivencia=${l2.resumen?.supervivencia}`, resultado: `verificarIntegridadLote: ${v2.valido ? 'ÍNTEGRO' : 'alterado'} · analizarCadenaLote: ${a2.valido ? 'ÍNTEGRO' : 'alterado'} · revisión automática al abrir: ${r2.estado === 'integro' ? 'sin aviso' : 'AVISO: ' + r2.avisos.length + ' dato(s) no corresponden a las fases'}` });
   return out;
 }
 
 // ---------- Programa ----------
 async function principal() {
   if (!/127\.0\.0\.1:8185/.test(RAIZ) && !process.env.PERMITIR_OTRO_PUERTO) throw new Error('Solo emulador en 8185');
-  console.log('Sembrando datos válidos…', COD);
+  console.log('Sembrando datos válidos…');
   await sembrarDatos();
+  console.log('Lote de prueba:', COD);
   const base = await evaluar();
   console.log('Línea base:', clasificar(base), JSON.stringify(base.automaticas.concat(base.manuales)));
   if (base.automaticas.length || base.manuales.length) throw new Error('La línea base no está íntegra: ' + JSON.stringify(base));
@@ -572,8 +610,9 @@ async function principal() {
   writeFileSync(path.join(aqui, '..', 'resultados.json'), JSON.stringify(salida, null, 2));
   const md = [
     '# Resultados de las pruebas de alteración (generado)', '', `Fecha: ${salida.fecha} · Lote: ${COD}`, '',
-    '| Ataque | Resultado | Avisos automáticos | Fallas al pulsar verificar | Lo que ve el público |', '| --- | --- | --- | --- | --- |',
-    ...resultados.map((r) => `| ${r.id}. ${r.nombre} | ${r.resultado} | ${r.senales.automaticas.join('<br>') || 'ninguno'} | ${r.senales.manuales.join('<br>') || 'ninguna'} | ${(JSON.stringify(r.id.startsWith('9') ? r.senales.datos.entregaPublica : r.id.match(/^(1|2|3|3b|10)$/) ? r.senales.datos.foto : r.senales.datos.lote) ?? "sin datos").replace(/\|/g, '/')} |`),
+    'Columna "QR antiguo": si el aviso del lote también sale con una etiqueta QR impresa antes de esta versión (sin el sello `s=`).', '',
+    '| Ataque | Resultado | QR antiguo | Avisos automáticos | Fallas al pulsar verificar | Lo que ve el público |', '| --- | --- | --- | --- | --- | --- |',
+    ...resultados.map((r) => `| ${r.id}. ${r.nombre} | ${r.resultado} | ${/^(4|5|6|6b|6c|6d|7|8|8b|8c|8d|A1-b|A1-b2|A1-c)$/.test(r.id) ? r.senales.datos.qrAntiguoSinSello : '-'} | ${r.senales.automaticas.join('<br>').replace(/\|/g, '/').replace(/ \/ /g, '<br>') || 'ninguno'} | ${r.senales.manuales.join('<br>') || 'ninguna'} | ${(JSON.stringify(r.id.startsWith('9') || r.id === 'A1-i' ? r.senales.datos.entregaPublica : r.id.match(/^(1|2|3|3b|10)$/) ? r.senales.datos.foto : r.senales.datos.lote) ?? "sin datos").replace(/\|/g, '/')} |`),
     '', '## 11. Parámetros de la URL', '', '| Parámetro | Resultado |', '| --- | --- |', ...parametros.map((p) => `| \`${p.param}\` | ${p.resultado} |`),
     '', '## 12. Alteraciones como usuario autenticado (con reglas)', '', '| Usuario | Intento | Resultado |', '| --- | --- | --- |', ...reglas.map((r) => `| ${r.quien} | ${r.intento} | ${r.resultado} |`), ''
   ].join('\n');

@@ -2,6 +2,7 @@ import { collection, doc, getDoc, onSnapshot, query, runTransaction, where } fro
 import { auth, db } from '../firebase/firebaseConfig';
 import { BloqueAnulacion, ComprobanteEntrega, ConsultaEntrega, EventoOrden, OrdenEntrega } from '../types';
 import { calcularSha256, jsonCanonico } from './hashService';
+import { esErrorSinHuellaSegura, huellaParaComparar, MENSAJE_NO_VERIFICABLE } from '../lib/integridad';
 import { cantidadPendiente, mensajeError, nuevoEvento, redondear } from './pedidosService';
 
 // Comprobantes de entrega. Un comprobante definitivo es un registro inmutable en
@@ -129,6 +130,12 @@ export async function calcularHashComprobante(
 ): Promise<string> {
   const { hashComprobante, ...contenido } = c as ComprobanteEntrega;
   return calcularSha256(jsonCanonico(contenido));
+}
+
+/** Hash del bloque recalculado para compararlo con el guardado (acepta huellas de respaldo antiguas) */
+async function hashComprobanteComparable(c: ComprobanteEntrega | BloqueAnulacion): Promise<string> {
+  const { hashComprobante, ...contenido } = c as ComprobanteEntrega;
+  return (await huellaParaComparar(jsonCanonico(contenido), hashComprobante)).hash;
 }
 
 export const esAnulacion = (b: ComprobanteEntrega | BloqueAnulacion): b is BloqueAnulacion =>
@@ -404,21 +411,39 @@ export function escucharComprobantesOrden(
 /**
  * Consulta pública de una entrega por su código (lectura de un solo documento; no lista nada)
  */
+export interface VersionFaltante {
+  clave: string;
+  version: number;
+  comprobanteId: string;
+  anulacion: boolean;
+}
+
 export async function leerConsultaEntrega(
   token: string
-): Promise<{ consulta: ConsultaEntrega; bloques: (ComprobanteEntrega | BloqueAnulacion)[] } | null> {
+): Promise<{ consulta: ConsultaEntrega; bloques: (ComprobanteEntrega | BloqueAnulacion)[]; faltantes: VersionFaltante[] } | null> {
   const snap = await getDoc(doc(db, 'consultasEntrega', token));
   if (!snap.exists()) return null;
   const consulta = snap.data() as ConsultaEntrega;
+  const faltantes: VersionFaltante[] = [];
   const comprobantes = await Promise.all(
-    Object.values(consulta.versiones).map(async (v) => {
+    Object.entries(consulta.versiones || {}).map(async ([clave, v]) => {
       const c = await getDoc(doc(db, 'comprobantes', v.comprobanteId));
-      return c.exists() ? (c.data() as ComprobanteEntrega | BloqueAnulacion) : null;
+      if (!c.exists()) {
+        faltantes.push({
+          clave,
+          version: v.version,
+          comprobanteId: v.comprobanteId,
+          anulacion: v.estadoEntrega === 'anulacion' || clave.startsWith('anulacion-')
+        });
+        return null;
+      }
+      return c.data() as ComprobanteEntrega | BloqueAnulacion;
     })
   );
   return {
     consulta,
-    bloques: comprobantes.filter((c): c is ComprobanteEntrega | BloqueAnulacion => Boolean(c)).sort((a, b) => b.version - a.version)
+    bloques: comprobantes.filter((c): c is ComprobanteEntrega | BloqueAnulacion => Boolean(c)).sort((a, b) => b.version - a.version),
+    faltantes: faltantes.sort((a, b) => a.version - b.version)
   };
 }
 
@@ -433,12 +458,18 @@ export function verificarCadena(
 ): { integra: boolean; sinEnlace: number; mensaje: string } {
   const orden = [...comprobantes].sort((a, b) => a.version - b.version);
   let sinEnlace = 0;
+  let huboEnlace = false;
   for (let i = 0; i < orden.length; i++) {
     const c = orden[i];
     if (!c.hashAnterior) {
+      // Las versiones sin enlace solo pueden ser anteriores al encadenamiento
+      if (huboEnlace) {
+        return { integra: false, sinEnlace, mensaje: `Cadena rota: el registro N.º ${c.version} perdió su enlace con el anterior.` };
+      }
       sinEnlace++;
       continue;
     }
+    huboEnlace = true;
     const esperado = i === 0 ? HASH_GENESIS_COMPROBANTES : orden[i - 1].hashComprobante;
     if (c.hashAnterior !== esperado) {
       return { integra: false, sinEnlace, mensaje: `Cadena rota: el registro N.º ${c.version} no enlaza con el anterior.` };
@@ -457,7 +488,40 @@ export interface ResultadoVerificacionComprobante {
   contenidoIntegro: boolean; // el hash del comprobante coincide con su contenido
   eventosIntegros: boolean | null; // los eventos de la orden siguen iguales (solo si se tiene la orden)
   indiceCoincide: boolean | null; // el índice público registra el mismo hash (solo si se tiene)
+  ordenCoincide: boolean | null; // la orden registró este hash al emitirlo y su contenido sale de la orden
+  noVerificable?: boolean; // el navegador no puede calcular SHA-256
+  ok: boolean; // ninguna comprobación disponible falló
   mensaje: string;
+}
+
+/**
+ * Compara el comprobante con lo que la orden permite reconstruir: el hash que guardó el evento
+ * "Comprobante emitido" y las entregas, novedades, cliente y fecha de confirmación calculados con
+ * el historial tal como estaba al emitirlo. Devuelve los datos que no coinciden.
+ */
+function diferenciasConOrden(c: ComprobanteEntrega, orden: OrdenEntrega): string[] {
+  const historial = orden.historial || [];
+  const pos = historial.findIndex((e) => e.tipo === 'Comprobante emitido' && e.datos?.comprobanteId === c.id);
+  if (pos < 0) return ['la orden no registra la emisión de este comprobante'];
+  const fallas: string[] = [];
+  if (historial[pos].datos?.hashComprobante && historial[pos].datos.hashComprobante !== c.hashComprobante) {
+    fallas.push('la orden registró otro hash al emitirlo');
+  }
+  const alEmitir = { ...orden, historial: historial.slice(0, pos) };
+  const reconstruido = construirComprobante(alEmitir, {
+    id: c.id,
+    version: c.version,
+    token: c.tokenConsulta,
+    uid: c.emitidoPorUid,
+    emitidoEn: c.emitidoEn
+  });
+  // Versiones anteriores tomaban como confirmación la fecha de la última entrega o de su corrección
+  const confirmacionesValidas = [reconstruido.fechas.confirmacion, ultimaEntrega(alEmitir)?.evento.fecha || ''];
+  if (jsonCanonico(reconstruido.entregas) !== jsonCanonico(c.entregas)) fallas.push('las entregas o sus fotos no coinciden con la orden');
+  if (jsonCanonico(reconstruido.novedades) !== jsonCanonico(c.novedades)) fallas.push('las novedades no coinciden con la orden');
+  if (reconstruido.cliente.nombre !== c.cliente?.nombre) fallas.push('el cliente no coincide con la orden');
+  if (!confirmacionesValidas.includes(c.fechas?.confirmacion)) fallas.push('la fecha de confirmación no coincide con la orden');
+  return fallas;
 }
 
 /**
@@ -468,28 +532,108 @@ export async function verificarComprobante(
   c: ComprobanteEntrega | BloqueAnulacion,
   extra: { orden?: OrdenEntrega; consulta?: ConsultaEntrega } = {}
 ): Promise<ResultadoVerificacionComprobante> {
-  const contenidoIntegro = (await calcularHashComprobante(c)) === c.hashComprobante;
+  let contenidoIntegro: boolean;
   let eventosIntegros: boolean | null = null;
-  if (extra.orden && !esAnulacion(c)) {
-    const porId = new Map((extra.orden.historial || []).map((e) => [e.eventoId || `indice-${e.indice}`, e]));
-    const usados = c.eventosUsados.map((id) => porId.get(id));
-    eventosIntegros = usados.every(Boolean) && (await hashDeEventos(usados as EventoOrden[])) === c.hashEventos;
+  try {
+    contenidoIntegro = (await hashComprobanteComparable(c)) === c.hashComprobante;
+    if (extra.orden && !esAnulacion(c)) {
+      const porId = new Map((extra.orden.historial || []).map((e) => [e.eventoId || `indice-${e.indice}`, e]));
+      const usados = c.eventosUsados.map((id) => porId.get(id));
+      eventosIntegros =
+        usados.every(Boolean) && (await huellaParaComparar(jsonCanonico(usados), c.hashEventos)).hash === c.hashEventos;
+    }
+  } catch (e) {
+    if (!esErrorSinHuellaSegura(e)) throw e;
+    return {
+      contenidoIntegro: false,
+      eventosIntegros: null,
+      indiceCoincide: null,
+      ordenCoincide: null,
+      noVerificable: true,
+      ok: false,
+      mensaje: MENSAJE_NO_VERIFICABLE
+    };
   }
   let indiceCoincide: boolean | null = null;
   if (extra.consulta) {
     indiceCoincide = extra.consulta.versiones?.[c.eventoEntregaId]?.hashComprobante === c.hashComprobante;
   }
+  const fallasOrden = extra.orden && !esAnulacion(c) ? diferenciasConOrden(c, extra.orden) : null;
+  const ordenCoincide = fallasOrden ? fallasOrden.length === 0 : null;
   const fallas = [
     !contenidoIntegro && 'el contenido no corresponde a su hash',
     eventosIntegros === false && 'los eventos de la orden no coinciden con los usados',
-    indiceCoincide === false && 'el índice de consulta registra otro hash'
+    indiceCoincide === false && 'el índice de consulta registra otro hash',
+    ...(fallasOrden || [])
   ].filter(Boolean);
   return {
     contenidoIntegro,
     eventosIntegros,
     indiceCoincide,
+    ordenCoincide,
+    ok: fallas.length === 0,
     mensaje: fallas.length
       ? `Verificación fallida: ${fallas.join('; ')}.`
       : `Bloque íntegro: el contenido coincide con su hash SHA-256${eventosIntegros ? ' y con los eventos registrados en la orden' : ''}.`
   };
+}
+
+// ---------- Revisión de la consulta pública (QR del comprobante) ----------
+
+export interface RevisionConsultaEntrega {
+  avisos: string[]; // problemas de la cadena completa (se muestran solos al abrir)
+  verificacion: Record<string, { ok: boolean; mensaje: string; noVerificable?: boolean }>; // por bloque
+  anulados: Set<string>; // comprobantes anulados (con su bloque presente o con la anulación borrada)
+  vigenteId: string | null; // comprobante que se puede presentar como vigente (null si la cadena falla)
+  noVerificable: boolean;
+}
+
+/**
+ * Revisa lo que ve el cliente con el QR del comprobante usando solo datos públicos: el índice de
+ * consulta y los bloques. Detecta bloques faltantes (también una anulación borrada), versiones con
+ * huecos, un índice que no apunta al último registro, enlaces rotos y bloques alterados.
+ */
+export async function revisarConsultaEntrega(
+  consulta: ConsultaEntrega,
+  bloques: (ComprobanteEntrega | BloqueAnulacion)[],
+  faltantes: VersionFaltante[] = []
+): Promise<RevisionConsultaEntrega> {
+  const avisos: string[] = [];
+  const verificacion: RevisionConsultaEntrega['verificacion'] = {};
+  let noVerificable = false;
+  for (const b of bloques) {
+    const v = await verificarComprobante(b, { consulta });
+    verificacion[b.id] = { ok: v.contenidoIntegro && v.indiceCoincide !== false, mensaje: v.mensaje, noVerificable: v.noVerificable };
+    if (v.noVerificable) noVerificable = true;
+  }
+  const versiones = Object.entries(consulta.versiones || {});
+  for (const f of faltantes) {
+    avisos.push(
+      f.anulacion
+        ? `Falta el registro N.º ${f.version} de la cadena: era una anulación y fue borrada. El comprobante que anulaba no tiene validez.`
+        : `Falta el registro N.º ${f.version} de la cadena: el comprobante registrado fue borrado.`
+    );
+  }
+  const numeros = versiones.map(([, v]) => Number(v.version)).sort((a, b) => a - b);
+  if (numeros.some((n, i) => n !== i + 1)) avisos.push('Las versiones de la cadena tienen huecos o están repetidas: falta un registro.');
+  let mayor: { version: number; comprobanteId: string } | null = null;
+  for (const [, v] of versiones) if (!mayor || v.version > mayor.version) mayor = v;
+  if (mayor && consulta.ultimaVersion !== mayor.comprobanteId) {
+    avisos.push('El índice de consulta no apunta al último registro de la cadena.');
+  }
+  for (const b of bloques) {
+    if (!versiones.some(([, v]) => v.comprobanteId === b.id)) avisos.push(`El registro N.º ${b.version} no figura en el índice de consulta.`);
+  }
+  const cadena = verificarCadena(bloques);
+  if (!cadena.integra) avisos.push(cadena.mensaje);
+  for (const b of bloques) {
+    const v = verificacion[b.id];
+    if (v && !v.ok && !v.noVerificable) avisos.push(`Registro N.º ${b.version}: ${v.mensaje}`);
+  }
+
+  const { comprobantes, anulaciones } = separarBloques(bloques);
+  const anulados = new Set(Object.keys(anulaciones));
+  for (const [clave] of versiones) if (clave.startsWith('anulacion-')) anulados.add(clave.slice('anulacion-'.length));
+  const vigente = avisos.length ? null : comprobantes.find((c) => !anulados.has(c.id)) || null;
+  return { avisos, verificacion, anulados, vigenteId: vigente?.id || null, noVerificable };
 }

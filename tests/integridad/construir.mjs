@@ -20,7 +20,8 @@ await build({
   format: 'esm',
   packages: 'external',
   target: 'node20',
-  define: { 'import.meta.env': JSON.stringify({ DEV: false, PROD: false, VITE_EMULADORES: 'false' }) },
+  // Origen fijo de los QR (en Node no hay window.location): el mismo que usa la app con VITE_ORIGEN_PUBLICO
+  define: { 'import.meta.env': JSON.stringify({ DEV: false, PROD: false, VITE_EMULADORES: 'false', VITE_ORIGEN_PUBLICO: 'http://localhost:3000' }) },
   plugins: [sustituirConfig],
   logLevel: 'warning'
 });

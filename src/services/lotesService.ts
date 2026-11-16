@@ -18,7 +18,7 @@ import {
 } from '../utils/constants';
 import { calcularHashEvento, HASH_GENESIS, huellasFase } from './hashService';
 import { nombreRegistro } from './usuariosService';
-import { recalcularResumenLote } from './calculosService';
+import { derivarCabeceraLote, recalcularResumenLote } from './calculosService';
 import { generarYSubirPdfLote } from './pdfService';
 import { construirUrlPublicaPdf, construirUrlPublicaTrazabilidad } from './qrService';
 
@@ -219,6 +219,47 @@ export async function crearNuevoLote(params: ParamsNuevoLote): Promise<Lote> {
   }
 }
 
+/**
+ * Datos de partida del resumen tomados de la cadena (Siembra y correcciones) y no de los campos
+ * sueltos del documento: así el resumen guardado coincide con el que muestran la vista pública y el
+ * certificado. Si la cadena no permite derivarlos (lote sin Siembra), se usan los guardados.
+ */
+function baseResumen(lote: Lote): { fechaSiembra: string; cantidadSembrada: number; pesoInicialPromedioG: number } {
+  const { cabecera, problemas } = derivarCabeceraLote(lote);
+  return problemas.length
+    ? { fechaSiembra: lote.fechaSiembra, cantidadSembrada: lote.cantidadSembrada, pesoInicialPromedioG: lote.pesoInicialPromedioG }
+    : { fechaSiembra: cabecera.fechaSiembra, cantidadSembrada: cabecera.cantidadSembrada, pesoInicialPromedioG: cabecera.pesoInicialPromedioG };
+}
+
+/**
+ * Fecha mínima de una fase nueva (H09). Las fases se muestran y se calculan por su orden en la
+ * cadena, y la vista pública las presenta como cronológicas: una fase no puede ser anterior a la
+ * siembra ni a la última fase productiva registrada. Las correcciones se excluyen de ese tope
+ * (las de siembra llevan la fecha del día en que se hicieron) y una corrección solo exige la siembra.
+ * Nunca pasa de hoy, para no bloquear un lote con fechas futuras heredadas.
+ */
+export function limitesFechaFase(lote: Lote, tipo: TipoEvento): { min: string; motivo: string } {
+  const hoy = getFechaHoyBogota();
+  const eventos = lote.eventos || [];
+  const { cabecera, problemas } = derivarCabeceraLote(lote);
+  const siembra = (problemas.length ? lote.fechaSiembra : cabecera.fechaSiembra) || '';
+  let min = siembra;
+  let motivo = `La fecha de la fase no puede ser anterior a la siembra del lote (${siembra}).`;
+  if (tipo !== 'Corrección') {
+    let ultima: EventoLote | null = null;
+    for (const ev of eventos) {
+      if (ev.tipo === 'Corrección' || !ev.fechaEvento) continue;
+      if (!ultima || ev.fechaEvento >= ultima.fechaEvento) ultima = ev;
+    }
+    if (ultima && ultima.fechaEvento > min) {
+      min = ultima.fechaEvento;
+      motivo = `La fecha de la fase no puede ser anterior a la última fase registrada (#${ultima.indice} ${ultima.tipo}, ${ultima.fechaEvento}). Las fases se registran en orden cronológico.`;
+    }
+  }
+  if (min > hoy) min = hoy;
+  return { min, motivo };
+}
+
 export interface ParamsAgregarEvento {
   codigoLote: string;
   tipo: TipoEvento;
@@ -253,6 +294,41 @@ export async function registrarEventoEnLote(params: ParamsAgregarEvento): Promis
       }
 
       const eventosActuales = lote.eventos || [];
+
+      // Fecha válida (H09): no futura ni anterior a la siembra o a la última fase
+      if (!fechaEvento || !/^\d{4}-\d{2}-\d{2}$/.test(fechaEvento)) {
+        throw new Error('La fecha de la fase no es válida.');
+      }
+      if (fechaEvento > getFechaHoyBogota()) {
+        throw new Error('La fecha de la fase no puede ser posterior a hoy.');
+      }
+      const limites = limitesFechaFase(lote, tipo);
+      if (fechaEvento < limites.min) throw new Error(limites.motivo);
+
+      const base = baseResumen(lote);
+      // Tope de mortalidad y cosecha (H08): no más que los peces vivos según la cadena vigente
+      if (tipo === 'Mortalidad' || tipo === 'Cosecha') {
+        const cantidad = Number(tipo === 'Mortalidad' ? datos?.cantidad : datos?.pecesCosechados);
+        if (!Number.isInteger(cantidad) || cantidad < 1) {
+          throw new Error(tipo === 'Mortalidad' ? 'La mortalidad debe ser un número entero de peces, 1 o más.' : 'La cosecha debe ser un número entero de peces, 1 o más.');
+        }
+        const previo = recalcularResumenLote({
+          ...base,
+          eventos: eventosActuales,
+          estado: 'activo',
+          fechaCierre: null,
+          rangos: config.rangosReferencia
+        });
+        if (cantidad > previo.pecesVivos) {
+          const accion = tipo === 'Mortalidad' ? 'La mortalidad indicada' : 'La cosecha indicada';
+          throw new Error(
+            previo.pecesVivos === 0
+              ? `El lote ${codigoLote} no tiene peces vivos: no se puede registrar ${tipo === 'Mortalidad' ? 'mortalidad' : 'una cosecha'}.`
+              : `El lote ${codigoLote} solo tiene ${previo.pecesVivos} peces vivos. ${accion} (${cantidad}) los supera en ${cantidad - previo.pecesVivos}.`
+          );
+        }
+      }
+
       const nuevoIndice = eventosActuales.length;
       const hashAnterior = nuevoIndice === 0 ? HASH_GENESIS : eventosActuales[nuevoIndice - 1].hash;
 
@@ -289,9 +365,7 @@ export async function registrarEventoEnLote(params: ParamsAgregarEvento): Promis
       const listaEventosActualizada = [...eventosActuales, nuevoEvento];
       const estanqueInfo = config.estanques.find((e) => e.codigo === lote.estanque);
       const nuevoResumen = recalcularResumenLote({
-        fechaSiembra: lote.fechaSiembra,
-        cantidadSembrada: lote.cantidadSembrada,
-        pesoInicialPromedioG: lote.pesoInicialPromedioG,
+        ...base,
         eventos: listaEventosActualizada,
         estado: 'activo',
         fechaCierre: null,
@@ -385,6 +459,21 @@ export async function modificarDatosSiembraOPiscina(params: ParamsModificarSiemb
       };
       const cambios = (Object.keys(nuevo) as (keyof typeof nuevo)[]).filter((k) => anterior[k] !== nuevo[k]);
       if (!cambios.length) throw new Error('No hay cambios para guardar en los datos de alevinos o piscina.');
+      if (cambios.includes('cantidadSembrada')) {
+        const actual = recalcularResumenLote({
+          ...baseResumen(lote),
+          eventos: eventosPrevios,
+          estado: 'activo',
+          fechaCierre: null,
+          rangos: config.rangosReferencia
+        });
+        const salidas = actual.mortalidadAcumulada + actual.pecesCosechados;
+        if (cantidadSembrada < salidas) {
+          throw new Error(
+            `La cantidad sembrada no puede ser menor que la mortalidad y la cosecha ya registradas (${salidas} peces).`
+          );
+        }
+      }
 
       const indice = eventosPrevios.length;
       const hashAnterior = indice === 0 ? HASH_GENESIS : eventosPrevios[indice - 1].hash;
@@ -492,9 +581,7 @@ export async function cerrarLote(
 
       const estanqueInfo = config.estanques.find((e) => e.codigo === loteBase.estanque);
       const nuevoResumen = recalcularResumenLote({
-        fechaSiembra: loteBase.fechaSiembra,
-        cantidadSembrada: loteBase.cantidadSembrada,
-        pesoInicialPromedioG: loteBase.pesoInicialPromedioG,
+        ...baseResumen(loteBase),
         eventos: loteBase.eventos || [],
         estado: 'cerrado',
         fechaCierre,

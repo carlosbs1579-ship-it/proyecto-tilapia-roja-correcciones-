@@ -91,3 +91,27 @@ Ninguno todavía.
   - H20: correos en lotes reales.
   - H42: dirección en el comprobante público.
   - H14: solo si exige migrar órdenes reales.
+
+### Tanda 1: DISENO-A terminado
+
+Cerrados: H11, H30, H32 (hook nuevo `src/lib/ventana.ts`, useVentana), H56, H57, H60, H62. H69 solo a medias: index.esm no se puede partir, queda vigilado.
+
+Para la tanda 3, cada componente importa useVentana y lo llama antes de cualquier `return null`:
+- **IntegrityCheckModal:** `useVentana(isOpen, onClose, { bloqueada: verificando })`; spread de propsVelo en el velo, más role="dialog", aria-modal y aria-labelledby; aria-label="Cerrar" en el botón X.
+- **NuevoEventoModal:** `useVentana(isOpen, onClose, { bloqueada: guardando, cerrarAlTocarVelo: false })`, más spread y las mismas etiquetas aria.
+- **LoteDetailModal:** `useVentana(isOpen, onClose)` en la ventana principal. La subventana (~l.716) lleva `{ bloqueada, cerrarAlTocarVelo: false }`. En las dos, aria-labelledby y aria-label="Cerrar".
+- **App.tsx:** no requiere cambios para H30, solo verificarlo con sesión.
+
+### Tanda 1: INTEGRIDAD-APP terminado
+
+Cerrados: H02, H03 (QR con `&s=` sello), H04, H06, H07, H12 (parte de la app), H16, H17, H25, H27, H29, H34, H36, H37, H39, H40, H43, H66. Capturas en auditoria/capturas-fase3/.
+
+No implementados (requieren campos nuevos o decisión): H14, H18, H19, H38, H41, H42. A2 sigue sin detectarse.
+
+Pendientes para las tandas siguientes:
+- **QrModal (H03):** usar `urlQrLote(lote)` y llamar a `descargarQrConEtiqueta(qr, lote.codigo, lote.estado === 'cerrado' ? lote.resumen?.hashFinal : null)`.
+- **EntregasPanel (H67):** quitar el import de `registrarAccionEntrega`.
+- **DashboardTab y LotesTab:** usar `derivarLote(lote, config)` para estanque, supervivencia y peso.
+- **Bug de useVentana:** al abrir el detalle, el cuerpo aparece desplazado y la rueda del mouse dentro de la ventana la cierra. Revisarlo en la tanda 3.
+- **Reglas:** confirmar que `enlaceLoteValido` acepte el `pdfUrl` con el origen de producción y de preview.
+- **Vercel:** `VITE_ORIGEN_PUBLICO`, decisión del usuario.

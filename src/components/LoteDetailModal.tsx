@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Pestanas } from './Pestanas';
 import { usePresencia } from '../lib/presencia';
 import {
@@ -27,15 +27,16 @@ import { Lote, ConfiguracionGeneral, TipoEvento, UsuarioPerfil } from '../types'
 import { NuevoEventoModal } from './NuevoEventoModal';
 import { IntegrityCheckModal } from './IntegrityCheckModal';
 import { QrModal } from './QrModal';
-import { cerrarLote, escucharLoteIndividual, modificarDatosSiembraOPiscina } from '../services/lotesService';
+import { cerrarLote, modificarDatosSiembraOPiscina } from '../services/lotesService';
 import { previsualizarPdfLote, generarYSubirPdfLote, descargarPdfLoteLocal } from '../services/pdfService';
 import { formatearFechaColombia } from '../utils/constants';
 import { evaluarParametroAgua } from '../services/calculosService';
-import { analizarCadenaLote, DiagnosticoFase, nombreDato } from '../services/hashService';
+import { DiagnosticoFase, nombreDato, revisarLote, RevisionLote } from '../services/hashService';
+import { AvisoIntegridad } from './AvisoIntegridad';
 import { esAdminMaestro, verificarPermiso, quienRegistro } from '../services/usuariosService';
 import { EntregasPanel } from './EntregasPanel';
 import { AnotacionesLotePanel } from './AnotacionesLotePanel';
-import { anotacionesDe, escucharAnotaciones } from '../services/anotacionesService';
+import { anotacionesDe, escucharAnotaciones, verificarAnotaciones } from '../services/anotacionesService';
 import { AnotacionesLote } from '../types';
 
 interface LoteDetailModalProps {
@@ -85,23 +86,48 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
       return m;
     }, {});
 
-  // Diagnóstico de cada fase de la cadena (se recalcula cuando cambia el lote)
+  // Revisión automática al abrir y cada vez que cambia el lote: diagnóstico de cada fase, sello,
+  // forma del lote, cabecera y resumen derivados de la cadena, y sello de las anotaciones
+  const [revision, setRevision] = useState<RevisionLote | null>(null);
   const [diagnostico, setDiagnostico] = useState<Record<number, DiagnosticoFase>>({});
   useEffect(() => {
     let activo = true;
-    analizarCadenaLote(lote)
-      .then((a) => activo && setDiagnostico(Object.fromEntries(a.fases.map((f) => [f.indice, f]))))
-      .catch(() => activo && setDiagnostico({}));
+    (async () => {
+      const selloCambiado = lote.estado === 'cerrado' ? (await verificarAnotaciones(lote, datosAnotaciones)).selloCambiado : false;
+      const rev = await revisarLote(lote, { config, anotacionesSelloCambiado: selloCambiado });
+      if (!activo) return;
+      setRevision(rev);
+      setDiagnostico(Object.fromEntries(rev.analisis.fases.map((f) => [f.indice, f])));
+    })().catch(() => {
+      if (activo) {
+        setRevision(null);
+        setDiagnostico({});
+      }
+    });
     return () => {
       activo = false;
     };
-  }, [lote]);
+  }, [lote, config, datosAnotaciones]);
   const [modalEventoOpen, setModalEventoOpen] = useState(false);
   const [modalIntegridadOpen, setModalIntegridadOpen] = useState(false);
   const [modalQrOpen, setModalQrOpen] = useState(false);
   const [confirmarCierre, setConfirmarCierre] = useState(false);
   const [procesandoAccion, setProcesandoAccion] = useState(false);
   const [mensajeExito, setMensajeExito] = useState<string | null>(null);
+  // Un solo temporizador para el mensaje de éxito: se reinicia con cada mensaje y se limpia al
+  // desmontar, para no actualizar el estado de una ventana ya cerrada (H55)
+  const temporizadorExito = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mostrarExito = (texto: string, ms = 4000) => {
+    if (temporizadorExito.current) clearTimeout(temporizadorExito.current);
+    setMensajeExito(texto);
+    temporizadorExito.current = setTimeout(() => {
+      temporizadorExito.current = null;
+      setMensajeExito(null);
+    }, ms);
+  };
+  useEffect(() => () => {
+    if (temporizadorExito.current) clearTimeout(temporizadorExito.current);
+  }, []);
   const [errorAccion, setErrorAccion] = useState<string | null>(null);
   const [filtroTipo, setFiltroTipo] = useState<string>('todos');
 
@@ -164,11 +190,10 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
       if (loteActualizado) {
         setLote(loteActualizado);
         setModalEditarSiembraOpen(false);
-        setMensajeExito('Registros de alevinos y piscina actualizados en la cadena.');
+        mostrarExito('Registros de alevinos y piscina actualizados en la cadena.');
         if (onLoteActualizado) {
           onLoteActualizado(loteActualizado);
         }
-        setTimeout(() => setMensajeExito(null), 4000);
       }
     } catch (err: any) {
       setErrorEdicion(err.message || 'Error al actualizar datos de alevinos y piscina.');
@@ -177,22 +202,27 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
     }
   };
 
-  // Suscripción en tiempo real al lote individual
+  // El lote llega en vivo desde la lista de lotes de App (una sola escucha de la colección; ya no se
+  // abre otra del mismo documento, H54). Se adopta la versión recibida si es otro lote o es más nueva.
   useEffect(() => {
     if (!isOpen || !loteInicial?.codigo) return;
-    setLote(loteInicial);
-    const unsubscribe = escucharLoteIndividual(loteInicial.codigo, (loteActualizado) => {
-      if (loteActualizado) {
-        setLote(loteActualizado);
-      }
+    setLote((previo) => {
+      if (previo.codigo !== loteInicial.codigo) return loteInicial;
+      const mismaVersion =
+        (previo.actualizadoEn || '') === (loteInicial.actualizadoEn || '') &&
+        previo.estado === loteInicial.estado &&
+        (previo.eventos?.length || 0) === (loteInicial.eventos?.length || 0);
+      if (mismaVersion) return previo;
+      return (loteInicial.actualizadoEn || '') >= (previo.actualizadoEn || '') ? loteInicial : previo;
     });
-    return () => unsubscribe();
-  }, [isOpen, loteInicial?.codigo]);
+  }, [isOpen, loteInicial]);
 
   const presencia = usePresencia(isOpen);
   if (!presencia.montado) return null;
 
-  const r = lote.resumen;
+  // Indicadores y cabecera calculados desde la cadena de fases; mientras se calculan, lo guardado
+  const r = revision?.resumen || lote.resumen;
+  const cab = revision?.cabecera;
 
   const handleCerrarLote = async () => {
     setProcesandoAccion(true);
@@ -201,11 +231,10 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
       if (loteCerrado) {
         setLote(loteCerrado);
         setConfirmarCierre(false);
-        setMensajeExito('Lote cerrado. El certificado y el QR de trazabilidad ya están activos.');
+        mostrarExito('Lote cerrado. El certificado y el QR de trazabilidad ya están activos.');
         if (onLoteActualizado) {
           onLoteActualizado(loteCerrado);
         }
-        setTimeout(() => setMensajeExito(null), 4000);
       }
     } catch (err: any) {
       setErrorAccion(`No se pudo cerrar el lote: ${err.message || err}`);
@@ -218,8 +247,7 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
     setProcesandoAccion(true);
     try {
       const { urlPublica, versionPdf } = await generarYSubirPdfLote(lote, config);
-      setMensajeExito(`Certificado PDF listo: se genera con los datos vigentes del lote.`);
-      setTimeout(() => setMensajeExito(null), 4000);
+      mostrarExito('Certificado PDF listo: se genera con los datos vigentes del lote.');
     } catch (err: any) {
       setErrorAccion(`No se pudo regenerar el PDF: ${err.message || err}`);
     } finally {
@@ -260,7 +288,7 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
                   </span>
                 </div>
                 <p className="text-xs text-slate-300">
-                  Estanque {lote.estanque} · Siembra: {lote.fechaSiembra} · Consecutivo #{lote.consecutivo}
+                  Estanque {cab?.estanque || lote.estanque} · Siembra: {cab?.fechaSiembra || lote.fechaSiembra} · Consecutivo #{lote.consecutivo}
                 </p>
               </div>
             </div>
@@ -337,6 +365,18 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
 
           {/* CUERPO PRINCIPAL CON SCROLL */}
           <div className="p-6 overflow-y-auto space-y-6 flex-1 bg-slate-50">
+            {/* AVISO AUTOMÁTICO DE INTEGRIDAD */}
+            {revision && revision.estado !== 'integro' && (
+              <AvisoIntegridad
+                estado={revision.estado}
+                avisos={revision.avisos}
+                nota={
+                  revision.estado === 'alterado' && revision.diferencias.length
+                    ? 'Los indicadores de esta ventana se calcularon a partir de las fases registradas, no de los valores guardados aparte.'
+                    : undefined
+                }
+              />
+            )}
             {/* AVISO DE LOTE SELLADO / CERRADO */}
             {lote.estado === 'cerrado' && (
               <div className="bg-slate-900 text-white rounded-md px-6 py-5 space-y-3">
@@ -347,8 +387,12 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
                   </span>
                   <span className="rotulo text-amber-300">
                     {lote.fechaCierre ? `Sellado · ${formatearFechaColombia(lote.fechaCierre)}` : 'Sellado'}
-                    {Object.keys(diagnostico).length > 0 &&
-                      (Object.values(diagnostico).every((d) => d.estado === 'integra') ? ' · Cadena íntegra' : ' · Cadena alterada')}
+                    {revision &&
+                      (revision.estado === 'integro'
+                        ? ' · Cadena íntegra'
+                        : revision.estado === 'alterado'
+                          ? ' · Cadena alterada'
+                          : ' · Sin verificar en este navegador')}
                   </span>
                 </p>
                 <p className="trazo-acta text-sm text-slate-200">
@@ -460,7 +504,7 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
                   <Clock className="w-3.5 h-3.5 text-slate-500" />
                 </div>
                 <p className="text-base font-semibold text-slate-900">{r.diasDeCultivo != null ? `${r.diasDeCultivo} d` : 'Sin dato'}</p>
-                <p className="text-xs text-slate-500">Desde {lote.fechaSiembra}</p>
+                <p className="text-xs text-slate-500">Desde {cab?.fechaSiembra || lote.fechaSiembra}</p>
               </div>
 
               {/* Supervivencia & Peces Vivos */}
@@ -470,7 +514,7 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
                   <Activity className="w-3.5 h-3.5 text-emerald-500" />
                 </div>
                 <p className="text-base font-semibold text-slate-900">{r.supervivencia}%</p>
-                <p className="text-xs text-slate-500">{r.pecesVivos.toLocaleString()} vivos / {lote.cantidadSembrada.toLocaleString()}</p>
+                <p className="text-xs text-slate-500">{r.pecesVivos.toLocaleString()} vivos / {(cab?.cantidadSembrada ?? lote.cantidadSembrada).toLocaleString()}</p>
               </div>
 
               {/* Peso Promedio Actual */}
@@ -480,7 +524,7 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
                   <TrendingUp className="w-3.5 h-3.5 text-sky-500" />
                 </div>
                 <p className="text-base font-semibold text-slate-900">{r.pesoPromedioActualG} g</p>
-                <p className="text-xs text-slate-500">Inicial: {lote.pesoInicialPromedioG} g (+{r.gananciaDiariaG} g/d)</p>
+                <p className="text-xs text-slate-500">Inicial: {cab?.pesoInicialPromedioG ?? lote.pesoInicialPromedioG} g (+{r.gananciaDiariaG} g/d)</p>
               </div>
 
               {/* Biomasa Estimada Viva */}
@@ -689,8 +733,7 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
           userEmail={userEmail}
           onEventoRegistrado={(loteActualizado) => {
             setLote(loteActualizado);
-            setMensajeExito('Fase agregada y verificada con éxito en la cadena de hashes.');
-            setTimeout(() => setMensajeExito(null), 3000);
+            mostrarExito('Fase agregada y verificada con éxito en la cadena de hashes.', 3000);
           }}
         />
       )}

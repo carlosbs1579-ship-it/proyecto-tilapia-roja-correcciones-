@@ -4,7 +4,8 @@ import { X, Calendar, AlertTriangle, CheckCircle2, ShieldAlert, Lock } from 'luc
 import { Lote, TipoEvento, ConfiguracionGeneral } from '../types';
 import { getFechaHoyBogota } from '../utils/constants';
 import { registrarEventoEnLote } from '../services/lotesService';
-import { evaluarParametroAgua } from '../services/calculosService';
+import { evaluarParametroAgua, derivarLote } from '../services/calculosService';
+import { limitesFechaFase } from '../services/lotesService';
 
 interface NuevoEventoModalProps {
   isOpen: boolean;
@@ -115,6 +116,13 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
   const presencia = usePresencia(isOpen);
   if (!presencia.montado) return null;
 
+  // Peces vivos según la cadena de fases (no según los campos guardados): tope de mortalidad y cosecha
+  const pecesVivos = derivarLote(lote, config).resumen.pecesVivos;
+  // Fechas permitidas: desde la siembra (o la última fase productiva) hasta hoy
+  const limitesFecha = limitesFechaFase(lote, tipo);
+  const mortalidadExcede = tipo === 'Mortalidad' && cantMortalidad !== '' && Number(cantMortalidad) > pecesVivos;
+  const cosechaExcede = tipo === 'Cosecha' && pecesCosechados !== '' && Number(pecesCosechados) > pecesVivos;
+
   // Evaluaciones en tiempo real de agua
   const rangos = config.rangosReferencia;
   const evalTemp = evaluarParametroAgua('temperatura', tempAgua === '' ? null : Number(tempAgua), rangos);
@@ -139,6 +147,10 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
     }
     if (fechaEvento > hoy) {
       setErrorMsg('La fecha de la fase no puede ser posterior a hoy.');
+      return;
+    }
+    if (fechaEvento < limitesFecha.min) {
+      setErrorMsg(limitesFecha.motivo);
       return;
     }
 
@@ -175,6 +187,16 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
         setErrorMsg('La cantidad de mortalidad debe ser al menos 1 pez.');
         return;
       }
+      if (!Number.isInteger(Number(cantMortalidad))) {
+        setErrorMsg('La mortalidad se registra en peces enteros.');
+        return;
+      }
+      if (Number(cantMortalidad) > pecesVivos) {
+        setErrorMsg(
+          `El lote solo tiene ${pecesVivos.toLocaleString('es-CO')} peces vivos. La mortalidad indicada (${Number(cantMortalidad).toLocaleString('es-CO')}) los supera en ${(Number(cantMortalidad) - pecesVivos).toLocaleString('es-CO')}.`
+        );
+        return;
+      }
       datos.cantidad = Number(cantMortalidad);
       datos.causaProbable = causaMortalidad.trim() || 'No especificada';
     } else if (tipo === 'Probióticos') {
@@ -190,6 +212,18 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
     } else if (tipo === 'Cosecha') {
       if (!pecesCosechados || Number(pecesCosechados) <= 0) {
         setErrorMsg('Indica la cantidad de peces cosechados.');
+        return;
+      }
+      if (!Number.isInteger(Number(pecesCosechados))) {
+        setErrorMsg('La cosecha se registra en peces enteros.');
+        return;
+      }
+      if (Number(pecesCosechados) > pecesVivos) {
+        setErrorMsg(
+          pecesVivos === 0
+            ? 'El lote no tiene peces vivos: no se puede registrar una cosecha.'
+            : `El lote solo tiene ${pecesVivos.toLocaleString('es-CO')} peces vivos. La cosecha indicada (${Number(pecesCosechados).toLocaleString('es-CO')}) los supera en ${(Number(pecesCosechados) - pecesVivos).toLocaleString('es-CO')}.`
+        );
         return;
       }
       datos.pecesCosechados = Number(pecesCosechados);
@@ -328,6 +362,7 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                 <input
                   type="date"
                   required
+                  min={limitesFecha.min}
                   max={hoy}
                   value={fechaEvento}
                   onChange={(e) => setFechaEvento(e.target.value)}
@@ -335,6 +370,7 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                   className="w-full pl-9 pr-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
                 />
               </div>
+              <p className="text-xs text-slate-500 mt-1">Entre {limitesFecha.min} y {hoy}.</p>
             </div>
           </div>
 
@@ -590,8 +626,12 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                   required
                   value={cantMortalidad}
                   onChange={(e) => setCantMortalidad(e.target.value === '' ? '' : Number(e.target.value))}
-                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md"
+                  aria-invalid={mortalidadExcede || undefined}
+                  className={`w-full px-3 py-2 text-sm border rounded-md ${mortalidadExcede ? 'border-red-400 bg-red-50/50' : 'border-slate-300'}`}
                 />
+                <p className={`text-xs mt-1 ${mortalidadExcede ? 'text-red-700 font-semibold' : 'text-slate-500'}`}>
+                  Peces vivos en el lote: {pecesVivos.toLocaleString('es-CO')}
+                </p>
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1">Causa Probable</label>
@@ -712,8 +752,12 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
                   required
                   value={pecesCosechados}
                   onChange={(e) => setPecesCosechados(e.target.value === '' ? '' : Number(e.target.value))}
-                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md"
+                  aria-invalid={cosechaExcede || undefined}
+                  className={`w-full px-3 py-2 text-sm border rounded-md ${cosechaExcede ? 'border-red-400 bg-red-50/50' : 'border-slate-300'}`}
                 />
+                <p className={`text-xs mt-1 ${cosechaExcede ? 'text-red-700 font-semibold' : 'text-slate-500'}`}>
+                  Peces vivos en el lote: {pecesVivos.toLocaleString('es-CO')}
+                </p>
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1">Biomasa Cosechada (kg) *</label>

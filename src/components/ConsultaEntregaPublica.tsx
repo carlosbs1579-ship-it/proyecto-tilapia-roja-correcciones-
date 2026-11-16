@@ -2,7 +2,15 @@ import React, { useEffect, useState } from 'react';
 import { EsqueletoTarjetas } from './Esqueleto';
 import { ArrowLeft, Download, FileText, ShieldAlert, ShieldCheck, Truck } from 'lucide-react';
 import { BloqueAnulacion, ComprobanteEntrega, ConsultaEntrega } from '../types';
-import { EMPRESA, esAnulacion, leerConsultaEntrega, separarBloques, verificarCadena, verificarComprobante } from '../services/comprobantesService';
+import {
+  EMPRESA,
+  esAnulacion,
+  leerConsultaEntrega,
+  revisarConsultaEntrega,
+  RevisionConsultaEntrega,
+  separarBloques
+} from '../services/comprobantesService';
+import { AvisoIntegridad, IndicadorVerificado } from './AvisoIntegridad';
 import { descargarComprobantePdf, verComprobantePdf } from '../services/pdfService';
 import { formatearFechaColombia } from '../utils/constants';
 
@@ -18,28 +26,32 @@ export const ConsultaEntregaPublica: React.FC<{
   onAbrirLote: (codigo: string) => void;
   onVolver: () => void;
 }> = ({ token, onAbrirLote, onVolver }) => {
-  const [estado, setEstado] = useState<'cargando' | 'no_encontrada' | 'error' | 'ok'>('cargando');
+  const [estado, setEstado] = useState<'cargando' | 'no_encontrada' | 'faltan' | 'error' | 'ok'>('cargando');
   const [consulta, setConsulta] = useState<ConsultaEntrega | null>(null);
   const [bloques, setBloques] = useState<(ComprobanteEntrega | BloqueAnulacion)[]>([]);
   const { comprobantes, anulaciones } = separarBloques(bloques);
-  const [verificacion, setVerificacion] = useState<Record<string, { ok: boolean; mensaje: string }>>({});
+  // Revisión automática de toda la cadena pública (bloques faltantes, enlaces, anulaciones, hashes)
+  const [revision, setRevision] = useState<RevisionConsultaEntrega | null>(null);
+  const [avisosFaltantes, setAvisosFaltantes] = useState<string[]>([]);
+  const verificacion = revision?.verificacion || {};
 
   useEffect(() => {
     let activo = true;
     leerConsultaEntrega(token)
       .then(async (r) => {
         if (!activo) return;
-        if (!r || !r.bloques.length) return setEstado('no_encontrada');
+        if (!r) return setEstado('no_encontrada');
+        const rev = await revisarConsultaEntrega(r.consulta, r.bloques, r.faltantes);
+        if (!activo) return;
+        if (!r.bloques.length) {
+          // El índice existe pero sus bloques no: no es un código equivocado, se borró el registro
+          setAvisosFaltantes(rev.avisos);
+          return setEstado('faltan');
+        }
         setConsulta(r.consulta);
         setBloques(r.bloques);
+        setRevision(rev);
         setEstado('ok');
-        // Verificación automática de cada versión contra su hash y el índice de consulta
-        const resultados: Record<string, { ok: boolean; mensaje: string }> = {};
-        for (const c of r.bloques) {
-          const v = await verificarComprobante(c, { consulta: r.consulta });
-          resultados[c.id] = { ok: v.contenidoIntegro && v.indiceCoincide !== false, mensaje: v.mensaje };
-        }
-        if (activo) setVerificacion(resultados);
       })
       .catch(() => activo && setEstado('error'));
     return () => {
@@ -47,8 +59,16 @@ export const ConsultaEntregaPublica: React.FC<{
     };
   }, [token]);
 
-  // Comprobante vigente: el más reciente que no esté anulado (si todos lo están, se muestra el último)
-  const actual = comprobantes.find((c) => !anulaciones[c.id]) || comprobantes[0];
+  // Comprobante vigente: el más reciente que no esté anulado (ni con su anulación borrada). Si la
+  // cadena tiene problemas ninguno se presenta como vigente; se muestran sus datos con el aviso.
+  const anulado = (id: string) => Boolean(anulaciones[id] || revision?.anulados.has(id));
+  const vigente = revision?.vigenteId ? comprobantes.find((c) => c.id === revision.vigenteId) : undefined;
+  const actual = vigente || comprobantes.find((c) => !anulado(c.id)) || comprobantes[0];
+  const hayAvisos = Boolean(revision && revision.avisos.length);
+  const alteracionDe = (id: string) =>
+    [verificacion[id] && !verificacion[id].ok && !verificacion[id].noVerificable ? verificacion[id].mensaje : '', hayAvisos ? 'La cadena de esta entrega tiene registros faltantes o alterados.' : '']
+      .filter(Boolean)
+      .join(' ');
 
   return (
     <div className="min-h-dvh bg-slate-100 text-slate-800">
@@ -76,12 +96,30 @@ export const ConsultaEntregaPublica: React.FC<{
             <p className="text-slate-500 text-xs mt-1">Revise que el enlace o el código QR estén completos.</p>
           </div>
         )}
+        {estado === 'faltan' && (
+          <AvisoIntegridad
+            estado="alterado"
+            titulo="Falta el comprobante registrado"
+            avisos={avisosFaltantes}
+            nota="El código existe y registra comprobantes emitidos, pero ya no están guardados. Comuníquese con Cultivos Loré."
+          />
+        )}
         {estado === 'error' && (
           <div className="bg-white rounded-lg border border-red-200 p-4 text-red-700">No se pudo consultar la entrega. Intente de nuevo.</div>
         )}
 
         {estado === 'ok' && actual && consulta && (
           <>
+            {revision && revision.avisos.length > 0 && (
+              <AvisoIntegridad
+                estado="alterado"
+                avisos={revision.avisos}
+                nota="Ningún comprobante de esta entrega se puede presentar como vigente hasta aclarar la cadena."
+              />
+            )}
+            {revision && !revision.avisos.length && revision.noVerificable && (
+              <AvisoIntegridad estado="no_verificable" avisos={[]} nota="Abra el enlace por https para comprobar la integridad." />
+            )}
             <section className="bg-white rounded-lg border border-slate-200 p-4 space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
@@ -111,7 +149,15 @@ export const ConsultaEntregaPublica: React.FC<{
                 )}
                 <span>
                   Comprobante vigente:{' '}
-                  <strong>{anulaciones[actual.id] ? 'ninguno (todos anulados)' : `N.º ${actual.version}`}</strong>
+                  <strong>
+                    {!revision
+                      ? 'verificando…'
+                      : hayAvisos
+                        ? 'ninguno (la cadena tiene problemas)'
+                        : vigente
+                          ? `N.º ${vigente.version}`
+                          : 'ninguno (todos anulados)'}
+                  </strong>
                 </span>
               </div>
             </section>
@@ -148,39 +194,52 @@ export const ConsultaEntregaPublica: React.FC<{
 
             <section className="bg-white rounded-lg border border-slate-200 p-4 space-y-2">
               <span className="font-semibold block">Comprobantes emitidos ({comprobantes.length})</span>
-              {(() => {
-                const cadena = verificarCadena(bloques);
-                return (
-                  <span className={`flex items-start text-xs ${cadena.integra ? 'text-emerald-700' : 'text-red-600'}`}>
-                    {cadena.integra ? <ShieldCheck className="w-3 h-3 mr-1 mt-1 shrink-0" /> : <ShieldAlert className="w-3 h-3 mr-1 mt-1 shrink-0" />}
-                    {cadena.mensaje}
-                  </span>
-                );
-              })()}
+              {revision && !revision.avisos.length && !revision.noVerificable && (
+                <IndicadorVerificado texto={`Cadena verificada al abrir: ${bloques.length} registro(s) completos y enlazados.`} />
+              )}
               {bloques.map((b) =>
                 esAnulacion(b) ? (
-                  <li key={b.id} className="border border-red-100 bg-red-50/40 rounded-md p-2 text-xs text-red-700">
-                    Registro N.º {b.version} · Anulación del comprobante N.º {b.versionAnulada} · {formatearFechaColombia(b.emitidoEn)}
-                  </li>
+                  <div key={b.id} className="border border-red-100 bg-red-50/40 rounded-md p-2 text-xs text-red-700 space-y-1">
+                    <span className="block">
+                      Registro N.º {b.version} · Anulación del comprobante N.º {b.versionAnulada} · {formatearFechaColombia(b.emitidoEn)}
+                    </span>
+                    {verificacion[b.id] &&
+                      (verificacion[b.id].ok ? (
+                        <span className="flex items-center text-emerald-700">
+                          <ShieldCheck className="w-3 h-3 mr-1 shrink-0" aria-hidden="true" />
+                          Anulación verificada
+                        </span>
+                      ) : (
+                        <span className="flex items-start font-semibold">
+                          <ShieldAlert className="w-3 h-3 mr-1 mt-0.5 shrink-0" aria-hidden="true" />
+                          {verificacion[b.id].mensaje}
+                        </span>
+                      ))}
+                  </div>
                 ) : ((c: ComprobanteEntrega) => (
                 <div key={c.id} className="border border-slate-100 rounded-md p-2 space-y-1 text-xs">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <span>
                       <strong>Comprobante N.º {c.version}</strong>
-                      {anulaciones[c.id] && <strong className="ml-1 px-1 rounded-md bg-red-100 text-red-700">ANULADO</strong>} · {formatearFechaColombia(c.emitidoEn)} ·{' '}
+                      {anulado(c.id) && <strong className="ml-1 px-1 rounded-md bg-red-100 text-red-700">ANULADO</strong>} · {formatearFechaColombia(c.emitidoEn)} ·{' '}
                       {c.estadoEntrega === 'entregado' ? 'entrega completa' : 'entrega parcial'} · entregado {num(c.cantidadEntregada)} {c.unidad}
                     </span>
                     <span className="flex gap-1">
-                      <button type="button" onClick={() => verComprobantePdf(c, false, anulaciones[c.id])} className="flex items-center px-2 py-1 rounded-md border border-slate-300 hover:bg-slate-100">
+                      <button type="button" onClick={() => verComprobantePdf(c, false, anulaciones[c.id], alteracionDe(c.id)).catch(() => {})} className="flex items-center px-2 py-1 rounded-md border border-slate-300 hover:bg-slate-100">
                         <FileText className="w-3 h-3 mr-1" />
                         Ver
                       </button>
-                      <button type="button" onClick={() => descargarComprobantePdf(c, false, anulaciones[c.id])} className="flex items-center px-2 py-1 rounded-md border border-slate-300 hover:bg-slate-100">
+                      <button type="button" onClick={() => descargarComprobantePdf(c, false, anulaciones[c.id], alteracionDe(c.id)).catch(() => {})} className="flex items-center px-2 py-1 rounded-md border border-slate-300 hover:bg-slate-100">
                         <Download className="w-3 h-3 mr-1" />
                         PDF
                       </button>
                     </span>
                   </div>
+                  {!anulaciones[c.id] && revision?.anulados.has(c.id) && (
+                    <span className="block text-red-700 font-semibold">
+                      Este comprobante fue anulado, pero el registro de la anulación ya no está: no tiene validez.
+                    </span>
+                  )}
                   {anulaciones[c.id] && (
                     <span className="block text-red-700">
                       Anulado el {formatearFechaColombia(anulaciones[c.id].emitidoEn)} (registro N.º {anulaciones[c.id].version} de la cadena). Motivo:{' '}

@@ -1,6 +1,19 @@
 import { svgLogo } from '../components/LogoLore';
 import QRCode from 'qrcode';
 import { firebaseConfig } from '../firebase/firebaseConfig';
+import { fragmentoSello } from '../lib/integridad';
+
+/**
+ * Origen que llevan los QR. Si está configurado VITE_ORIGEN_PUBLICO (dominio oficial), se usa
+ * siempre, aunque el QR se genere desde localhost, una IP local o una vista previa; si no, el
+ * origen del navegador.
+ */
+export function origenPublico(): string {
+  const configurado = String(import.meta.env?.VITE_ORIGEN_PUBLICO || '').trim().replace(/\/+$/, '');
+  if (/^https?:\/\/[^\s/]+$/i.test(configurado)) return configurado;
+  if (typeof window !== 'undefined' && window.location?.origin) return window.location.origin;
+  return '';
+}
 
 /**
  * Construye la URL pública interactiva de trazabilidad para el lote.
@@ -8,11 +21,16 @@ import { firebaseConfig } from '../firebase/firebaseConfig';
  * accede de inmediato a la certificación oficial inalterable de Cultivos Loré,
  * verificación SHA-256 en vivo y descarga del documento PDF.
  */
-export function construirUrlPublicaTrazabilidad(codigoLote: string): string {
-  if (typeof window !== 'undefined' && window.location?.origin) {
-    return `${window.location.origin}/?lote=${encodeURIComponent(codigoLote)}`;
-  }
-  return `https://cultivos-lore.web.app/?lote=${encodeURIComponent(codigoLote)}`;
+export function construirUrlPublicaTrazabilidad(codigoLote: string, sello?: string | null): string {
+  // En un lote cerrado el QR lleva además el inicio del sello (ancla fuera de la base de datos):
+  // la vista pública lo compara con el sello recalculado y avisa si el registro cambió
+  const s = fragmentoSello(sello);
+  return `${origenPublico()}/?lote=${encodeURIComponent(codigoLote)}${s ? `&s=${s}` : ''}`;
+}
+
+/** URL del QR de un lote: con el sello si está cerrado */
+export function urlQrLote(lote: { codigo: string; estado?: string; resumen?: { hashFinal?: string } }): string {
+  return construirUrlPublicaTrazabilidad(lote.codigo, lote.estado === 'cerrado' ? lote.resumen?.hashFinal : null);
 }
 
 /**
@@ -20,10 +38,7 @@ export function construirUrlPublicaTrazabilidad(codigoLote: string): string {
  * es distinta del QR del lote, que lleva el código del lote.
  */
 export function construirUrlConsultaEntrega(token: string): string {
-  if (typeof window !== 'undefined' && window.location?.origin) {
-    return `${window.location.origin}/?entrega=${encodeURIComponent(token)}`;
-  }
-  return `https://cultivos-lore.web.app/?entrega=${encodeURIComponent(token)}`;
+  return `${origenPublico()}/?entrega=${encodeURIComponent(token)}`;
 }
 
 /**
@@ -68,7 +83,7 @@ export async function generarQrDataUrl(texto: string): Promise<string> {
  * Descarga el código QR como etiqueta para imprimir, con la identidad de la plataforma:
  * banda tinta con el logo y el nombre en serif, doble filete dorado, QR y código del lote.
  */
-export async function descargarQrConEtiqueta(qrDataUrl: string, codigoLote: string): Promise<void> {
+export async function descargarQrConEtiqueta(qrDataUrl: string, codigoLote: string, sello?: string | null): Promise<void> {
   const cargar = (src: string) =>
     new Promise<HTMLImageElement>((resolver, rechazar) => {
       const img = new Image();
@@ -144,6 +159,13 @@ export async function descargarQrConEtiqueta(qrDataUrl: string, codigoLote: stri
   ctx.fillStyle = '#5d6470';
   ctx.font = `400 11px ${sans}`;
   ctx.fillText('Turbaco, Bolívar · Colombia', ancho / 2, 610);
+  // Fragmento del sello del lote cerrado, en letra pequeña: permite cotejar la etiqueta impresa
+  const s = fragmentoSello(sello);
+  if (s) {
+    ctx.fillStyle = '#5d6470';
+    ctx.font = `400 10px ui-monospace, "Courier New", monospace`;
+    ctx.fillText(`Sello ${s}`, ancho / 2, 628);
+  }
 
   const a = document.createElement('a');
   a.download = `QR-Etiqueta-${codigoLote}.png`;

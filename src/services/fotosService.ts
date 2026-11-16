@@ -1,6 +1,6 @@
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '../firebase/firebaseConfig';
-import { calcularSha256 } from './hashService';
+import { sha256Texto, huellaParaComparar, esErrorSinHuellaSegura } from '../lib/integridad';
 import { generarId } from './pedidosService';
 
 // Fotos de entrega. No se usa Firebase Storage: la foto se comprime en el teléfono (JPEG de hasta
@@ -79,7 +79,7 @@ export async function prepararFoto(archivo: File): Promise<FotoPreparada> {
   if (datos.length > TAMANO_MAXIMO) throw new Error('La foto es demasiado pesada incluso comprimida. Intenta con otra.');
   return {
     id: generarId('foto'),
-    hash: await calcularSha256(datos),
+    hash: await sha256Texto(datos),
     datos,
     ancho,
     alto,
@@ -111,6 +111,62 @@ export function escucharFotosOrden(
  * Comprueba que la foto guardada sea la misma que registró el repartidor (hash del evento)
  */
 export async function verificarFoto(foto: FotoEntrega, hashEvento?: string): Promise<boolean> {
-  const hash = await calcularSha256(foto.datos);
+  const { hash } = await huellaParaComparar(foto.datos, foto.hash);
   return hash === foto.hash && (!hashEvento || hashEvento === foto.hash);
+}
+
+export type EstadoFoto = 'verificada' | 'alterada' | 'vencida' | 'borrada' | 'no_verificable';
+
+export interface RevisionFoto {
+  estado: EstadoFoto;
+  mensaje: string;
+  hashEsperado: string; // el que guardó el evento "Entrega" de la orden
+  hashObtenido?: string; // el recalculado sobre la imagen guardada
+  registradaEn: string; // fecha del evento de entrega
+  respaldo?: boolean;
+}
+
+const MS_DIA = 24 * 60 * 60 * 1000;
+
+/**
+ * Revisión automática de la foto de una entrega al mostrarse: la imagen guardada debe dar el mismo
+ * SHA-256 que guardó la orden (y que el comprobante, si lo tiene) y pertenecer a esa orden y a ese
+ * evento. Si la imagen no está, distingue la que venció (más de 15 días desde la entrega) de la
+ * que se borró antes de vencer.
+ */
+export async function revisarFoto(
+  foto: FotoEntrega | undefined,
+  ref: { id: string; hash: string },
+  evento: { fecha: string; eventoId?: string; ordenId: string },
+  fotoHashComprobante?: string,
+  ahora: number = Date.now()
+): Promise<RevisionFoto> {
+  const base = { hashEsperado: ref.hash, registradaEn: evento.fecha };
+  if (!foto) {
+    const dias = (ahora - new Date(evento.fecha).getTime()) / MS_DIA;
+    return dias > DIAS_RETENCION_FOTOS
+      ? { ...base, estado: 'vencida', mensaje: `La imagen venció: se borra sola pasados ${DIAS_RETENCION_FOTOS} días. Queda su huella en el historial.` }
+      : {
+          ...base,
+          estado: 'borrada',
+          mensaje: `La foto se borró antes de su vencimiento: la entrega tiene ${Math.max(0, Math.floor(dias))} día(s) y la imagen debía conservarse ${DIAS_RETENCION_FOTOS}.`
+        };
+  }
+  let obtenido: { hash: string; respaldo: boolean };
+  try {
+    obtenido = await huellaParaComparar(foto.datos, ref.hash);
+  } catch (e) {
+    if (!esErrorSinHuellaSegura(e)) throw e;
+    return { ...base, estado: 'no_verificable', mensaje: 'No se puede verificar en este navegador: abre la app por https.' };
+  }
+  const fallas: string[] = [];
+  if (obtenido.hash !== ref.hash) fallas.push('la imagen no coincide con la registrada en la entrega');
+  if (foto.hash !== ref.hash) fallas.push('la huella guardada junto a la imagen no es la de la entrega');
+  if (fotoHashComprobante && fotoHashComprobante !== ref.hash) fallas.push('el comprobante emitido registra otra foto');
+  if (foto.ordenId !== evento.ordenId || (evento.eventoId && foto.eventoId !== evento.eventoId)) {
+    fallas.push('la imagen pertenece a otra entrega');
+  }
+  return fallas.length
+    ? { ...base, hashObtenido: obtenido.hash, estado: 'alterada', mensaje: `Posible alteración detectada: ${fallas.join('; ')}.` }
+    : { ...base, hashObtenido: obtenido.hash, estado: 'verificada', respaldo: obtenido.respaldo, mensaje: 'Archivo verificado' };
 }

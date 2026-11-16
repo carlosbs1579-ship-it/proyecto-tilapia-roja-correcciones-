@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { escalon, usePrimerMontaje } from '../lib/montaje';
 import {
   Fish,
@@ -15,6 +15,7 @@ import {
   Activity
 } from 'lucide-react';
 import { Lote, ConfiguracionGeneral } from '../types';
+import { derivarLote, normalizarEstanque } from '../services/calculosService';
 
 interface DashboardTabProps {
   lotes: Lote[];
@@ -41,29 +42,36 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
   const primerMontaje = usePrimerMontaje();
   const [busquedaRapida, setBusquedaRapida] = useState('');
 
+  // Estanque, siembra e indicadores calculados desde la cadena de fases (no desde los campos
+  // guardados aparte, que podrían diferir); un cálculo por lote mientras no cambien lotes o config
+  const derivados = useMemo(() => new Map(lotes.map((l) => [l.codigo, derivarLote(l, config)])), [lotes, config]);
+  const derivadoDe = (l: Lote) => derivados.get(l.codigo) || derivarLote(l, config);
+
   // Métricas globales calculadas
   const lotesActivos = lotes.filter((l) => l.estado === 'activo');
   const lotesCerrados = lotes.filter((l) => l.estado === 'cerrado');
 
   const biomasaTotalCultivoKg = lotesActivos.reduce(
-    (acc, l) => acc + (l.resumen?.biomasaEstimadaKg || 0),
+    (acc, l) => acc + (derivadoDe(l).resumen.biomasaEstimadaKg || 0),
     0
   );
 
   const totalPecesVivos = lotesActivos.reduce(
-    (acc, l) => acc + (l.resumen?.pecesVivos || 0),
+    (acc, l) => acc + (derivadoDe(l).resumen.pecesVivos || 0),
     0
   );
 
   const totalAlertasAgua = lotes.reduce(
-    (acc, l) => acc + (l.resumen?.alertasAgua || 0),
+    (acc, l) => acc + (derivadoDe(l).resumen.alertasAgua || 0),
     0
   );
 
   // Conteo por estanque
   const conteoEstanques: Record<string, number> = {};
   for (const est of config.estanques) {
-    conteoEstanques[est.codigo] = lotesActivos.filter((l) => l.estanque === est.codigo).length;
+    conteoEstanques[est.codigo] = lotesActivos.filter(
+      (l) => normalizarEstanque(derivadoDe(l).cabecera.estanque) === normalizarEstanque(est.codigo)
+    ).length;
   }
 
   // Filtrado de últimos lotes modificados
@@ -245,23 +253,23 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                     </td>
                     <td className="px-4 py-4">
                       <span className="font-serif text-sm text-slate-900">
-                        {lote.estanque}
+                        {derivadoDe(lote).cabecera.estanque}
                       </span>
                     </td>
                     <td className="px-4 py-4 text-slate-600">
-                      <div>{lote.fechaSiembra}</div>
-                      {lote.resumen.diasDeCultivo != null && <div className="text-xs text-slate-500">{lote.resumen.diasDeCultivo} días</div>}
+                      <div>{derivadoDe(lote).cabecera.fechaSiembra}</div>
+                      {derivadoDe(lote).resumen.diasDeCultivo != null && <div className="text-xs text-slate-500">{derivadoDe(lote).resumen.diasDeCultivo} días</div>}
                     </td>
                     <td className="px-4 py-4 text-right font-medium">
-                      <span className={lote.resumen.supervivencia >= 85 ? 'text-slate-900 font-semibold' : 'text-amber-700 font-semibold'}>
-                        {lote.resumen.supervivencia}%
+                      <span className={derivadoDe(lote).resumen.supervivencia >= 85 ? 'text-slate-900 font-semibold' : 'text-amber-700 font-semibold'}>
+                        {derivadoDe(lote).resumen.supervivencia}%
                       </span>
                     </td>
                     <td className="px-4 py-4 text-right font-semibold text-slate-800">
-                      {lote.resumen.pesoPromedioActualG} g
+                      {derivadoDe(lote).resumen.pesoPromedioActualG} g
                     </td>
                     <td className="px-4 py-4 text-right font-semibold text-slate-800">
-                      {lote.resumen.biomasaEstimadaKg.toLocaleString()} kg
+                      {derivadoDe(lote).resumen.biomasaEstimadaKg.toLocaleString()} kg
                     </td>
                     <td className="px-4 py-4 text-center">
                       <span

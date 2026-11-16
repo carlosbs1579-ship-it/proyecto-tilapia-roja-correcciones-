@@ -7,7 +7,9 @@ Estas pruebas no tocan producción. Usan emuladores propios: Firestore en 8185 y
 
 1. **Crea datos válidos** con los servicios reales de `src/services` y con las reglas activas
    (`firestore.rules` copiado tal cual):
-   - lote `PRUEBA-<sello>-A-E1` con siembra, cinco fases y cierre (`registrarEventoEnLote`, `cerrarLote`);
+   - lote `20260801-<letra>-E1` creado con `crearNuevoLote` (contadores y reglas reales), cinco fases y
+     cierre (`registrarEventoEnLote`, `cerrarLote`); se guarda el inicio del sello como lo imprime la
+     etiqueta QR (`?s=`);
    - cliente `PRUEBA-Restaurante Integridad` y orden confirmada (`crearCliente`, `crearOrden`);
    - inicio de ruta, llegada y entrega con foto como repartidor (`registrarAccion`, la bandeja real);
    - comprobante definitivo (`emitirComprobanteDefinitivo`);
@@ -18,13 +20,18 @@ Estas pruebas no tocan producción. Usan emuladores propios: Firestore en 8185 y
    todos los campos) ni a órdenes o consultasEntrega (las reglas usan `hasOnly` y la app los
    reescribe completos: un campo extra bloquea la anulación).
 2. **Simula ataques** con el token `Bearer owner`, que equivale a editar desde la consola de Firebase.
-3. **Evalúa** después de cada ataque, con las funciones reales (`analizarCadenaLote`,
-   `verificarIntegridadLote`, `verificarAnotaciones`, `verificarFoto`, `leerConsultaEntrega`,
-   `verificarComprobante`, `verificarCadena`), lo que mostraría cada pantalla:
+3. **Evalúa** después de cada ataque, con las mismas funciones que llaman las pantallas
+   (`revisarLote` en la vista pública y el detalle, `verificarAnotaciones`, `revisarFoto` en las fotos
+   de la orden, `revisarConsultaEntrega` en el QR del comprobante y `verificarComprobante` con la orden
+   en el panel interno), lo que mostraría cada pantalla:
    - avisos automáticos: lo que aparece en rojo al abrir el QR del lote, el QR de la entrega o el panel
      interno de la orden;
    - fallas manuales: lo que solo aparece al pulsar "Verificar integridad", "Verificar foto" o
      "Verificar" del comprobante.
+
+   La columna "QR antiguo" dice si el aviso del lote sale también con una etiqueta impresa antes del
+   sello en el QR (sin `s=`). Los ataques 6d y 8d reescriben todo (cadena, resumen y anotaciones): solo
+   los detecta el sello impreso.
 
    Clasificación: "detectado y avisado" (hay aviso automático), "detectado sin aviso" (solo al pulsar
    un botón) y "NO DETECTADO". Luego restaura el documento original y comprueba que todo vuelva a ser
@@ -49,6 +56,8 @@ node .salida/ataques.mjs
 ```
 
 `construir.mjs` sustituye `src/firebase/firebaseConfig.ts` por `firebase-emulador.ts` al empaquetar.
+También fija `VITE_ORIGEN_PUBLICO=http://localhost:3000` (en Node no hay `window.location` y las reglas
+exigen un enlace válido en `pdfUrl`).
 El resto del código de la app se usa sin cambios. `shim.ts` agrega `localStorage` y `navigator.onLine`
 para que la bandeja del repartidor funcione en Node.
 

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { FilePen, ShieldCheck, ShieldAlert, Check, X } from 'lucide-react';
 import { AnotacionesLote, Lote } from '../types';
-import { anotacionesDe, proponerAnotacion, resolverAnotacion, verificarAnotaciones, VerificacionAnotaciones } from '../services/anotacionesService';
+import { anotacionesDe, numeroValido, proponerAnotacion, resolverAnotacion, verificarAnotaciones, VerificacionAnotaciones } from '../services/anotacionesService';
 import { nombreDato } from '../services/hashService';
 import { quienRegistro } from '../services/usuariosService';
 import { formatearFechaColombia } from '../utils/constants';
@@ -40,6 +40,8 @@ export const AnotacionesLotePanel: React.FC<{
   const faseSel = fase >= 0 ? eventos[fase] : null;
   const datosFase = faseSel ? Object.keys(faseSel.datos || {}).filter((k) => k !== 'ambito') : [];
   const valorRegistrado = faseSel && dato && dato !== '_aclaracion' ? String(faseSel.datos?.[dato] ?? '') : '';
+  // Si el dato sellado es un número, el valor correcto también debe serlo
+  const datoNumerico = Boolean(faseSel && dato && dato !== '_aclaracion' && typeof faseSel.datos?.[dato] === 'number');
 
   // Qué falta para poder enviar la propuesta (se le dice al usuario en vez de solo desactivar el botón)
   const largoMotivo = motivo.trim().length;
@@ -50,7 +52,9 @@ export const AnotacionesLotePanel: React.FC<{
       ? 'selecciona el dato (o "Aclaración general")'
       : dato !== '_aclaracion' && !valorCorrecto.trim()
       ? 'escribe el valor correcto (el texto gris es solo el valor registrado)'
-      : dato !== '_aclaracion' && valorCorrecto.trim() === valorRegistrado
+      : datoNumerico && numeroValido(valorCorrecto) === null
+      ? 'el dato es un número: escribe el valor correcto como número (por ejemplo 125 o 12.5)'
+      : dato !== '_aclaracion' && (datoNumerico ? numeroValido(valorCorrecto) === Number(valorRegistrado) : valorCorrecto.trim() === valorRegistrado)
       ? 'el valor correcto es igual al registrado'
       : largoMotivo < 10
       ? `el motivo necesita al menos 10 caracteres (llevas ${largoMotivo})`
@@ -108,7 +112,11 @@ export const AnotacionesLotePanel: React.FC<{
         aprobarla para que aparezca en el certificado. No cambia los cálculos del lote.
       </p>
       {verificacion && datosAnotaciones && (
-        <p className={`flex items-center ${verificacion.integra ? 'text-emerald-700' : 'text-red-600 font-semibold'}`}>
+        <p
+          className={`flex items-center ${
+            verificacion.noVerificable ? 'text-slate-600' : verificacion.integra ? 'text-emerald-700' : 'text-red-600 font-semibold'
+          }`}
+        >
           {verificacion.integra ? <ShieldCheck className="w-3.5 h-3.5 mr-1" /> : <ShieldAlert className="w-3.5 h-3.5 mr-1" />}
           {verificacion.mensaje}
         </p>
@@ -154,6 +162,8 @@ export const AnotacionesLotePanel: React.FC<{
               <span className="font-semibold text-slate-700">Valor correcto</span>
               <input
                 type="text"
+                inputMode={datoNumerico ? 'decimal' : undefined}
+                aria-invalid={datoNumerico && valorCorrecto.trim() !== '' && numeroValido(valorCorrecto) === null ? true : undefined}
                 maxLength={120}
                 value={valorCorrecto}
                 onChange={(e) => setValorCorrecto(e.target.value)}

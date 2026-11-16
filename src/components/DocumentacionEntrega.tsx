@@ -41,7 +41,7 @@ export const DocumentacionEntrega: React.FC<{
   const bloquesEsperados = o.historial.filter((e) => e.tipo === 'Comprobante emitido' || e.tipo === 'Comprobante anulado').length;
   const [motivoAnulacion, setMotivoAnulacion] = useState('');
   const [errorLectura, setErrorLectura] = useState('');
-  const [verificacion, setVerificacion] = useState<Record<string, { ok: boolean; mensaje: string }>>({});
+  const [verificacion, setVerificacion] = useState<Record<string, { ok: boolean; mensaje: string; noVerificable?: boolean }>>({});
   const [qr, setQr] = useState('');
   const [copiado, setCopiado] = useState(false);
 
@@ -81,8 +81,26 @@ export const DocumentacionEntrega: React.FC<{
 
   const verificar = async (c: ComprobanteEntrega) => {
     const r = await verificarComprobante(c, { orden: o });
-    setVerificacion((v) => ({ ...v, [c.id]: { ok: r.contenidoIntegro && r.eventosIntegros !== false, mensaje: r.mensaje } }));
+    setVerificacion((v) => ({ ...v, [c.id]: { ok: r.ok, mensaje: r.mensaje, noVerificable: r.noVerificable } }));
   };
+
+  // Verificación automática de cada comprobante al abrir la orden: hash propio, eventos usados,
+  // hash que guardó la orden al emitirlo y contenido reconstruido desde el historial
+  useEffect(() => {
+    let activo = true;
+    (async () => {
+      const r: Record<string, { ok: boolean; mensaje: string; noVerificable?: boolean }> = {};
+      for (const b of bloques) {
+        const v = await verificarComprobante(b, esAnulacion(b) ? {} : { orden: o });
+        r[b.id] = { ok: v.ok, mensaje: v.mensaje, noVerificable: v.noVerificable };
+      }
+      if (activo) setVerificacion(r);
+    })().catch(() => {});
+    return () => {
+      activo = false;
+    };
+  }, [bloques, o]);
+  const alteracionDe = (id: string) => (verificacion[id] && !verificacion[id].ok && !verificacion[id].noVerificable ? verificacion[id].mensaje : '');
 
   const copiar = async () => {
     try {
@@ -153,8 +171,16 @@ export const DocumentacionEntrega: React.FC<{
         <ul className="divide-y divide-slate-100 border border-slate-100 rounded-md">
           {bloques.map((b) =>
             esAnulacion(b) ? (
-              <li key={b.id} className="p-2 text-red-700 bg-red-50/40">
-                Registro N.º {b.version} · Anulación del comprobante N.º {b.versionAnulada} · {formatearFechaColombia(b.emitidoEn)}
+              <li key={b.id} className="p-2 text-red-700 bg-red-50/40 space-y-1">
+                <span className="block">
+                  Registro N.º {b.version} · Anulación del comprobante N.º {b.versionAnulada} · {formatearFechaColombia(b.emitidoEn)}
+                </span>
+                {verificacion[b.id] && !verificacion[b.id].ok && (
+                  <span className="flex items-start font-semibold">
+                    <ShieldAlert className="w-3 h-3 mr-1 mt-0.5 shrink-0" aria-hidden="true" />
+                    {verificacion[b.id].mensaje}
+                  </span>
+                )}
               </li>
             ) : ((c: ComprobanteEntrega) => (
             <li key={c.id} className="p-2 space-y-1">
@@ -166,12 +192,12 @@ export const DocumentacionEntrega: React.FC<{
                   {c.cantidadPendiente > 0 && ` · pendiente ${num(c.cantidadPendiente)} ${c.unidad}`}
                 </span>
                 <span className="flex flex-wrap gap-1">
-                  <button type="button" onClick={() => verComprobantePdf(c, false, anulaciones[c.id])} className="px-2 py-1 rounded-md border border-slate-300 hover:bg-slate-100">
+                  <button type="button" onClick={() => verComprobantePdf(c, false, anulaciones[c.id], alteracionDe(c.id)).catch(() => {})} className="px-2 py-1 rounded-md border border-slate-300 hover:bg-slate-100">
                     Ver
                   </button>
                   <button
                     type="button"
-                    onClick={() => descargarComprobantePdf(c, false, anulaciones[c.id])}
+                    onClick={() => descargarComprobantePdf(c, false, anulaciones[c.id], alteracionDe(c.id)).catch(() => {})}
                     className="flex items-center px-2 py-1 rounded-md border border-slate-300 hover:bg-slate-100"
                   >
                     <Download className="w-3 h-3 mr-1" />
@@ -232,7 +258,11 @@ export const DocumentacionEntrega: React.FC<{
                 </div>
               )}
               {verificacion[c.id] && (
-                <span className={`flex items-start ${verificacion[c.id].ok ? 'text-emerald-700' : 'text-red-600'}`}>
+                <span
+                  className={`flex items-start ${
+                    verificacion[c.id].ok ? 'text-emerald-700' : verificacion[c.id].noVerificable ? 'text-slate-600' : 'text-red-600 font-semibold'
+                  }`}
+                >
                   {verificacion[c.id].ok ? <ShieldCheck className="w-3 h-3 mr-1 shrink-0" /> : <ShieldAlert className="w-3 h-3 mr-1 shrink-0" />}
                   {verificacion[c.id].mensaje}
                 </span>

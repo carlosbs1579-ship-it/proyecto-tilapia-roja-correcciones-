@@ -3,7 +3,7 @@ import { Bloque } from './Esqueleto';
 import { usePresencia } from '../lib/presencia';
 import { X, ShieldCheck, ShieldAlert, CheckCircle, Hash, RefreshCw } from 'lucide-react';
 import { Lote } from '../types';
-import { verificarIntegridadLote, ResultadoVerificacion, analizarCadenaLote, AnalisisCadena } from '../services/hashService';
+import { verificarIntegridadLote, ResultadoVerificacion, AnalisisCadena, revisarLote, RevisionLote } from '../services/hashService';
 
 interface IntegrityCheckModalProps {
   isOpen: boolean;
@@ -19,15 +19,23 @@ export const IntegrityCheckModal: React.FC<IntegrityCheckModalProps> = ({
   const [verificando, setVerificando] = useState(true);
   const [resultado, setResultado] = useState<ResultadoVerificacion | null>(null);
   const [analisis, setAnalisis] = useState<AnalisisCadena | null>(null);
+  const [revision, setRevision] = useState<RevisionLote | null>(null);
 
   const ejecutarVerificacion = async () => {
     setVerificando(true);
     try {
       // Pequeña pausa para visualización de recálculo criptográfico
       await new Promise(r => setTimeout(r, 300));
-      const [res, an] = await Promise.all([verificarIntegridadLote(lote), analizarCadenaLote(lote)]);
-      setResultado(res);
-      setAnalisis(an);
+      const [res, rev] = await Promise.all([verificarIntegridadLote(lote), revisarLote(lote)]);
+      // La cadena puede estar íntegra y aun así la cabecera o el resumen guardados no corresponder a ella
+      const otros = rev.avisos.filter((a) => a !== res.mensaje);
+      setResultado(
+        res.valido && rev.estado === 'alterado'
+          ? { ...res, valido: false, mensaje: `Las fases están íntegras, pero hay datos que no corresponden a ellas. ${otros.join(' ')}` }
+          : res
+      );
+      setAnalisis(rev.analisis);
+      setRevision(rev);
     } catch (err: any) {
       setResultado({
         valido: false,
@@ -102,7 +110,7 @@ export const IntegrityCheckModal: React.FC<IntegrityCheckModalProps> = ({
                 <div className="py-1">
                   <span className="text-slate-500 font-medium block mb-1">Hash Final del Lote (resumen.hashFinal):</span>
                   <span className="font-mono text-xs bg-white p-2 rounded-md border border-slate-300 block break-all text-slate-700">
-                    {lote.resumen.hashFinal || 'Sin hash registrado'}
+                    {lote.resumen?.hashFinal || 'Sin hash registrado'}
                   </span>
                 </div>
               </div>
@@ -112,15 +120,36 @@ export const IntegrityCheckModal: React.FC<IntegrityCheckModalProps> = ({
                 <span>La evidencia digital concuerda 100% con los estándares de trazabilidad inalterable.</span>
               </div>
             </div>
+          ) : resultado?.noVerificable ? (
+            <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl flex items-start space-x-3 text-slate-800">
+              <ShieldAlert className="w-8 h-8 text-slate-500 shrink-0 mt-1" />
+              <div>
+                <h4 className="font-semibold text-base">No se puede verificar en este navegador</h4>
+                <p className="text-xs text-slate-600 mt-1">{resultado.mensaje}</p>
+              </div>
+            </div>
           ) : (
             <div className="space-y-4">
               <div className="p-4 bg-red-50 border border-red-200 rounded-xl flex items-start space-x-3 text-red-900">
                 <ShieldAlert className="w-8 h-8 text-red-600 shrink-0 mt-1" />
                 <div>
-                  <h4 className="font-semibold text-base text-red-800">Resultado: ¡ALTERACIÓN DETECTADA!</h4>
+                  <h4 className="font-semibold text-base text-red-800">Resultado: posible alteración detectada</h4>
                   <p className="text-xs text-red-700 mt-1">{resultado?.mensaje}</p>
                 </div>
               </div>
+
+              {revision && revision.diferencias.length > 0 && (
+                <div className="border border-red-200 rounded-lg overflow-hidden text-xs">
+                  <p className="font-semibold text-red-800 bg-red-50 px-3 py-2">Datos guardados que no corresponden a las fases registradas:</p>
+                  <ul className="divide-y divide-red-100">
+                    {revision.diferencias.map((d) => (
+                      <li key={d.campo} className="px-3 py-2 bg-white text-slate-800">
+                        <strong>{d.etiqueta}</strong>: guardado {d.guardado}; según las fases {d.derivado}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
               {analisis && analisis.fases.some((f) => f.estado !== 'integra') && (
                 <div className="border border-red-200 rounded-lg overflow-hidden text-xs">

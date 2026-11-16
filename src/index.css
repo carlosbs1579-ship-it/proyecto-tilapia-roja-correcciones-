@@ -315,6 +315,24 @@
   }
 }
 
+/*
+ * Toda ventana cabe en la pantalla y desplaza su propio contenido: así los botones finales
+ * siempre se alcanzan aunque el contenedor use overflow-hidden para recortar las esquinas.
+ * La altura máxima va en la capa de componentes para que un max-h propio de la ventana mande.
+ */
+@layer components {
+  .velo > * {
+    max-height: calc(100dvh - 2rem);
+  }
+}
+.velo > * {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.velo:focus {
+  outline: none;
+}
+
 /* Celular: las ventanas son hojas que suben desde el borde inferior */
 @media (max-width: 639px) {
   .velo {
@@ -327,6 +345,8 @@
     border-bottom-left-radius: 0;
     border-bottom-right-radius: 0;
     max-height: 92dvh;
+    margin-top: 0;
+    margin-bottom: 0;
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
   @starting-style {
@@ -426,9 +446,17 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .esqueleto::after,
-  .animate-spin,
   .animate-pulse {
     animation: none;
+  }
+  /* Los indicadores de carga no giran: laten despacio con opacidad para que se note la espera */
+  .animate-spin {
+    animation: latido-carga 1.6s ease-in-out infinite;
+  }
+}
+@keyframes latido-carga {
+  50% {
+    opacity: 0.4;
   }
 }
 

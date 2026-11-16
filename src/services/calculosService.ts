@@ -1,5 +1,5 @@
-import { EventoLote, ResumenLote, RangosReferenciaAgua } from '../types';
-import { getFechaHoyBogota } from '../utils/constants';
+import { EventoLote, ResumenLote, RangosReferenciaAgua, Lote, ConfiguracionGeneral } from '../types';
+import { getFechaHoyBogota, PRODUCTO_FIJO, ORIGEN_FIJO, CONFIG_DEFAULT } from '../utils/constants';
 
 /**
  * Evalúa si una lectura individual de calidad de agua está fuera del rango de referencia
@@ -219,4 +219,189 @@ export function recalcularResumenLote(params: {
     alertasAgua,
     hashFinal
   };
+}
+
+// ---------- Cabecera y resumen derivados de la cadena de fases (H02) ----------
+// La cabecera del lote (estanque, siembra, peces, peso inicial, proveedor) y el resumen (mortalidad,
+// supervivencia, peso, biomasa, alimento) se guardan también como campos sueltos del documento,
+// fuera del hash. Lo que se muestra al público y en el certificado se calcula aquí a partir de las
+// fases encadenadas: la Siembra (fase #0) más las correcciones de siembra y las fases productivas.
+// Si el valor guardado difiere del derivado se informa como posible alteración.
+
+export interface CabeceraLote {
+  estanque: string;
+  fechaSiembra: string;
+  cantidadSembrada: number;
+  pesoInicialPromedioG: number;
+  proveedorAlevinos: string;
+  observacionesIniciales: string;
+  producto: string;
+  origen: string;
+}
+
+export interface DiferenciaLote {
+  campo: string;
+  etiqueta: string;
+  guardado: string;
+  derivado: string;
+}
+
+export interface LoteDerivado {
+  cabecera: CabeceraLote;
+  resumen: ResumenLote;
+  diferencias: DiferenciaLote[];
+  problemas: string[]; // la cadena no permite derivar la cabecera (sin Siembra, sin fases)
+}
+
+const PREFIJO_SIEMBRA = 'Siembra inicial del lote en estanque ';
+const RAYA_VACIO = String.fromCharCode(0x2014); // raya que escribe la corrección de siembra cuando un valor está vacío
+const FLECHA = ` ${String.fromCharCode(0x2192)} `;
+const CAMPOS_CORREGIBLES = ['estanque', 'cantidadSembrada', 'pesoInicialPromedioG', 'proveedorAlevinos', 'observacionesIniciales'] as const;
+export const normalizarEstanque = (e: unknown) => String(e ?? '').trim().toUpperCase().replace(/[^A-Z0-9_-]/g, '');
+
+/** Valor nuevo de un dato de corrección ("antes, flecha, después"; la raya sola significa vacío) */
+function valorNuevoCorreccion(valor: unknown, anterior: string): string {
+  const t = String(valor ?? '');
+  const prefijo = `${anterior === '' ? RAYA_VACIO : anterior}${FLECHA}`;
+  let nuevo = t.startsWith(prefijo) ? t.slice(prefijo.length) : t.includes(FLECHA) ? t.slice(t.indexOf(FLECHA) + FLECHA.length) : t;
+  if (nuevo === RAYA_VACIO) nuevo = '';
+  return nuevo;
+}
+
+/**
+ * Cabecera del lote según la cadena: datos de la fase de Siembra y, encima, cada corrección de
+ * siembra o piscina en orden. El estanque no está en los datos de la Siembra: se toma de su
+ * descripción automática o, si no la tiene, del sufijo del código del lote (que no cambia).
+ */
+export function derivarCabeceraLote(
+  lote: Pick<Lote, 'codigo'> & Partial<Lote>
+): { cabecera: CabeceraLote; problemas: string[] } {
+  const eventos = lote.eventos || [];
+  const problemas: string[] = [];
+  const ev0 = eventos[0];
+  const guardadoEstanque = String(lote.estanque ?? '');
+  const sufijoCodigo = String(lote.codigo || '').split('-').pop() || '';
+  const cab: CabeceraLote = {
+    estanque: guardadoEstanque,
+    fechaSiembra: String(lote.fechaSiembra ?? ''),
+    cantidadSembrada: Number(lote.cantidadSembrada) || 0,
+    pesoInicialPromedioG: Number(lote.pesoInicialPromedioG) || 0,
+    proveedorAlevinos: String(lote.proveedorAlevinos ?? ''),
+    observacionesIniciales: String(lote.observacionesIniciales ?? ''),
+    producto: PRODUCTO_FIJO,
+    origen: ORIGEN_FIJO
+  };
+  if (!ev0 || ev0.tipo !== 'Siembra') {
+    problemas.push(eventos.length ? 'La primera fase registrada no es la siembra.' : 'El lote no tiene fases registradas.');
+    return { cabecera: cab, problemas };
+  }
+  const d = ev0.datos || {};
+  const descripcion = String(ev0.descripcion ?? '');
+  const automatica = descripcion.startsWith(PREFIJO_SIEMBRA);
+  const estanqueSiembra = automatica ? descripcion.slice(PREFIJO_SIEMBRA.length) : sufijoCodigo;
+  // El código guarda el estanque limpio (mayúsculas, sin espacios): si coincide, se muestra el guardado
+  cab.estanque = normalizarEstanque(guardadoEstanque) === normalizarEstanque(estanqueSiembra) ? guardadoEstanque : estanqueSiembra;
+  cab.fechaSiembra = String(ev0.fechaEvento ?? '');
+  cab.cantidadSembrada = Number(d.cantidad) || 0;
+  cab.pesoInicialPromedioG = Number(d.pesoPromedioInicialG) || 0;
+  cab.proveedorAlevinos = String(d.proveedor ?? '').trim();
+  cab.observacionesIniciales = automatica ? '' : descripcion.trim();
+
+  for (const ev of eventos.slice(1)) {
+    if (ev.tipo !== 'Corrección' || ev.datos?.ambito !== 'siembra') continue;
+    for (const k of CAMPOS_CORREGIBLES) {
+      if (!(k in (ev.datos || {}))) continue;
+      const nuevo = valorNuevoCorreccion(ev.datos[k], String(cab[k]));
+      if (k === 'cantidadSembrada' || k === 'pesoInicialPromedioG') cab[k] = Number(nuevo) || 0;
+      else if (k === 'estanque') cab.estanque = normalizarEstanque(guardadoEstanque) === normalizarEstanque(nuevo) ? guardadoEstanque : nuevo;
+      else cab[k] = nuevo;
+    }
+  }
+  return { cabecera: cab, problemas };
+}
+
+const ETIQUETAS_CABECERA: Record<keyof CabeceraLote, string> = {
+  estanque: 'Estanque',
+  fechaSiembra: 'Fecha de siembra',
+  cantidadSembrada: 'Peces sembrados',
+  pesoInicialPromedioG: 'Peso inicial promedio (g)',
+  proveedorAlevinos: 'Proveedor de alevinos',
+  observacionesIniciales: 'Observaciones iniciales',
+  producto: 'Producto',
+  origen: 'Origen'
+};
+
+// Indicadores que dependen solo de la cabecera y de las fases (no de la configuración ni de la fecha)
+const ETIQUETAS_RESUMEN: Partial<Record<keyof ResumenLote, string>> = {
+  mortalidadAcumulada: 'Mortalidad acumulada',
+  pecesCosechados: 'Peces cosechados',
+  pecesVivos: 'Peces vivos',
+  supervivencia: 'Supervivencia (%)',
+  pesoPromedioActualG: 'Peso promedio (g)',
+  biomasaEstimadaKg: 'Biomasa estimada (kg)',
+  biomasaInicialKg: 'Biomasa inicial (kg)',
+  biomasaCosechadaKg: 'Biomasa cosechada (kg)',
+  alimentoAcumuladoKg: 'Alimento acumulado (kg)',
+  FCA: 'FCA'
+};
+
+const comoTexto = (v: unknown) => (v === null || v === undefined || v === '' ? 'vacío' : String(v));
+
+/**
+ * Cabecera y resumen calculados desde la cadena, y sus diferencias con lo guardado. Densidad y
+ * alertas de agua dependen de la configuración vigente y no se comparan; los días de cultivo y la
+ * ganancia diaria solo se comparan en lotes cerrados (en un lote activo cambian cada día).
+ */
+export function derivarLote(lote: Lote, config: ConfiguracionGeneral = CONFIG_DEFAULT): LoteDerivado {
+  const eventos = lote.eventos || [];
+  const { cabecera, problemas } = derivarCabeceraLote(lote);
+  const cerrado = lote.estado === 'cerrado';
+  const estanqueInfo = (config?.estanques || []).find((e) => normalizarEstanque(e.codigo) === normalizarEstanque(cabecera.estanque));
+  const resumen = recalcularResumenLote({
+    fechaSiembra: cabecera.fechaSiembra,
+    cantidadSembrada: cabecera.cantidadSembrada,
+    pesoInicialPromedioG: cabecera.pesoInicialPromedioG,
+    eventos,
+    estado: cerrado ? 'cerrado' : 'activo',
+    fechaCierre: lote.fechaCierre || null,
+    volumenEstanqueM3: estanqueInfo?.volumenM3,
+    rangos: config?.rangosReferencia || CONFIG_DEFAULT.rangosReferencia
+  });
+
+  const diferencias: DiferenciaLote[] = [];
+  if (!problemas.length) {
+    const guardado: Record<keyof CabeceraLote, unknown> = {
+      estanque: lote.estanque,
+      fechaSiembra: lote.fechaSiembra,
+      cantidadSembrada: lote.cantidadSembrada,
+      pesoInicialPromedioG: lote.pesoInicialPromedioG,
+      proveedorAlevinos: lote.proveedorAlevinos ?? '',
+      observacionesIniciales: lote.observacionesIniciales ?? '',
+      producto: lote.producto,
+      origen: lote.origen
+    };
+    for (const k of Object.keys(ETIQUETAS_CABECERA) as (keyof CabeceraLote)[]) {
+      const g = guardado[k];
+      const v = cabecera[k];
+      const iguales =
+        typeof v === 'number'
+          ? Math.abs(Number(g) - v) < 1e-9
+          : k === 'estanque'
+            ? normalizarEstanque(g) === normalizarEstanque(v)
+            : String(g ?? '').trim() === String(v ?? '').trim();
+      if (!iguales) diferencias.push({ campo: k, etiqueta: ETIQUETAS_CABECERA[k], guardado: comoTexto(g), derivado: comoTexto(v) });
+    }
+    const r = (lote.resumen || {}) as Partial<ResumenLote>;
+    const etiquetasResumen: Partial<Record<keyof ResumenLote, string>> = cerrado
+      ? { ...ETIQUETAS_RESUMEN, diasDeCultivo: 'Días de cultivo', gananciaDiariaG: 'Ganancia diaria (g)' }
+      : ETIQUETAS_RESUMEN;
+    for (const k of Object.keys(etiquetasResumen) as (keyof ResumenLote)[]) {
+      const g = r[k] as unknown;
+      const v = resumen[k] as unknown;
+      const iguales =
+        v === null || g === null || g === undefined ? (g ?? null) === (v ?? null) : Math.abs(Number(g) - Number(v)) < 1e-6;
+      if (!iguales) diferencias.push({ campo: `resumen.${k}`, etiqueta: etiquetasResumen[k]!, guardado: comoTexto(g), derivado: comoTexto(v) });
+    }
+  }
+  return { cabecera, resumen, diferencias, problemas };
 }

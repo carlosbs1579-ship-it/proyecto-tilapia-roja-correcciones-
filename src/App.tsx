@@ -15,7 +15,6 @@ import { establecerFuncionActiva } from './services/pedidosService';
 import {
   sincronizarPerfilUsuario,
   escucharPerfilPropio,
-  borrarCopiaPerfil,
   esAdminMaestro,
   funcionesDisponibles,
   verificarPermiso,
@@ -50,6 +49,26 @@ const SESION_STORAGE_KEY_ANTIGUA = 'cultivos_lore_sesion_activa';
 // Función elegida por cada cuenta en este navegador. Solo decide qué se muestra; los permisos
 // reales los aplica Firestore según los roles asignados.
 const claveFuncion = (uid: string) => `cultivos_lore_funcion_${uid}`;
+
+/**
+ * Borra las copias locales de perfiles y de "mis entregas" (nombres, direcciones y teléfonos de
+ * clientes) de toda cuenta distinta de `conservarUid`; con null, las de todas (H50). La bandeja de
+ * acciones del repartidor sin enviar se conserva para no perderlas.
+ */
+function limpiarCopiasLocales(conservarUid: string | null): void {
+  try {
+    localStorage.removeItem('cultivos_lore_lotes_backup');
+    const prefijos = ['cultivos_lore_perfil_', 'cultivos_lore_mis_entregas_'];
+    const borrar: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const clave = localStorage.key(i);
+      if (!clave) continue;
+      const prefijo = prefijos.find((p) => clave.startsWith(p));
+      if (prefijo && clave.slice(prefijo.length) !== conservarUid) borrar.push(clave);
+    }
+    borrar.forEach((clave) => localStorage.removeItem(clave));
+  } catch {}
+}
 
 function leerFuncionGuardada(uid: string): string | null {
   try {
@@ -114,13 +133,9 @@ export default function App() {
   const [authCargando, setAuthCargando] = useState(true);
 
   const [config, setConfig] = useState<ConfiguracionGeneral>(CONFIG_DEFAULT);
-  const [lotes, setLotes] = useState<Lote[]>(() => {
-    try {
-      const cached = localStorage.getItem('cultivos_lore_lotes_backup');
-      if (cached) return JSON.parse(cached);
-    } catch {}
-    return [];
-  });
+  // Los lotes se leen solo de Firestore en vivo. La copia completa que se guardaba en localStorage
+  // (todos los lotes con sus fases) crecía sin límite y nunca se llegaba a usar (H54): se retira.
+  const [lotes, setLotes] = useState<Lote[]>([]);
   const [lotesCargando, setLotesCargando] = useState(true);
   const [errorConexion, setErrorConexion] = useState<string | null>(null);
 
@@ -232,10 +247,14 @@ export default function App() {
   useEffect(() => {
     try {
       localStorage.removeItem(SESION_STORAGE_KEY_ANTIGUA);
+      localStorage.removeItem('cultivos_lore_lotes_backup');
     } catch {}
 
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
       if (!fbUser) {
+        // La sesión terminó sin pasar por "Cerrar sesión" (vencida, revocada o cerrada en otra
+        // pestaña): no quedan en el navegador copias de perfiles ni entregas de nadie (H50)
+        limpiarCopiasLocales(null);
         setUsuario(null);
         setPerfilUsuario(null);
         setErrorPerfil(null);
@@ -251,6 +270,7 @@ export default function App() {
         // consultando y guardando acciones en el teléfono). Solo se cierra si la sesión es inválida.
         if (tokenErr?.code !== 'auth/network-request-failed' && navigator.onLine) {
           console.warn('Sesión previa inválida, restableciendo autenticación limpia:', tokenErr);
+          limpiarCopiasLocales(null);
           try {
             await signOut(auth);
           } catch {}
@@ -261,6 +281,8 @@ export default function App() {
         }
       }
 
+      // Otra cuenta en este navegador: se borran las copias locales de las demás (H50)
+      limpiarCopiasLocales(fbUser.uid);
       setUsuario({
         uid: fbUser.uid,
         email: fbUser.email || '',
@@ -313,20 +335,10 @@ export default function App() {
     setLotesCargando(true);
     const unsubLotes = escucharLotes(
       (listaLotes) => {
+        // El lote abierto en detalle se toma de esta misma lista (ver loteDetalleVivo)
         setLotes(listaLotes);
         setLotesCargando(false);
         setErrorConexion(null);
-        try {
-          localStorage.setItem('cultivos_lore_lotes_backup', JSON.stringify(listaLotes));
-        } catch {}
-
-        // Si hay un lote abierto en detalle, mantenerlo actualizado en vivo
-        if (loteDetalle) {
-          const actualizado = listaLotes.find((l) => l.codigo === loteDetalle.codigo);
-          if (actualizado) {
-            setLoteDetalle(actualizado);
-          }
-        }
       },
       (err) => {
         console.warn('Error escuchando lotes en Firestore:', err);
@@ -347,13 +359,7 @@ export default function App() {
     // con un clic desde la barra superior)
     // Las copias locales (lotes, perfil, entregas) no quedan en el navegador para la siguiente
     // persona. La bandeja de acciones del repartidor sin enviar se conserva para no perderlas.
-    try {
-      localStorage.removeItem('cultivos_lore_lotes_backup');
-      if (usuario) {
-        borrarCopiaPerfil(usuario.uid);
-        localStorage.removeItem(`cultivos_lore_mis_entregas_${usuario.uid}`);
-      }
-    } catch {}
+    limpiarCopiasLocales(null);
     try {
       await signOut(auth);
     } catch (err) {
@@ -363,6 +369,18 @@ export default function App() {
     setPerfilUsuario(null);
     setFuncionActiva(null);
   };
+
+  // Mientras llega el perfil (o se aplica su única función) no se muestra el aviso de acceso
+  // restringido: sería falso para quien sí tiene funciones (H26)
+  const perfilPendiente = Boolean(usuario) && (!perfilUsuario || (funciones.length > 0 && !funcionActiva));
+
+  // Lote abierto en detalle: la versión más reciente entre la de la lista en vivo y la recibida al
+  // registrar una acción (la lista puede tardar un instante en reflejarla)
+  const loteDetalleEnLista = loteDetalleVisible ? lotes.find((l) => l.codigo === loteDetalleVisible.codigo) : undefined;
+  const loteDetalleVivo =
+    loteDetalleEnLista && loteDetalleVisible && (loteDetalleEnLista.actualizadoEn || '') >= (loteDetalleVisible.actualizadoEn || '')
+      ? loteDetalleEnLista
+      : loteDetalleVisible;
 
   const accesoRestringido = (
     <div className="max-w-2xl mx-auto bg-white rounded-xl border border-slate-200 shadow-xs p-6 flex items-start space-x-3 text-xs text-slate-700">
@@ -575,7 +593,14 @@ export default function App() {
         )}
 
         {/* SIN FUNCIÓN DE PRODUCCIÓN: SIN ACCESO A LOTES */}
-        {!puedeVerProduccion && (tabActiva === 'inicio' || tabActiva === 'lotes' || tabActiva === 'pedidos' || tabActiva === 'analitica') && accesoRestringido}
+        {!puedeVerProduccion && (tabActiva === 'inicio' || tabActiva === 'lotes' || tabActiva === 'pedidos' || tabActiva === 'analitica') && (
+          perfilPendiente ? (
+            <div role="status" aria-live="polite">
+              <p className="sr-only">Cargando tu perfil...</p>
+              <EsqueletoPantalla />
+            </div>
+          ) : accesoRestringido
+        )}
 
         {puedeVerProduccion && (
         <>
@@ -635,6 +660,8 @@ export default function App() {
             userEmail={usuario?.email || ''}
             perfilActual={perfilUsuario}
             onConfigActualizada={(nuevaConfig) => setConfig(nuevaConfig)}
+            lotes={lotes}
+            lotesListos={puedeVerProduccion && !lotesCargando && !errorConexion}
           />
         )}
 
@@ -685,11 +712,11 @@ export default function App() {
         />
       )}
 
-      {loteDetalleVisible && (
+      {loteDetalleVivo && (
         <LoteDetailModal
           isOpen={Boolean(loteDetalle)}
           onClose={() => setLoteDetalle(null)}
-          loteInicial={loteDetalleVisible}
+          loteInicial={loteDetalleVivo}
           config={config}
           userEmail={usuario?.email || ''}
           perfilActual={perfilUsuario}

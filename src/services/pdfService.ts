@@ -1,6 +1,7 @@
 import { Lote, ConfiguracionGeneral, ComprobanteEntrega, BloqueAnulacion } from '../types';
-import { construirUrlConsultaEntrega, construirUrlPublicaPdf, generarQrDataUrl } from './qrService';
-import { verificarIntegridadLote } from './hashService';
+import { construirUrlConsultaEntrega, construirUrlPublicaPdf, generarQrDataUrl, urlQrLote } from './qrService';
+import { revisarLote, RevisionLote } from './hashService';
+import { verificarComprobante } from './comprobantesService';
 import { quienRegistro } from './usuariosService';
 import { doc as docFirestore, getDoc } from 'firebase/firestore';
 import { db } from '../firebase/firebaseConfig';
@@ -59,6 +60,7 @@ const ETIQUETA_DATO: Record<string, string> = {
   pesoInicialG: 'Peso inicial (g)'
 };
 const OMITIR_DATO = new Set(['ambito']);
+const etiquetaDato = (k: string) => ETIQUETA_DATO[k] || nombreDato(k);
 
 // ---------- Diseño común de los PDF (mundo "acta": tinta, filetes finos, oro viejo) ----------
 type RGB = [number, number, number];
@@ -238,8 +240,8 @@ export async function generarLotePdfBlob(
   });
 
   const urlPublica = construirUrlPublicaPdf(lote.codigo);
-  const qrDataUrl = await generarQrDataUrl(urlPublica);
-  const resultadoIntegridad = await verificarIntegridadLote(lote);
+  // El QR del certificado de un lote cerrado lleva el inicio del sello (ancla fuera de la base)
+  const qrDataUrl = await generarQrDataUrl(urlQrLote(lote));
 
   // Anotaciones posteriores al cierre (solo las aprobadas aparecen en el certificado)
   let datosAnotaciones: AnotacionesLote | null = null;
@@ -257,6 +259,10 @@ export async function generarLotePdfBlob(
     (a) => a.estado === 'aprobada' && !verifAnotaciones.alteradas.includes(a.numero)
   );
   const anotacionesSinValidez = anotacionesDe(datosAnotaciones).filter((a) => verifAnotaciones.alteradas.includes(a.numero));
+  // Cabecera e indicadores derivados de la cadena de fases (no de los campos sueltos del documento)
+  const rev: RevisionLote = await revisarLote(lote, { config, anotacionesSelloCambiado: verifAnotaciones.selloCambiado });
+  const cab = rev.cabecera;
+  const fasesMal = new Set(rev.analisis.fases.filter((f) => f.estado !== 'integra').map((f) => f.indice));
 
   const pageWidth = doc.internal.pageSize.getWidth();
   const M = 14; // margen lateral
@@ -299,12 +305,12 @@ export async function generarLotePdfBlob(
 
   // Ficha de identidad en tres columnas: rótulo pequeño y valor
   const campos: [string, string][] = [
-    ['Producto', lote.producto],
-    ['Origen', lote.origen],
-    ['Estanque', `${lote.estanque}`],
-    ['Siembra', lote.fechaSiembra],
-    ['Alevinos sembrados', lote.cantidadSembrada.toLocaleString()],
-    ['Proveedor de alevinos', lote.proveedorAlevinos || 'No especificado']
+    ['Producto', cab.producto],
+    ['Origen', cab.origen],
+    ['Estanque', `${cab.estanque}`],
+    ['Siembra', cab.fechaSiembra],
+    ['Alevinos sembrados', cab.cantidadSembrada.toLocaleString()],
+    ['Proveedor de alevinos', cab.proveedorAlevinos || 'No especificado']
   ];
   const anchoCol = anchoFranja / 3;
   campos.forEach(([rotulo, valor], i) => {
@@ -318,8 +324,37 @@ export async function generarLotePdfBlob(
   });
   currentY += 51;
 
+  // --- 2b. AVISO DE POSIBLE ALTERACIÓN (si la revisión automática encontró algo) ---
+  if (rev.estado !== 'integro') {
+    const alterado = rev.estado === 'alterado';
+    const lineasAviso = doc.splitTextToSize(
+      textoPdf(rev.avisos.map((a) => `- ${a}`).join('\n')),
+      pageWidth - 2 * M - 8
+    );
+    const altoAviso = 9 + lineasAviso.length * 3.4;
+    doc.setFillColor(251, 240, 239);
+    doc.rect(M, currentY, pageWidth - 2 * M, altoAviso, 'F');
+    doc.setFillColor(...(alterado ? C.rojo : C.gris));
+    doc.rect(M, currentY, 1.4, altoAviso, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(...(alterado ? C.rojo : C.gris));
+    doc.text(alterado ? 'Posible alteración detectada' : 'No se pudo verificar en este navegador', M + 5, currentY + 5.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.text(lineasAviso, M + 5, currentY + 9.5);
+    currentY += altoAviso + 6;
+    if (alterado) {
+      doc.setFont('helvetica', 'italic');
+      doc.setFontSize(7);
+      doc.setTextColor(...C.gris);
+      doc.text('Los datos de este certificado se calcularon a partir de las fases registradas, no de los valores guardados aparte.', M, currentY - 2.5);
+      currentY += 2;
+    }
+  }
+
   // --- 3. INDICADORES PRODUCTIVOS ---
-  const r = lote.resumen;
+  const r = rev.resumen;
   currentY = tituloSeccion(doc, 'Indicadores productivos', currentY);
   autoTable(doc, {
     ...estiloTabla(),
@@ -328,9 +363,9 @@ export async function generarLotePdfBlob(
     columnStyles: { 1: { fontStyle: 'bold' }, 3: { fontStyle: 'bold' } },
     body: [
       ['Días de cultivo', `${r.diasDeCultivo} días`, 'Supervivencia estimada', `${r.supervivencia}%`],
-      ['Peces sembrados', `${lote.cantidadSembrada.toLocaleString()} peces`, 'Mortalidad acumulada', `${r.mortalidadAcumulada.toLocaleString()} peces`],
+      ['Peces sembrados', `${cab.cantidadSembrada.toLocaleString()} peces`, 'Mortalidad acumulada', `${r.mortalidadAcumulada.toLocaleString()} peces`],
       ['Peces cosechados', `${r.pecesCosechados.toLocaleString()} peces`, 'Peces vivos actuales', `${r.pecesVivos.toLocaleString()} peces`],
-      ['Peso inicial promedio', `${lote.pesoInicialPromedioG} g`, 'Peso promedio actual/final', `${r.pesoPromedioActualG} g`],
+      ['Peso inicial promedio', `${cab.pesoInicialPromedioG} g`, 'Peso promedio actual/final', `${r.pesoPromedioActualG} g`],
       ['Biomasa inicial', `${r.biomasaInicialKg} kg`, 'Biomasa estimada viva', `${r.biomasaEstimadaKg} kg`],
       ['Biomasa cosechada', `${r.biomasaCosechadaKg} kg`, 'Alimento acumulado', `${r.alimentoAcumuladoKg} kg`],
       ['FCA (factor de conversión)', r.FCA !== null ? `${r.FCA}` : 'N/A', 'Ganancia diaria', `${r.gananciaDiariaG} g/día`],
@@ -436,13 +471,14 @@ export async function generarLotePdfBlob(
     if (ev.datos && Object.keys(ev.datos).length > 0) {
       detalleDatos = Object.entries(ev.datos)
         .filter(([k]) => !OMITIR_DATO.has(k))
-        .map(([k, v]) => `${ETIQUETA_DATO[k] || k}: ${v}`)
+        .map(([k, v]) => `${etiquetaDato(k)}: ${typeof v === 'boolean' ? (v ? 'sí' : 'no') : v}`)
         .join(', ');
     }
     // Anotaciones aprobadas (e íntegras) que se refieren a esta fase
     const notas = anotacionesAprobadas.filter((a) => a.propuesta.datos.fase === ev.indice).map((a) => a.numero);
     const refNotas = notas.length ? `(ver anotación N.º ${notas.join(', ')})` : '';
-    const contenido = [ev.descripcion, detalleDatos, refNotas].filter(Boolean).join(' · ');
+    const marca = fasesMal.has(ev.indice) ? 'FASE ALTERADA DESPUÉS DEL REGISTRO' : '';
+    const contenido = [marca, ev.descripcion, detalleDatos, refNotas].filter(Boolean).join(' · ');
     return [`#${ev.indice}`, ev.fechaEvento, ev.tipo, contenido || '-', quienRegistro(ev, true), ev.hash.substring(0, 10)];
   });
   currentY = tituloSeccion(doc, 'Historial de fases', currentY);
@@ -458,7 +494,13 @@ export async function generarLotePdfBlob(
       5: { cellWidth: 22, font: 'courier', fontSize: 6.5, textColor: C.gris }
     },
     head: [['#', 'Fecha', 'Fase', 'Detalle y mediciones', 'Registró', 'Huella SHA-256']],
-    body: filasEventos
+    body: filasEventos,
+    didParseCell: (d: any) => {
+      if (d.section === 'body' && fasesMal.has(d.row.index)) {
+        d.cell.styles.textColor = C.rojo;
+        if (d.column.index === 3) d.cell.styles.fontStyle = 'bold';
+      }
+    }
   });
   currentY = (doc as any).lastAutoTable.finalY + 8;
 
@@ -539,24 +581,38 @@ export async function generarLotePdfBlob(
   doc.setDrawColor(...C.filete);
   doc.setLineWidth(0.2);
   doc.rect(M, currentY, pageWidth - 2 * M, altoCaja);
-  doc.setFillColor(...(resultadoIntegridad.valido ? C.verde : C.rojo));
+  const integro = rev.estado === 'integro';
+  const colorEstado = integro ? C.verde : rev.estado === 'alterado' ? C.rojo : C.gris;
+  doc.setFillColor(...colorEstado);
   doc.rect(M, currentY, 1.4, altoCaja, 'F');
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(9);
-  doc.setTextColor(...(resultadoIntegridad.valido ? C.verde : C.rojo));
+  doc.setTextColor(...colorEstado);
+  const primeraMal = rev.analisis.fases.find((f) => f.estado !== 'integra');
   doc.text(
-    resultadoIntegridad.valido
+    integro
       ? `Cadena íntegra: ${lote.eventos?.length || 0} fases encadenadas con SHA-256, sin alteraciones.`
-      : `Cadena alterada: falla en la fase #${resultadoIntegridad.primerErrorIndex}.`,
+      : rev.estado === 'no_verificable'
+        ? 'No se pudo verificar la cadena en este navegador: abra la app por https.'
+        : primeraMal
+          ? `Cadena alterada: falla en la fase #${primeraMal.indice}.`
+          : 'Posible alteración detectada: ver el aviso al inicio del certificado.',
     M + 5,
     currentY + 6
   );
-  rotuloPdf(doc, 'Huella final de la cadena', M + 5, currentY + 11.5);
+  // Huella recalculada de la última fase; si el sello guardado difiere, se imprimen ambos
+  const ultimoHash = (lote.eventos || []).length ? lote.eventos[lote.eventos.length - 1].hash : '';
+  const selloGuardado = lote.resumen?.hashFinal || '';
+  rotuloPdf(doc, selloGuardado && selloGuardado !== ultimoHash ? 'Huella de la última fase / sello guardado (no coinciden)' : 'Huella final de la cadena', M + 5, currentY + 11.5);
   doc.setFont('courier', 'normal');
   doc.setFontSize(7.5);
-  doc.setTextColor(...C.tinta);
-  doc.text(lote.resumen.hashFinal || 'N/A', M + 5, currentY + 15.5);
+  doc.setTextColor(...(selloGuardado && selloGuardado !== ultimoHash ? C.rojo : C.tinta));
+  doc.text(
+    selloGuardado && selloGuardado !== ultimoHash ? `${ultimoHash.slice(0, 32)}… / ${selloGuardado.slice(0, 32)}…` : ultimoHash || 'N/A',
+    M + 5,
+    currentY + 15.5
+  );
   let yNota = currentY + 20;
   if (datosAnotaciones?.registros?.length) {
     doc.setFont('helvetica', 'normal');
@@ -607,9 +663,50 @@ export async function descargarPdfLoteLocal(lote: Lote, config: ConfiguracionGen
  * Abre la vista previa del PDF en una nueva pestaña (blob URL)
  */
 export async function previsualizarPdfLote(lote: Lote, config: ConfiguracionGeneral): Promise<void> {
-  const { blob } = await generarLotePdfBlob(lote, config);
+  const ventana = abrirPestanaVacia();
+  try {
+    const { blob } = await generarLotePdfBlob(lote, config);
+    mostrarBlob(ventana, blob, `CultivosLore_Lote_${lote.codigo}.pdf`);
+  } catch (err) {
+    ventana?.close();
+    throw err;
+  }
+}
+
+/**
+ * Abre la pestaña de la vista previa en el mismo toque del usuario (antes de cualquier espera):
+ * Safari en iOS y los bloqueadores impiden abrirla después de un await.
+ */
+function abrirPestanaVacia(): Window | null {
+  if (typeof window === 'undefined') return null;
+  const v = window.open('', '_blank');
+  try {
+    if (v) {
+      v.document.title = 'Generando el documento';
+      v.document.body.style.font = '14px system-ui, sans-serif';
+      v.document.body.style.color = '#16213a';
+      v.document.body.textContent = 'Generando el documento…';
+    }
+  } catch {
+    /* la pestaña puede no permitir escribir: se sigue igual */
+  }
+  return v;
+}
+
+/** Lleva el PDF a la pestaña abierta; si el navegador la bloqueó, lo descarga. Libera la URL después. */
+function mostrarBlob(ventana: Window | null, blob: Blob, nombre: string) {
   const url = URL.createObjectURL(blob);
-  window.open(url, '_blank');
+  if (ventana && !ventana.closed) {
+    ventana.location.href = url;
+  } else {
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = nombre;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
 // ---------- Comprobante de entrega (fase 5) ----------
@@ -623,8 +720,15 @@ const cantidadTexto = (n: number, unidad: string) => `${(Number(n) || 0).toLocal
 
 export async function generarComprobantePdfBlob(
   c: ContenidoComprobante,
-  opciones: { preliminar: boolean; anulacion?: BloqueAnulacion }
+  opciones: { preliminar: boolean; anulacion?: BloqueAnulacion; alteracion?: string }
 ): Promise<Blob> {
+  // Un comprobante definitivo se verifica antes de generarse: si su contenido no corresponde a su
+  // hash (o quien lo pide ya detectó otra falla de la cadena), el PDF sale marcado como alterado
+  let alteracion = opciones.alteracion || '';
+  if (!opciones.preliminar && c.hashComprobante) {
+    const v = await verificarComprobante(c as ComprobanteEntrega);
+    if (!v.contenidoIntegro && !v.noVerificable) alteracion = [alteracion, v.mensaje].filter(Boolean).join(' ');
+  }
   const { jsPDF, autoTable } = await cargarPdf();
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -660,14 +764,16 @@ export async function generarComprobantePdfBlob(
   y += conQr ? 29 : 17;
 
   // Estado de la entrega (una parcial nunca se presenta como completa)
-  doc.setFillColor(...(opciones.anulacion ? C.rojo : opciones.preliminar ? C.gris : parcial ? C.oro : C.verde));
+  doc.setFillColor(...(alteracion || opciones.anulacion ? C.rojo : opciones.preliminar ? C.gris : parcial ? C.oro : C.verde));
   doc.rect(M, y, pageWidth - 2 * M, 8, 'F');
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
   doc.text(
     textoPdf(
-      (opciones.anulacion
+      (alteracion
+        ? 'Comprobante alterado: no válido'
+        : opciones.anulacion
         ? `Comprobante anulado el ${formatearFechaColombia(opciones.anulacion.emitidoEn)} · sin validez`
         : opciones.preliminar
         ? 'Documento preliminar · la entrega aún no está confirmada'
@@ -681,6 +787,19 @@ export async function generarComprobantePdfBlob(
     { charSpace: 0.4 }
   );
   y += 15;
+  if (alteracion) {
+    const lineasAlt = doc.splitTextToSize(textoPdf(`Posible alteración detectada: ${alteracion}`), pageWidth - 2 * M - 8);
+    const altoAlt = 4 + lineasAlt.length * 3.4;
+    doc.setFillColor(251, 240, 239);
+    doc.rect(M, y - 3, pageWidth - 2 * M, altoAlt, 'F');
+    doc.setFillColor(...C.rojo);
+    doc.rect(M, y - 3, 1.4, altoAlt, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.setTextColor(...C.rojo);
+    doc.text(lineasAlt, M + 5, y + 0.5);
+    y += altoAlt + 5;
+  }
 
   y = tituloSeccion(doc, 'Cliente y logística', y);
   autoTable(doc, {
@@ -825,25 +944,41 @@ export async function generarComprobantePdfBlob(
 
   piePaginas(doc, `${c.empresa.replace(/\s—\s/g, ' · ')} · Comprobante de entrega · orden ${c.ordenId}`);
 
-  if (opciones.preliminar || opciones.anulacion) {
+  if (opciones.preliminar || opciones.anulacion || alteracion) {
     // Marca de agua en TODAS las páginas, para que ninguna se confunda con un comprobante vigente.
     // Semitransparente para que no tape el texto de las tablas
     const paginas = doc.getNumberOfPages();
     for (let p = 1; p <= paginas; p++) {
       doc.setPage(p);
-      marcaDeAgua(doc, opciones.anulacion ? 'Anulado' : 'Preliminar', opciones.anulacion ? C.rojo : C.gris);
+      marcaDeAgua(doc, alteracion ? 'Alterado' : opciones.anulacion ? 'Anulado' : 'Preliminar', alteracion || opciones.anulacion ? C.rojo : C.gris);
     }
   }
   return doc.output('blob');
 }
 
-export async function verComprobantePdf(c: ContenidoComprobante, preliminar: boolean, anulacion?: BloqueAnulacion): Promise<void> {
-  const blob = await generarComprobantePdfBlob(c, { preliminar, anulacion });
-  window.open(URL.createObjectURL(blob), '_blank');
+export async function verComprobantePdf(
+  c: ContenidoComprobante,
+  preliminar: boolean,
+  anulacion?: BloqueAnulacion,
+  alteracion?: string
+): Promise<void> {
+  const ventana = abrirPestanaVacia();
+  try {
+    const blob = await generarComprobantePdfBlob(c, { preliminar, anulacion, alteracion });
+    mostrarBlob(ventana, blob, preliminar ? `Preliminar_${c.ordenId}.pdf` : `Comprobante_${c.ordenId}_N${c.version}.pdf`);
+  } catch (err) {
+    ventana?.close();
+    throw err;
+  }
 }
 
-export async function descargarComprobantePdf(c: ContenidoComprobante, preliminar: boolean, anulacion?: BloqueAnulacion): Promise<void> {
-  const blob = await generarComprobantePdfBlob(c, { preliminar, anulacion });
+export async function descargarComprobantePdf(
+  c: ContenidoComprobante,
+  preliminar: boolean,
+  anulacion?: BloqueAnulacion,
+  alteracion?: string
+): Promise<void> {
+  const blob = await generarComprobantePdfBlob(c, { preliminar, anulacion, alteracion });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;

@@ -32,9 +32,10 @@ import { cerrarLote, modificarDatosSiembraOPiscina } from '../services/lotesServ
 import { previsualizarPdfLote, generarYSubirPdfLote, descargarPdfLoteLocal } from '../services/pdfService';
 import { formatearFechaColombia } from '../utils/constants';
 import { evaluarParametroAgua } from '../services/calculosService';
-import { DiagnosticoFase, nombreDato, revisarLote, RevisionLote } from '../services/hashService';
+import { DiagnosticoFase, horaServidorRegistro, nombreDato, revisarLote, RevisionLote } from '../services/hashService';
+import { FirmaRegistro } from './PersonaUi';
 import { AvisoIntegridad } from './AvisoIntegridad';
-import { esAdminMaestro, verificarPermiso, quienRegistro } from '../services/usuariosService';
+import { esAdminMaestro, verificarPermiso } from '../services/usuariosService';
 import { EntregasPanel } from './EntregasPanel';
 import { AnotacionesLotePanel } from './AnotacionesLotePanel';
 import { anotacionesDe, escucharAnotaciones, verificarAnotaciones } from '../services/anotacionesService';
@@ -706,12 +707,21 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
                                   {alertasDelEvento.join(' · ')}
                                 </div>
                               )}
+                              {(() => {
+                                const h = horaServidorRegistro(lote.registradoEnServidor, ev.indice, ev.registradoEn);
+                                return h.servidor ? (
+                                  <p className={`mt-2 text-xs ${h.desfase ? 'text-amber-800' : 'text-slate-500'}`}>
+                                    Hora del servidor: {formatearFechaColombia(h.servidor.toISOString())}
+                                    {h.desfase && ' · la hora declarada por el equipo difiere en más de 10 minutos'}
+                                  </p>
+                                ) : null;
+                              })()}
                             </div>
                           </div>
 
                           <div className="text-right shrink-0">
                             <p className="text-sm text-slate-800">
-                              <span className="firma">{quienRegistro(ev)}</span>
+                              <FirmaRegistro registro={ev} />
                             </p>
                             <p className="rotulo text-slate-500 mt-1">Registró</p>
                             <span

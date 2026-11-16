@@ -68,3 +68,14 @@ para que la bandeja del repartidor funcione en Node.
 - `ultima-salida.log`: consola de la última corrida (incluye los PERMISSION_DENIED esperados).
 
 Se puede correr varias veces sobre el mismo emulador: cada corrida usa un código de lote nuevo.
+
+## Verificación de solo lectura en producción
+
+`verificar-lotes-prod.ts` lee `lotes`, `anotacionesLote` y `configuracion/general` de producción con
+GET (token de firebase-tools) y los revisa con `revisarLote` y `verificarAnotaciones`. No escribe nada.
+Desde la raíz:
+
+```bash
+npx esbuild tests/integridad/verificar-lotes-prod.ts --bundle --platform=node --format=esm --packages=external --target=node20 "--define:import.meta.env={\"DEV\":false,\"PROD\":false,\"VITE_EMULADORES\":\"false\"}" --outfile=tests/integridad/.salida/verificar-lotes-prod.mjs
+node tests/integridad/.salida/verificar-lotes-prod.mjs
+```

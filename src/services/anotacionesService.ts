@@ -1,4 +1,4 @@
-import { doc, onSnapshot, runTransaction } from 'firebase/firestore';
+import { doc, onSnapshot, runTransaction, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../firebase/firebaseConfig';
 import { AnotacionesLote, Lote, RegistroAnotacion, TipoRegistroAnotacion } from '../types';
 import { calcularSha256, jsonCanonico } from './hashService';
@@ -103,7 +103,7 @@ async function agregarRegistro(
   datos: Record<string, any>,
   resolver?: { propuestaIndice: number; estado: 'aprobada' | 'rechazada' }
 ): Promise<void> {
-  const { email, uid } = sesion();
+  const { uid } = sesion();
   const ref = doc(db, 'anotacionesLote', lote.codigo);
   await runTransaction(db, async (tx) => {
     const snap = await tx.get(ref);
@@ -127,17 +127,27 @@ async function agregarRegistro(
       tipo,
       fecha: new Date().toISOString(),
       datos,
-      registradoPor: email,
+      // H20: el uid y no el correo (las anotaciones se leen sin sesión); los registros anteriores
+      // conservan el correo con el que se sellaron
+      registradoPor: uid,
       registradoPorUid: uid,
       ...nombreRegistro(),
       hashAnterior: registros.length ? registros[registros.length - 1].hash : hashAnclaje
     };
     const registro: RegistroAnotacion = { ...base, hash: await hashRegistroAnotacion(lote.codigo, base) };
     const resueltas = { ...(actual?.resueltas || {}), ...(resolver ? { [String(resolver.propuestaIndice)]: resolver.estado } : {}) };
+    // Hora del servidor de cada registro (H19), fuera del hash: registradoEnServidor[indice]
     if (actual) {
-      tx.update(ref, { registros: [...registros, registro], resueltas });
+      tx.update(ref, { registros: [...registros, registro], resueltas, [`registradoEnServidor.${registro.indice}`]: serverTimestamp() });
     } else {
-      tx.set(ref, { codigoLote: lote.codigo, granjaId: lote.granjaId || 'cultivos-lore', hashAnclaje, registros: [registro], resueltas: {} });
+      tx.set(ref, {
+        codigoLote: lote.codigo,
+        granjaId: lote.granjaId || 'cultivos-lore',
+        hashAnclaje,
+        registros: [registro],
+        resueltas: {},
+        registradoEnServidor: { '0': serverTimestamp() }
+      });
     }
   });
 }

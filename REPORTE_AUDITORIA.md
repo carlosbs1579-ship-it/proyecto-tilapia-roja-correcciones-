@@ -2,6 +2,8 @@
 | Despliegue 3: reglas de Firestore (commit fd6c220): vencimiento de foto con margen para relojes desfasados, nombre visible hasta 120 | 2026-11-16 14:52 UTC | Bien. Publicadas iguales al repo; 146/146 y 71/71 antes; consulta pública sin errores después. |
 | Despliegue 4: web (PR #25, merge 8df82f4; Vercel f7k78vu2a; anterior 5f3h9ikqe): estanque con guion, guardar solo estanques, CSV | 2026-11-16 | Bien. Lote real "Cadena verificada"; lote de prueba con sello del QR "verificada"; panel de operador sin errores. |
 | Despliegue 5: CSP completa en vercel.json (PR #26, merge d6cf67d; Vercel jp99odnvo; anterior f7k78vu2a) | 2026-11-16 | Bien. Probada antes en la vista previa: consulta pública, PDF, ingreso y ventana de Google sin violaciones. En producción, con sesión: panel, detalle del lote (carga diferida) y QR sin violaciones de CSP. |
+| Despliegue 6: reglas de órdenes y comprobantes (commit 9e55330) | 2026-11-16 21:12 UTC | Bien. Publicadas iguales al repo; antes 162/162 y 71/71; 4 comprobantes, 4 órdenes y 4 consultas reales verificadas sin alarmas (solo lectura). Un primer intento falló por corte de internet sin publicar nada. |
+| Despliegue 7: web de órdenes y comprobantes (PR #27, merge d328d52; Vercel 4f7a9z6fu; anterior jp99odnvo) | 2026-11-16 | Bien. Consulta pública ?entrega= de un comprobante real: sin dirección del cliente, "Cadena verificada al abrir" y "Bloque íntegro". |
 # Reporte de auditoría: integridad, seguridad y regresiones
 
 Fecha: 2026-11-16. Rama `correciones-claude`. Une los reportes de `auditoria/agente1-integridad.md`, `agente2-alteraciones.md`, `agente3-seguridad.md`, `agente4-funcional.md`, `agente5-regresiones.md` y `tests/integridad/resultados.md`. Ningún archivo de la app se modificó durante la auditoría.
@@ -65,7 +67,7 @@ Los 5 riesgos principales:
 | A1-c | Corrección de siembra que declara E1 → E2 pero escribe E7 en la cabecera | No detectado | H15, H02 | Bloqueado por reglas (H15) |
 | A1-d | Cambiar `historial[k]` de una orden sin comprobante (consola) | No detectado | H14 | No detectado (pendiente, H14) |
 | A1-e | Registrar desde HTTP por IP local (hash de respaldo no criptográfico) | No detectado al guardar; luego falso "alterado" en HTTPS | H12, H13 | Ya no se guarda sin https (H12) |
-| A1-f | Antedatar `registradoEn` de un evento | No detectado | H19 | No detectado (pendiente, H19) |
+| A1-f | Antedatar `registradoEn` de un evento | No detectado | H19 | En la rama: los registros nuevos guardan la hora del servidor y se avisa si la declarada difiere más de 10 minutos (H19) |
 | A1-g | Reescribir `huellas` para señalar otro dato | Detectado y avisado, con diagnóstico equivocado | H35 | Detectado y avisado |
 | A1-h | Quitar la última resolución de una anotación (consola) | No detectado | H36 | Detectado y avisado |
 | A1-i | Quitar `hashAnterior` de un bloque de comprobante | No detectado | H16 | Detectado y avisado |
@@ -197,7 +199,7 @@ Los 5 riesgos principales:
 - Reproducción: A1-d; también 3b.
 - Impacto: eventos sin comprobante (asignación, cambio de repartidor, novedades, `datos.foto`) se pueden cambiar por consola sin aviso.
 - Arreglo: encadenar `EventoOrden` como los eventos del lote (hash de JSON canónico más `hashAnterior`), regla `hashAnterior == historial[n-1].hash` para eventos nuevos y verificar al abrir la orden. **(requiere datos reales / consultar)**: decidir cómo tratar las órdenes existentes (marcar su historial previo como "sin cadena" en lugar de recalcularlo).
-- Estado: Pendiente de tu aprobación: requiere un campo nuevo en las órdenes (cadena del historial)
+- Estado: Corregido y desplegado: cadena de hashes en los eventos nuevos de las órdenes; los anteriores se muestran como registros previos a la cadena
 
 #### H15. La corrección de siembra solo comprueba qué campos cambian, no sus valores
 - Severidad: media · Área: REGLAS · Origen: Agente1 M3
@@ -227,7 +229,7 @@ Los 5 riesgos principales:
 - Archivos: `src/services/comprobantesService.ts:237-306`; `src/components/ConsultaEntregaPublica.tsx:132-142`; parte de reglas (la hace REGLAS).
 - Impacto: si el lote cambia tras la entrega, la consulta no lo sabe.
 - Arreglo: guardar `selloLote = hashFinal` en cada procedencia de comprobantes nuevos (regla `== get(lote).data.resumen.hashFinal`, lote cerrado) y comparar al abrir "Ver lote".
-- Estado: Pendiente de tu aprobación: requiere guardar el sello del lote en los comprobantes
+- Estado: Corregido y desplegado: los comprobantes nuevos guardan el sello de cada lote y el estado de sus anotaciones; la consulta pública y el panel avisan si cambiaron
 
 #### H19. Las fechas de registro vienen del reloj del cliente y las reglas no las validan
 - Severidad: media · Área: INTEGRIDAD-APP · Origen: Agente1 M7
@@ -235,7 +237,7 @@ Los 5 riesgos principales:
 - Reproducción: A1-f.
 - Impacto: se puede antedatar un registro y el sello lo "certifica".
 - Arreglo: campo de nivel superior `selladoEnServidor` con `serverTimestamp()` y regla `== request.time`; comparar con `registradoEn` del último evento con tolerancia; o validar en reglas que `registradoEn` empiece con la fecha de `request.time`.
-- Estado: Pendiente de tu aprobación: requiere hora de servidor en los registros (campo nuevo)
+- Estado: Corregido en la rama (sin desplegar) para órdenes, comprobantes, lotes y anotaciones nuevos. Lotes y anotaciones: mapa `registradoEnServidor["<índice>"]` fuera del hash, con regla `== request.time` y sin tocar las horas anteriores; si el documento ya tiene horas, cada registro nuevo debe dejar la suya. El detalle, el panel de anotaciones y la vista pública muestran la hora del servidor y avisan si la declarada difiere más de 10 minutos. Los registros anteriores no tienen hora del servidor y no se tocan.
 
 #### H20. La lectura pública de lotes y anotaciones expone correos y uid del personal; los códigos se adivinan
 - Severidad: media · Área: REGLAS · Origen: Agente3 S3
@@ -243,7 +245,7 @@ Los 5 riesgos principales:
 - Reproducción: `GET` REST con la API key pública sobre `lotes/20261023-A-E1`; un script recorre todos los códigos, incluidos lotes activos.
 - Impacto: lista de correos del personal y de toda la producción.
 - Arreglo: permitir `get` público solo si `estado == 'cerrado'`; para lo nuevo, no guardar correos en lo público (uid o nombre) o publicar `lotesPublicos/{codigo}` saneado al cerrar. **(decisión del usuario)** (ocultar lotes activos y correos del público) **(requiere datos reales / consultar)**: en los lotes sellados el correo está dentro del hash y no se puede quitar sin romper la cadena.
-- Estado: Pendiente de tu aprobación: ocultar correos al público obliga a modificar los lotes reales
+- Estado: Parcial, en la rama (sin desplegar): los lotes, fases y anotaciones nuevos se firman con el uid (`registradoPor`, `creadoPor`) y el nombre visible; el correo ya no se guarda en lo público y las pantallas internas lo leen en `usuarios/{uid}`. La vista pública y el PDF muestran el nombre (o "Personal de la granja" si no hay nombre). Las reglas aceptan el uid o el correo de la sesión (compatibilidad con la versión publicada). Los registros anteriores conservan el correo dentro del hash (no se modifican; se siguen mostrando enmascarados). La lectura pública de lotes activos y la enumeración de códigos siguen igual (decisión pendiente).
 
 #### H21. Al crear un lote se puede atribuir a otra persona y el evento 0 no se valida
 - Severidad: media · Área: REGLAS · Origen: Agente3 S4
@@ -402,7 +404,7 @@ Los 5 riesgos principales:
 - Archivos: `src/services/comprobantesService.ts:279-303`; `firestore.rules:1094`.
 - Impacto: quien fotografíe el comprobante impreso ve dirección y novedades (el token no se puede adivinar).
 - Arreglo: no incluir dirección completa, novedades internas ni `emitidoPorUid` en comprobantes nuevos. **(decisión del usuario)**
-- Estado: Pendiente de tu aprobación: quitar dirección y novedades del comprobante público
+- Estado: Corregido y desplegado: la consulta pública y el PDF ya no muestran dirección ni novedades; los comprobantes nuevos guardan solo su hash
 
 #### H43. Etiquetas de datos sin traducir en la vista pública, el PDF y las anotaciones
 - Severidad: baja · Área: INTEGRIDAD-APP · Origen: Agente4 10
@@ -423,7 +425,7 @@ Los 5 riesgos principales:
 - Archivos: `firestore.rules:255-257, 420-422`.
 - Reproducción: A3-b.
 - Arreglo: `displayName is string && size() <= 80` y que lo fije el administrador, o mostrar en público algo no elegible.
-- Estado: Parcial, desplegado: tope de 120 caracteres; que solo el administrador fije el nombre queda a tu decisión
+- Estado: Parcial, desplegado: tope de 120 caracteres y, en los registros nuevos, `registradoPorNombre` debe ser igual al `displayName` del perfil (las reglas ya lo exigían; se mantiene con la firma uid). Como cada persona puede cambiar su propio nombre visible, que solo el administrador lo fije queda a tu decisión.
 
 #### H46. El alta propia no limita campos ni tamaños
 - Severidad: baja · Área: REGLAS · Origen: Agente3 S6

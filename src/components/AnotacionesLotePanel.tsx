@@ -2,8 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { FilePen, ShieldCheck, ShieldAlert, Check, X } from 'lucide-react';
 import { AnotacionesLote, Lote } from '../types';
 import { anotacionesDe, numeroValido, proponerAnotacion, resolverAnotacion, verificarAnotaciones, VerificacionAnotaciones } from '../services/anotacionesService';
-import { nombreDato } from '../services/hashService';
-import { quienRegistro } from '../services/usuariosService';
+import { horaServidorRegistro, nombreDato } from '../services/hashService';
+import { FirmaRegistro } from './PersonaUi';
 import { formatearFechaColombia } from '../utils/constants';
 
 /**
@@ -240,17 +240,27 @@ export const AnotacionesLotePanel: React.FC<{
                 <p className="flex flex-wrap items-baseline gap-x-5 gap-y-1 pt-1 text-slate-700">
                   <span>
                     <span className="rotulo text-slate-500 mr-2">Propuso</span>
-                    <span className="firma">{quienRegistro(a.propuesta)}</span>
+                    <FirmaRegistro registro={a.propuesta} className="inline-block align-baseline" />
                     <span className="text-xs text-slate-500 ml-2 tabular-nums">{formatearFechaColombia(a.propuesta.fecha)}</span>
                   </span>
                   {a.resolucion && (
                     <span>
                       <span className="rotulo text-slate-500 mr-2">{a.estado === 'aprobada' ? 'Aprobó' : 'Rechazó'}</span>
-                      <span className="firma">{quienRegistro(a.resolucion)}</span>
+                      <FirmaRegistro registro={a.resolucion} className="inline-block align-baseline" />
                       <span className="text-xs text-slate-500 ml-2 tabular-nums">{formatearFechaColombia(a.resolucion.fecha)}</span>
                     </span>
                   )}
                 </p>
+                {[a.propuesta, a.resolucion].map((r) => {
+                  if (!r) return null;
+                  const h = horaServidorRegistro(datosAnotaciones?.registradoEnServidor, r.indice, r.fecha);
+                  return h.servidor ? (
+                    <p key={r.id} className={`text-xs ${h.desfase ? 'text-amber-800' : 'text-slate-500'}`}>
+                      {r.tipo === 'Propuesta' ? 'Propuesta' : 'Decisión'} registrada en el servidor: {formatearFechaColombia(h.servidor.toISOString())}
+                      {h.desfase && ' · la hora declarada por el equipo difiere en más de 10 minutos'}
+                    </p>
+                  ) : null;
+                })}
                 {a.resolucion?.datos?.respuesta ? <p className="text-slate-600 italic">"{a.resolucion.datos.respuesta}"</p> : null}
                 {a.estado === 'pendiente' && puedeAprobar && !propia && !alterada && verificacion?.integra !== false && (
                   <div className="flex flex-wrap items-center gap-2 pt-1">

@@ -145,3 +145,12 @@ Hecho:
 - Revisor independiente: 6 problemas nuevos menores, 4 corregidos y desplegados (despliegues 3 y 4).
 - Lote de prueba y contador diario borrados; no queda nada PRUEBA en producción.
 - Reporte final actualizado.
+
+## Segunda ronda: lotes y anotaciones (H20, H19, H45), en la rama sin desplegar
+
+- **H20:** los registros nuevos guardan el uid en `registradoPor` (fases, anotaciones) y en `creadoPor` (lote), con el nombre visible aparte. El hash usa esos valores; los registros anteriores conservan el correo y su hash no cambia (la verificación usa lo guardado, sirve para los dos formatos). En lo interno, `FirmaRegistro` (PersonaUi) muestra el nombre y el correo leído de `usuarios/{uid}`; en lo público y el PDF, `quienRegistro` muestra el nombre, "Personal de la granja" si no hay nombre, y el correo enmascarado en los registros anteriores.
+- **H19:** mapa `registradoEnServidor` en `lotes/{c}` y `anotacionesLote/{c}` (fuera del hash), una entrada por registro nuevo con `serverTimestamp()`. Reglas: `horaServidorValida` (la entrada nueva `== request.time`, las demás no cambian; si el documento ya tiene horas, el registro nuevo debe dejar la suya). `loteActivoCoherente`, `siembraCoherente` (corrección de siembra) y `camposLote` admiten el campo; `cierreValido` no lo admite (el cierre no lo toca).
+- **H45:** sin cambios de regla: `registradoPorNombre` debe ser el `displayName` del perfil.
+- **Compatibilidad:** las reglas aceptan lo que escribe la app publicada (correo, sin horas) en documentos sin horas del servidor. Tras publicar la web nueva, una pestaña con la versión anterior no podrá agregar registros a un lote o anotación que ya tenga horas del servidor.
+- **Margen de expresiones** (relleno `1 == 1` en árbol balanceado, lote de 400 fases; antes / reglas nuevas con la app publicada / reglas nuevas con la app nueva): fase 90/84/83, corrección de siembra 49/44/42, cierre 73/73/73, creación 68/61/61, proponer anotación 89/84/82, aprobar anotación (100 registros) 83/77/75.
+- **Pruebas:** reglas 170/170, seguridad 73/73, integridad 36/36 "detectado y avisado". Producción en solo lectura (`tests/integridad/verificar-lotes-prod.ts`): 20261031-A-E1 íntegro, sello coincide, 0 avisos; anotaciones íntegras (3 registros).

@@ -1,9 +1,9 @@
-import { collection, doc, getDoc, onSnapshot, query, runTransaction, where } from 'firebase/firestore';
+import { collection, doc, getDoc, onSnapshot, query, runTransaction, serverTimestamp, where } from 'firebase/firestore';
 import { auth, db } from '../firebase/firebaseConfig';
-import { BloqueAnulacion, ComprobanteEntrega, ConsultaEntrega, EventoOrden, OrdenEntrega } from '../types';
-import { calcularSha256, jsonCanonico } from './hashService';
-import { esErrorSinHuellaSegura, huellaParaComparar, MENSAJE_NO_VERIFICABLE } from '../lib/integridad';
-import { cantidadPendiente, mensajeError, nuevoEvento, redondear } from './pedidosService';
+import { BloqueAnulacion, ComprobanteEntrega, ConsultaEntrega, EventoOrden, Lote, MarcaServidor, OrdenEntrega } from '../types';
+import { calcularSha256, jsonCanonico, verificarIntegridadLote } from './hashService';
+import { esErrorSinHuellaSegura, huellaParaComparar, MENSAJE_NO_VERIFICABLE, sha256Texto } from '../lib/integridad';
+import { agregarEvento, cantidadPendiente, mensajeError, nuevoEvento, redondear, TOLERANCIA_HORA_MS } from './pedidosService';
 
 // Comprobantes de entrega. Un comprobante definitivo es un registro inmutable en
 // comprobantes/{id} construido SOLO con datos ya confirmados en el servidor (la orden leída dentro
@@ -17,6 +17,16 @@ import { cantidadPendiente, mensajeError, nuevoEvento, redondear } from './pedid
 //  - hashAnterior: hashComprobante de la versión anterior (enlace de la cadena).
 //  - hashComprobante: SHA-256 del JSON canónico de todo el comprobante salvo este mismo campo.
 // Verificar = recalcular ambos y compararlos. El hash del lote productivo no se toca.
+//
+// Comprobantes nuevos (el documento es público, se abre con el QR):
+//  - cliente.direccionHash: SHA-256 de la dirección en vez de la dirección; la dirección completa
+//    queda en la orden, que solo leen los operadores.
+//  - resumenNovedades: cantidad de novedades y SHA-256 del JSON canónico de su lista; el detalle
+//    queda en la orden.
+//  - sellosLotes: sello (resumen.hashFinal) de cada lote de procedencia al emitir; anotacionesLotes:
+//    cantidad de anotaciones y hash de la última de cada lote que las tenga. Si el lote o sus
+//    anotaciones se reescriben después, el comprobante ya emitido deja de coincidir.
+//  - registradoEnServidor: hora del servidor al emitir, fuera del hash.
 
 export const EMPRESA = 'Cultivos Loré — Tilapia Pro';
 export const HASH_GENESIS_COMPROBANTES = '0'.repeat(64);
@@ -125,17 +135,29 @@ async function hashDeEventos(eventos: EventoOrden[]): Promise<string> {
   return calcularSha256(jsonCanonico(eventos));
 }
 
+// Contenido sellado del bloque: todo salvo su propio hash y la hora del servidor
+function contenidoSellado(c: object): object {
+  const { hashComprobante, registradoEnServidor, ...contenido } = c as ComprobanteEntrega;
+  return contenido;
+}
+
 export async function calcularHashComprobante(
   c: Omit<ComprobanteEntrega, 'hashComprobante'> | ComprobanteEntrega | Omit<BloqueAnulacion, 'hashComprobante'> | BloqueAnulacion
 ): Promise<string> {
-  const { hashComprobante, ...contenido } = c as ComprobanteEntrega;
-  return calcularSha256(jsonCanonico(contenido));
+  return calcularSha256(jsonCanonico(contenidoSellado(c)));
 }
 
 /** Hash del bloque recalculado para compararlo con el guardado (acepta huellas de respaldo antiguas) */
 async function hashComprobanteComparable(c: ComprobanteEntrega | BloqueAnulacion): Promise<string> {
-  const { hashComprobante, ...contenido } = c as ComprobanteEntrega;
-  return (await huellaParaComparar(jsonCanonico(contenido), hashComprobante)).hash;
+  return (await huellaParaComparar(jsonCanonico(contenidoSellado(c)), c.hashComprobante)).hash;
+}
+
+/** Hora del servidor del bloque (si se guardó) y si la hora declarada al emitir difiere más de 10 minutos */
+export function horaServidorBloque(b: { emitidoEn: string; registradoEnServidor?: MarcaServidor }): { servidor: Date | null; desfase: boolean } {
+  const servidor = b.registradoEnServidor && typeof b.registradoEnServidor.toDate === 'function' ? b.registradoEnServidor.toDate() : null;
+  if (!servidor) return { servidor: null, desfase: false };
+  const declarada = Date.parse(b.emitidoEn);
+  return { servidor, desfase: Number.isFinite(declarada) && Math.abs(declarada - servidor.getTime()) > TOLERANCIA_HORA_MS };
 }
 
 export const esAnulacion = (b: ComprobanteEntrega | BloqueAnulacion): b is BloqueAnulacion =>
@@ -205,7 +227,7 @@ export async function anularComprobante(comprobanteId: string, motivo: string): 
       };
       const bloque: BloqueAnulacion = { ...sinHash, hashComprobante: await calcularHashComprobante(sinHash) };
 
-      tx.set(doc(db, 'comprobantes', id), bloque);
+      tx.set(doc(db, 'comprobantes', id), { ...bloque, registradoEnServidor: serverTimestamp() });
       tx.set(consultaRef, {
         ...consulta,
         versiones: {
@@ -217,14 +239,11 @@ export async function anularComprobante(comprobanteId: string, motivo: string): 
       });
       tx.update(ordenRef, {
         actualizadoEn: emitidoEn,
-        historial: [
-          ...orden.historial,
-          nuevoEvento(orden.historial.length, 'Comprobante anulado', `Comprobante N.º ${anulado.version} anulado: ${motivoLimpio}`, {
+        ...(await agregarEvento(orden.historial, nuevoEvento(orden.historial.length, 'Comprobante anulado', `Comprobante N.º ${anulado.version} anulado: ${motivoLimpio}`, {
             bloqueId: id,
             anulaA: comprobanteId,
             versionAnulada: anulado.version
-          })
-        ]
+          })))
       });
       return bloque;
     });
@@ -315,6 +334,49 @@ export function construirComprobante(
   };
 }
 
+type ContenidoBase = Omit<ComprobanteEntrega, 'hashEventos' | 'hashComprobante'>;
+
+/** SHA-256 de la dirección tal como la guarda la orden (texto vacío si no tiene) */
+export const hashDireccion = (direccion: string | undefined | null) => sha256Texto(direccion || '');
+
+/** Cantidad y SHA-256 del JSON canónico de la lista de novedades */
+export async function resumirNovedades(novedades: { fecha: string; descripcion: string }[]): Promise<{ cantidad: number; hash: string }> {
+  return { cantidad: novedades.length, hash: await sha256Texto(jsonCanonico(novedades)) };
+}
+
+/**
+ * Forma pública del comprobante nuevo: sin la dirección ni el texto de las novedades (solo sus
+ * hashes y la cantidad), que siguen completos en la orden
+ */
+export async function formaPublica(base: ContenidoBase): Promise<ContenidoBase> {
+  const { novedades, cliente, ...resto } = base;
+  return {
+    ...resto,
+    cliente: { nombre: cliente.nombre, direccionHash: await hashDireccion(cliente.direccion) },
+    resumenNovedades: await resumirNovedades(novedades || [])
+  };
+}
+
+/**
+ * Anotaciones de cada lote al emitir: cuántos registros tiene y el hash del último. Se leen fuera de
+ * la transacción porque las reglas no las comparan; si no se pueden leer, el comprobante no las
+ * incluye (sigue anclado al sello del lote).
+ */
+async function anotacionesDeLotes(codigos: string[]): Promise<Record<string, { registros: number; ultimoHash: string }>> {
+  const r: Record<string, { registros: number; ultimoHash: string }> = {};
+  for (const codigo of codigos) {
+    try {
+      const snap = await getDoc(doc(db, 'anotacionesLote', codigo));
+      const registros = snap.exists() ? (snap.data().registros as { hash?: string }[]) || [] : [];
+      const ultimo = registros[registros.length - 1];
+      if (registros.length && ultimo?.hash) r[codigo] = { registros: registros.length, ultimoHash: ultimo.hash };
+    } catch {
+      // Sin acceso a las anotaciones: el comprobante queda sin ese dato
+    }
+  }
+  return r;
+}
+
 /**
  * Emite el comprobante definitivo de la última entrega confirmada. Lee la orden en el servidor
  * dentro de la transacción; si algo no cuadra, no emite y explica por qué. Escribe en una sola
@@ -324,6 +386,8 @@ export async function emitirComprobanteDefinitivo(ordenId: string): Promise<Comp
   const uid = auth.currentUser?.uid;
   if (!uid) throw new Error('Debes iniciar sesión.');
   try {
+    const previa = await getDoc(doc(db, 'ordenes', ordenId));
+    const anotaciones = previa.exists() ? await anotacionesDeLotes(Object.keys((previa.data() as OrdenEntrega).procedencias || {})) : {};
     return await runTransaction(db, async (tx) => {
       const snap = await tx.get(doc(db, 'ordenes', ordenId));
       if (!snap.exists()) throw new Error('La orden no existe.');
@@ -339,18 +403,32 @@ export async function emitirComprobanteDefinitivo(ordenId: string): Promise<Comp
       const eventoEntregaId = ultima.evento.eventoId as string;
       if (consulta?.versiones?.[eventoEntregaId]) throw new Error('Esta entrega ya tiene comprobante definitivo.');
 
+      // Sello de cada lote de procedencia en este momento (las reglas lo comparan con el lote)
+      const sellosLotes: Record<string, string> = {};
+      for (const codigo of Object.keys(orden.procedencias || {})) {
+        const loteSnap = await tx.get(doc(db, 'lotes', codigo));
+        sellosLotes[codigo] = loteSnap.exists() ? (loteSnap.data() as Lote).resumen?.hashFinal || '' : '';
+      }
+      const anotacionesLotes = Object.fromEntries(Object.entries(anotaciones).filter(([codigo]) => codigo in sellosLotes));
+
       const id = generarToken('cmp');
       const version = Object.keys(consulta?.versiones || {}).length + 1;
       const emitidoEn = new Date().toISOString();
-      const base = construirComprobante(orden, { id, version, token, uid, emitidoEn });
+      const base = await formaPublica(construirComprobante(orden, { id, version, token, uid, emitidoEn }));
       const hashEventos = await hashDeEventos(eventosDocumentados(orden));
       // Enlace con el bloque anterior: el hash de la última versión emitida de esta orden
       const anterior = consulta ? Object.values(consulta.versiones).find((v) => v.comprobanteId === consulta.ultimaVersion) : null;
       const hashAnterior = anterior?.hashComprobante || HASH_GENESIS_COMPROBANTES;
-      const sinHash = { ...base, hashEventos, hashAnterior };
+      const sinHash = {
+        ...base,
+        hashEventos,
+        hashAnterior,
+        sellosLotes,
+        ...(Object.keys(anotacionesLotes).length ? { anotacionesLotes } : {})
+      };
       const comprobante: ComprobanteEntrega = { ...sinHash, hashComprobante: await calcularHashComprobante(sinHash as ComprobanteEntrega) };
 
-      tx.set(doc(db, 'comprobantes', id), comprobante);
+      tx.set(doc(db, 'comprobantes', id), { ...comprobante, registradoEnServidor: serverTimestamp() });
       tx.set(consultaRef, {
         token,
         ordenId: orden.id,
@@ -371,16 +449,13 @@ export async function emitirComprobanteDefinitivo(ordenId: string): Promise<Comp
       tx.update(doc(db, 'ordenes', ordenId), {
         tokenConsulta: token,
         actualizadoEn: emitidoEn,
-        historial: [
-          ...orden.historial,
-          nuevoEvento(orden.historial.length, 'Comprobante emitido', `Comprobante definitivo N.º ${version}`, {
+        ...(await agregarEvento(orden.historial, nuevoEvento(orden.historial.length, 'Comprobante emitido', `Comprobante definitivo N.º ${version}`, {
             comprobanteId: id,
             eventoEntregaId,
             version,
             estadoEntrega: comprobante.estadoEntrega,
             hashComprobante: comprobante.hashComprobante
-          })
-        ]
+          })))
       });
       return comprobante;
     });
@@ -499,7 +574,7 @@ export interface ResultadoVerificacionComprobante {
  * "Comprobante emitido" y las entregas, novedades, cliente y fecha de confirmación calculados con
  * el historial tal como estaba al emitirlo. Devuelve los datos que no coinciden.
  */
-function diferenciasConOrden(c: ComprobanteEntrega, orden: OrdenEntrega): string[] {
+async function diferenciasConOrden(c: ComprobanteEntrega, orden: OrdenEntrega): Promise<string[]> {
   const historial = orden.historial || [];
   const pos = historial.findIndex((e) => e.tipo === 'Comprobante emitido' && e.datos?.comprobanteId === c.id);
   if (pos < 0) return ['la orden no registra la emisión de este comprobante'];
@@ -518,8 +593,17 @@ function diferenciasConOrden(c: ComprobanteEntrega, orden: OrdenEntrega): string
   // Versiones anteriores tomaban como confirmación la fecha de la última entrega o de su corrección
   const confirmacionesValidas = [reconstruido.fechas.confirmacion, ultimaEntrega(alEmitir)?.evento.fecha || ''];
   if (jsonCanonico(reconstruido.entregas) !== jsonCanonico(c.entregas)) fallas.push('las entregas o sus fotos no coinciden con la orden');
-  if (jsonCanonico(reconstruido.novedades) !== jsonCanonico(c.novedades)) fallas.push('las novedades no coinciden con la orden');
+  if (c.resumenNovedades) {
+    // Comprobante nuevo: la cantidad y el hash de las novedades deben salir de la orden
+    const r = await resumirNovedades(reconstruido.novedades || []);
+    if (r.cantidad !== c.resumenNovedades.cantidad || r.hash !== c.resumenNovedades.hash) fallas.push('las novedades no coinciden con la orden');
+  } else if (jsonCanonico(reconstruido.novedades) !== jsonCanonico(c.novedades)) {
+    fallas.push('las novedades no coinciden con la orden');
+  }
   if (reconstruido.cliente.nombre !== c.cliente?.nombre) fallas.push('el cliente no coincide con la orden');
+  if (c.cliente?.direccionHash !== undefined && (await hashDireccion(reconstruido.cliente.direccion)) !== c.cliente.direccionHash) {
+    fallas.push('la dirección del cliente no coincide con la de la orden');
+  }
   if (!confirmacionesValidas.includes(c.fechas?.confirmacion)) fallas.push('la fecha de confirmación no coincide con la orden');
   return fallas;
 }
@@ -558,7 +642,12 @@ export async function verificarComprobante(
   if (extra.consulta) {
     indiceCoincide = extra.consulta.versiones?.[c.eventoEntregaId]?.hashComprobante === c.hashComprobante;
   }
-  const fallasOrden = extra.orden && !esAnulacion(c) ? diferenciasConOrden(c, extra.orden) : null;
+  let fallasOrden: string[] | null = null;
+  try {
+    fallasOrden = extra.orden && !esAnulacion(c) ? await diferenciasConOrden(c, extra.orden) : null;
+  } catch (e) {
+    if (!esErrorSinHuellaSegura(e)) throw e;
+  }
   const ordenCoincide = fallasOrden ? fallasOrden.length === 0 : null;
   const fallas = [
     !contenidoIntegro && 'el contenido no corresponde a su hash',
@@ -578,10 +667,86 @@ export async function verificarComprobante(
   };
 }
 
+// ---------- Sellos de los lotes y sus anotaciones (comprobantes nuevos) ----------
+
+export interface RevisionSellosLotes {
+  avisos: string[]; // el lote o sus anotaciones cambiaron después de emitir el comprobante
+  notas: string[]; // información sin alarma (el lote siguió registrando fases, no se pudo leer)
+}
+
+type LectorDocumento = (coleccion: string, id: string) => Promise<Record<string, any> | null>;
+
+const leerPublico: LectorDocumento = async (coleccion, id) => {
+  const snap = await getDoc(doc(db, coleccion, id));
+  return snap.exists() ? (snap.data() as Record<string, any>) : null;
+};
+
+/**
+ * Compara el sello de cada lote guardado en el comprobante (sellosLotes) con el lote actual, y las
+ * anotaciones registradas al emitir con las actuales. Si el lote siguió registrando fases después, su
+ * sello antiguo sigue siendo una fase de su cadena íntegra: se informa sin alarma. Si el sello ya no
+ * aparece, o las anotaciones de entonces cambiaron o se borraron, el lote se reescribió. Los
+ * comprobantes anteriores (sin sellosLotes) no tienen nada que comparar.
+ */
+export async function revisarSellosLotes(
+  c: ComprobanteEntrega,
+  leer: LectorDocumento = leerPublico
+): Promise<RevisionSellosLotes> {
+  const avisos: string[] = [];
+  const notas: string[] = [];
+  for (const [codigo, sello] of Object.entries(c.sellosLotes || {})) {
+    if (!sello) continue;
+    let lote: Record<string, any> | null;
+    try {
+      lote = await leer('lotes', codigo);
+    } catch {
+      notas.push(`No se pudo leer el lote ${codigo} para comparar su sello con el del comprobante.`);
+      continue;
+    }
+    if (!lote) {
+      avisos.push(`El lote ${codigo} ya no existe: el comprobante registró su sello al emitirse.`);
+      continue;
+    }
+    const actual = lote.resumen?.hashFinal || '';
+    if (actual !== sello) {
+      const eventos: { hash?: string }[] = lote.eventos || [];
+      const posicion = eventos.findIndex((e) => e?.hash === sello);
+      let integro = false;
+      try {
+        integro = posicion >= 0 && (await verificarIntegridadLote({ ...(lote as Lote), codigo })).valido;
+      } catch (e) {
+        if (!esErrorSinHuellaSegura(e)) throw e;
+        notas.push(MENSAJE_NO_VERIFICABLE);
+        continue;
+      }
+      if (integro) {
+        notas.push(`El lote ${codigo} registró ${eventos.length - 1 - posicion} fase(s) después de emitir este comprobante; lo registrado hasta entonces sigue igual.`);
+      } else {
+        avisos.push(`El lote ${codigo} cambió después de emitir este comprobante: su sello actual no continúa el que quedó registrado.`);
+      }
+    }
+  }
+  for (const [codigo, a] of Object.entries(c.anotacionesLotes || {})) {
+    let anotacion: Record<string, any> | null;
+    try {
+      anotacion = await leer('anotacionesLote', codigo);
+    } catch {
+      notas.push(`No se pudieron leer las anotaciones del lote ${codigo} para compararlas con el comprobante.`);
+      continue;
+    }
+    const registros: { hash?: string }[] = anotacion?.registros || [];
+    if (registros.length < a.registros || registros[a.registros - 1]?.hash !== a.ultimoHash) {
+      avisos.push(`Las anotaciones del lote ${codigo} cambiaron después de emitir este comprobante: se borraron o se recalcularon.`);
+    }
+  }
+  return { avisos, notas };
+}
+
 // ---------- Revisión de la consulta pública (QR del comprobante) ----------
 
 export interface RevisionConsultaEntrega {
   avisos: string[]; // problemas de la cadena completa (se muestran solos al abrir)
+  notas: string[]; // información sin alarma (por ejemplo, un lote que siguió registrando fases)
   verificacion: Record<string, { ok: boolean; mensaje: string; noVerificable?: boolean }>; // por bloque
   anulados: Set<string>; // comprobantes anulados (con su bloque presente o con la anulación borrada)
   vigenteId: string | null; // comprobante que se puede presentar como vigente (null si la cadena falla)
@@ -630,10 +795,18 @@ export async function revisarConsultaEntrega(
     const v = verificacion[b.id];
     if (v && !v.ok && !v.noVerificable) avisos.push(`Registro N.º ${b.version}: ${v.mensaje}`);
   }
+  // Sellos de los lotes y anotaciones registrados en los comprobantes nuevos
+  const notas: string[] = [];
+  for (const b of bloques) {
+    if (esAnulacion(b) || !b.sellosLotes) continue;
+    const r = await revisarSellosLotes(b);
+    avisos.push(...r.avisos.map((a) => `Comprobante N.º ${b.version}: ${a}`));
+    for (const n of r.notas) if (!notas.includes(n)) notas.push(n);
+  }
 
   const { comprobantes, anulaciones } = separarBloques(bloques);
   const anulados = new Set(Object.keys(anulaciones));
   for (const [clave] of versiones) if (clave.startsWith('anulacion-')) anulados.add(clave.slice('anulacion-'.length));
   const vigente = avisos.length ? null : comprobantes.find((c) => !anulados.has(c.id)) || null;
-  return { avisos, verificacion, anulados, vigenteId: vigente?.id || null, noVerificable };
+  return { avisos, notas, verificacion, anulados, vigenteId: vigente?.id || null, noVerificable };
 }

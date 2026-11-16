@@ -24,7 +24,7 @@ import {
 } from '../../src/services/hashService';
 import { recalcularResumenLote } from '../../src/services/calculosService';
 import { cerrarLote, crearNuevoLote, registrarEventoEnLote } from '../../src/services/lotesService';
-import { crearCliente, crearOrden, establecerFuncionActiva } from '../../src/services/pedidosService';
+import { crearCliente, crearOrden, establecerFuncionActiva, hashEventoOrden, anclaHistorial, verificarHistorialOrden } from '../../src/services/pedidosService';
 import { leerBandeja, registrarAccion } from '../../src/services/repartoService';
 import {
   anularComprobante,
@@ -32,6 +32,7 @@ import {
   emitirComprobanteDefinitivo,
   leerConsultaEntrega,
   revisarConsultaEntrega,
+  revisarSellosLotes,
   separarBloques,
   verificarCadena,
   verificarComprobante
@@ -189,6 +190,15 @@ async function sembrarDatos() {
   await cerrarLote(COD, OPER, CONFIG_DEFAULT);
   ctx.selloQr = fragmentoSello(((await getDocFromServer(doc(db, 'lotes', COD))).data() as any).resumen.hashFinal);
 
+  // Anotación propuesta por A y aprobada por B, antes de la orden: así el comprobante registra el
+  // sello del lote y la cantidad y el último hash de sus anotaciones (H18, ancla parcial de A2)
+  await entrar('anota-a@prueba.co');
+  let lote = (await getDocFromServer(doc(db, 'lotes', COD))).data() as any;
+  await proponerAnotacion(lote, { fase: 2, dato: 'cantidadKg', valorRegistrado: '120', valorCorrecto: '125', motivo: 'PRUEBA: error de digitación en el alimento' });
+  await entrar('anota-b@prueba.co');
+  lote = (await getDocFromServer(doc(db, 'lotes', COD))).data() as any;
+  await resolverAnotacion(lote, 0, true, 'Aprobada PRUEBA');
+
   // Orden confirmada con reserva, como vendedor
   await entrar(VEND);
   const cli = await crearCliente('PRUEBA-Restaurante Integridad', '3000000000', 'Calle PRUEBA 1');
@@ -216,14 +226,7 @@ async function sembrarDatos() {
   const comp = await emitirComprobanteDefinitivo(orden.id);
   ctx.comprobanteId = comp.id;
   ctx.token = comp.tokenConsulta;
-
-  // Anotación propuesta por A y aprobada por B
-  await entrar('anota-a@prueba.co');
-  let lote = (await getDocFromServer(doc(db, 'lotes', COD))).data() as any;
-  await proponerAnotacion(lote, { fase: 2, dato: 'cantidadKg', valorRegistrado: '120', valorCorrecto: '125', motivo: 'PRUEBA: error de digitación en el alimento' });
-  await entrar('anota-b@prueba.co');
-  lote = (await getDocFromServer(doc(db, 'lotes', COD))).data() as any;
-  await resolverAnotacion(lote, 0, true, 'Aprobada PRUEBA');
+  if (!comp.sellosLotes?.[COD] || !comp.anotacionesLotes?.[COD]) throw new Error('El comprobante no registró el sello del lote o sus anotaciones');
 
   // Marca esPrueba donde no altera ningún hash (los comprobantes no: su hash cubre todos los campos,
   // y las reglas de ordenes/fotos/consultas usan hasOnly, por eso se marca con el token de consola)
@@ -308,11 +311,18 @@ async function evaluar(): Promise<Senales> {
   const esperados = orden.historial.filter((e: any) => e.tipo === 'Comprobante emitido' || e.tipo === 'Comprobante anulado').length;
   if (bloques.length < esperados) s.automaticas.push(`Panel interno de la orden: "Cadena incompleta: el historial registra ${esperados}, existen ${bloques.length}"`);
   else if (!verificarCadena(bloques).integra) s.automaticas.push(`Panel interno de la orden: ${verificarCadena(bloques).mensaje}`);
-  // DocumentacionEntrega verifica cada comprobante solo al abrir la orden (con la orden completa)
+  // DocumentacionEntrega verifica cada comprobante solo al abrir la orden (con la orden completa) y
+  // compara el sello de los lotes y sus anotaciones registrados al emitir con los actuales
   for (const c of separarBloques(bloques).comprobantes) {
     const v = await verificarComprobante(c, { orden });
     if (!v.ok) s.automaticas.push(`Panel interno de la orden, comprobante N.º ${c.version}: ${v.mensaje}`);
+    const rs = await revisarSellosLotes(c);
+    if (rs.avisos.length) s.automaticas.push(`Panel interno de la orden, comprobante N.º ${c.version}: ${rs.avisos.join(' ')}`);
   }
+  // DetalleOrdenOperador verifica la cadena del historial al abrir la orden (H14)
+  const vh = await verificarHistorialOrden(orden.historial, orden.registradoEnServidor);
+  if (vh.estado === 'alterado') s.automaticas.push(`Panel interno de la orden, historial: ${vh.mensaje}`);
+  s.datos.historialOrden = vh.estado;
   return s;
 }
 
@@ -453,8 +463,54 @@ const ATAQUES: Ataque[] = [
     } },
   { id: 'A1', nombre: 'Alterar el valor correcto de la anotación aprobada', rutas: () => [rAnot()],
     ejecutar: () => alterarJs(rAnot(), (d) => { d.registros[0].datos.valorCorrecto = '999'; }) },
-  { id: 'A2', nombre: 'Alterar la anotación y recalcular la cadena de anotaciones', rutas: () => [rAnot()],
-    ejecutar: () => alterarJs(rAnot(), (d) => { d.registros[0].datos.valorCorrecto = '999'; return recalcularAnotaciones(COD, d, d.hashAnclaje); }) }
+  { id: 'A2', nombre: 'Alterar la anotación y recalcular la cadena de anotaciones (después de emitir el comprobante)', rutas: () => [rAnot()],
+    ejecutar: () => alterarJs(rAnot(), (d) => { d.registros[0].datos.valorCorrecto = '999'; return recalcularAnotaciones(COD, d, d.hashAnclaje); }) },
+  { id: 'A2-d', nombre: 'Borrar el documento de anotaciones del lote (después de emitir el comprobante)', rutas: () => [rAnot()],
+    ejecutar: () => borrarCrudo(rAnot()) },
+  // ----- Segunda ronda: cadena del historial de la orden (H14) -----
+  { id: 'H14-a', nombre: 'Orden encadenada: cambiar un evento del historial (cambio de repartidor en la creación) sin tocar hashes', rutas: () => [rOrden()],
+    ejecutar: () => alterarJs(rOrden(), (o) => { o.historial[0].datos.repartidor = 'Otro repartidor'; }) },
+  { id: 'H14-b', nombre: 'Orden encadenada: cambiar el evento "Llegada" y recalcular su hash (no los siguientes)', rutas: () => [rOrden()],
+    ejecutar: () => alterarJs(rOrden(), async (o) => {
+      const e = o.historial.find((x: any) => x.tipo === 'Llegada');
+      e.fecha = '2026-01-01T00:00:00.000Z';
+      e.hash = await hashEventoOrden(e);
+    }) },
+  { id: 'H14-c', nombre: 'Orden encadenada: quitar la huella (hash y hashAnterior) de todos los eventos', rutas: () => [rOrden()],
+    ejecutar: () => alterarJs(rOrden(), (o) => { for (const e of o.historial) { delete e.hash; delete e.hashAnterior; } }) },
+  { id: 'H14-d', nombre: 'Orden encadenada: cambiar la creación y recalcular toda la cadena (sin tocar los eventos que documenta el comprobante)', rutas: () => [rOrden()],
+    ejecutar: () => alterarJs(rOrden(), async (o) => {
+      o.historial[0].datos.repartidor = 'Otro repartidor';
+      for (let i = 0; i < o.historial.length; i++) {
+        const e = o.historial[i];
+        e.hashAnterior = i === 0 ? await anclaHistorial([]) : o.historial[i - 1].hash;
+        delete e.hash;
+        e.hash = await hashEventoOrden(e);
+      }
+    }) },
+  // ----- Segunda ronda: comprobante anclado al sello del lote (H18) -----
+  { id: 'H18-a', nombre: 'Reescribir el lote (fase, cadena, resumen y sello) dejando el comprobante con el sello viejo', rutas: () => [rLote(), rAnot()],
+    ejecutar: async () => {
+      let ancla = '';
+      await alterarJs(rLote(), async (l) => { l.eventos[2].datos.cantidadKg = 80; ancla = await recalcularCadenaLote(COD, l.eventos); recalcularResumenGuardado(l); });
+      await alterarJs(rAnot(), (d) => recalcularAnotaciones(COD, d, ancla));
+    } },
+  { id: 'H18-b', nombre: 'Igual que H18-a y además recalcular el comprobante con el sello nuevo (hash, índice y evento de la orden)', rutas: () => [rLote(), rAnot(), rComp(), rCons(), rOrden()],
+    ejecutar: async () => {
+      let ancla = '';
+      let ultimo = '';
+      await alterarJs(rLote(), async (l) => { l.eventos[2].datos.cantidadKg = 80; ancla = await recalcularCadenaLote(COD, l.eventos); recalcularResumenGuardado(l); });
+      await alterarJs(rAnot(), async (d) => { await recalcularAnotaciones(COD, d, ancla); ultimo = d.registros[d.registros.length - 1].hash; });
+      let h = '';
+      await alterarJs(rComp(), async (c) => {
+        c.sellosLotes[COD] = ancla;
+        c.anotacionesLotes[COD].ultimoHash = ultimo;
+        const { registradoEnServidor, ...resto } = c;
+        h = c.hashComprobante = await calcularHashComprobante(resto);
+      });
+      await alterarJs(rCons(), (k) => { for (const v of Object.values<any>(k.versiones)) v.hashComprobante = h; });
+      await alterarJs(rOrden(), (o) => { o.historial.find((e: any) => e.tipo === 'Comprobante emitido').datos.hashComprobante = h; });
+    } }
 ];
 
 // ---------- Ataque 9f: borrar el bloque de anulación (necesita una anulación real) ----------

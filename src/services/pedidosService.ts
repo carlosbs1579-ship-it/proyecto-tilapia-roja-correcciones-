@@ -28,6 +28,8 @@ import {
 } from '../types';
 import { GRANJA_ID_PREDETERMINADA, compactarFecha, getFechaHoyBogota } from '../utils/constants';
 import { nombreFuncion, normalizarPerfil, nombreRegistro } from './usuariosService';
+import { HASH_GENESIS, jsonCanonico } from './hashService';
+import { esErrorSinHuellaSegura, sha256Texto } from '../lib/integridad';
 
 // Las órdenes de entrega viven en ordenes/{id} y nunca modifican el documento del lote: solo leen
 // su cosecha registrada. Lo reservado y entregado de cada lote se acumula en inventarioLotes/{lote}
@@ -195,6 +197,150 @@ export function nuevoEvento(
     eventoId: generarId('ev'),
     ...(funcionActiva ? { funcion: funcionActiva } : {})
   };
+}
+
+// ---------- Cadena del historial de la orden ----------
+// Cada evento nuevo lleva hash = SHA-256 del JSON canónico del evento sin "hash" (incluye su
+// hashAnterior) y hashAnterior = hash del evento previo. Si el evento previo no tiene cadena (orden
+// anterior a esta versión), el enlace es el ancla del historial previo: SHA-256 del JSON canónico de
+// todos los eventos anteriores; en una orden nueva, el primer evento enlaza con 64 ceros
+// (HASH_GENESIS). Así una orden antigua conserva sus eventos tal cual y desde el primer evento nuevo
+// cualquier cambio en lo anterior se nota. La hora del servidor de cada evento nuevo se guarda aparte,
+// en registradoEnServidor[indice], fuera del hash (Firestore no admite serverTimestamp en una lista).
+
+/** Ancla de la cadena: 64 ceros sin historial previo; si no, el SHA-256 del historial previo completo */
+export async function anclaHistorial(previos: EventoOrden[]): Promise<string> {
+  return previos.length === 0 ? HASH_GENESIS : sha256Texto(jsonCanonico(previos));
+}
+
+/** Hash que debe llevar el evento como hashAnterior para continuar la cadena */
+async function enlaceEsperado(previos: EventoOrden[]): Promise<string> {
+  const ultimo = previos[previos.length - 1];
+  return ultimo?.hash ? ultimo.hash : anclaHistorial(previos);
+}
+
+export async function hashEventoOrden(evento: EventoOrden): Promise<string> {
+  const { hash, ...sinHash } = evento;
+  return sha256Texto(jsonCanonico(sinHash));
+}
+
+/** El evento con su enlace y su hash, listo para agregarlo al final del historial */
+export async function encadenarEvento(previos: EventoOrden[], evento: EventoOrden): Promise<EventoOrden> {
+  const { hash, ...resto } = evento;
+  const conEnlace: EventoOrden = { ...resto, hashAnterior: await enlaceEsperado(previos) };
+  return { ...conEnlace, hash: await hashEventoOrden(conEnlace) };
+}
+
+/**
+ * Cambios de la orden para agregar un evento: el historial con el evento encadenado y la hora del
+ * servidor de ese evento. Se usa dentro de las transacciones (tx.update).
+ */
+export async function agregarEvento(previos: EventoOrden[], evento: EventoOrden): Promise<Record<string, any>> {
+  const encadenado = await encadenarEvento(previos, evento);
+  return {
+    historial: [...previos, encadenado],
+    [`registradoEnServidor.${encadenado.indice}`]: serverTimestamp()
+  };
+}
+
+// Diferencia máxima entre la hora declarada por el equipo y la del servidor antes de avisar
+export const TOLERANCIA_HORA_MS = 10 * 60 * 1000;
+
+export interface RevisionHistorialOrden {
+  estado: 'verificado' | 'alterado' | 'sin_cadena' | 'no_verificable';
+  anteriores: number; // eventos registrados antes de la cadena (sin huella), sin alarma
+  encadenados: number;
+  alteracion?: { indice: number; motivo: string };
+  mensaje: string;
+}
+
+const nombreEvento = (e: EventoOrden | undefined, i: number) => `N.º ${i + 1}${e?.tipo ? ` (${e.tipo})` : ''}`;
+
+/**
+ * Verifica la cadena del historial de una orden. Los eventos anteriores a la cadena se informan
+ * aparte, sin alarma; desde el primer evento encadenado cada uno debe enlazar con el anterior (o con
+ * el ancla del historial previo) y su contenido debe corresponder a su hash.
+ */
+export async function verificarHistorialOrden(
+  historial: EventoOrden[],
+  horasServidor?: OrdenEntrega['registradoEnServidor']
+): Promise<RevisionHistorialOrden> {
+  const lista = historial || [];
+  const inicio = lista.findIndex((e) => Boolean(e?.hash) || Boolean(e?.hashAnterior));
+  // La hora del servidor solo la guardan los eventos encadenados: si hay horas pero ningún evento
+  // tiene cadena, alguien quitó las huellas del historial
+  const conHora = Object.keys(horasServidor || {}).map(Number).filter((n) => Number.isInteger(n) && n < lista.length);
+  if (inicio < 0 && conHora.length > 0) {
+    const i = Math.min(...conHora);
+    return {
+      estado: 'alterado',
+      anteriores: lista.length,
+      encadenados: 0,
+      alteracion: { indice: i, motivo: 'el evento se registró con cadena y ya no tiene su huella' },
+      mensaje: `Posible alteración detectada en el evento ${nombreEvento(lista[i], i)}: se registró con cadena y ya no tiene su huella.`
+    };
+  }
+  if (inicio < 0) {
+    return {
+      estado: 'sin_cadena',
+      anteriores: lista.length,
+      encadenados: 0,
+      mensaje: `Registros anteriores a la cadena: ${lista.length} evento(s) sin huella, registrados antes de esta verificación.`
+    };
+  }
+  const alterado = (indice: number, motivo: string): RevisionHistorialOrden => ({
+    estado: 'alterado',
+    anteriores: inicio,
+    encadenados: lista.length - inicio,
+    alteracion: { indice, motivo },
+    mensaje: `Posible alteración detectada en el evento ${nombreEvento(lista[indice], indice)}: ${motivo}.`
+  });
+  try {
+    for (let i = inicio; i < lista.length; i++) {
+      const e = lista[i];
+      if (!e?.hash || !e?.hashAnterior) return alterado(i, 'el evento perdió su huella o quedó fuera de la cadena');
+      if (e.indice !== i) return alterado(i, 'su posición en el historial no corresponde');
+      const previos = lista.slice(0, i);
+      if (e.hashAnterior !== (await enlaceEsperado(previos))) {
+        if (i > 0 && !lista[i - 1].hash) {
+          return {
+            ...alterado(i - 1, 'los registros anteriores a la cadena ya no coinciden con el ancla guardada'),
+            mensaje: `Posible alteración detectada en los registros anteriores a la cadena (eventos N.º 1 a N.º ${i}): ya no coinciden con el ancla guardada en el evento ${nombreEvento(e, i)}.`
+          };
+        }
+        return alterado(i, 'no enlaza con el evento anterior');
+      }
+      if ((await hashEventoOrden(e)) !== e.hash) return alterado(i, 'su contenido no corresponde a su huella');
+    }
+  } catch (err) {
+    if (!esErrorSinHuellaSegura(err)) throw err;
+    return { estado: 'no_verificable', anteriores: inicio, encadenados: lista.length - inicio, mensaje: 'No se puede verificar en este navegador: abre la app por https.' };
+  }
+  const encadenados = lista.length - inicio;
+  return {
+    estado: 'verificado',
+    anteriores: inicio,
+    encadenados,
+    mensaje: inicio > 0
+      ? `Historial verificado: ${encadenados} evento(s) encadenados; ${inicio} registro(s) anteriores a la cadena, anclados en el primer evento encadenado.`
+      : `Historial verificado: ${encadenados} evento(s) encadenados desde la creación.`
+  };
+}
+
+/** Hora del servidor del evento (si se guardó) y si la hora declarada por el equipo difiere más de 10 minutos */
+export function horaServidorEvento(
+  orden: Pick<OrdenEntrega, 'registradoEnServidor'>,
+  evento: EventoOrden
+): { servidor: Date | null; desfase: boolean; sinConexion: boolean } {
+  const marca = orden.registradoEnServidor?.[String(evento.indice)];
+  const servidor = marca && typeof marca.toDate === 'function' ? marca.toDate() : null;
+  if (!servidor) return { servidor: null, desfase: false, sinConexion: false };
+  // Las acciones del repartidor guardan la hora del teléfono al registrarlas y al enviarlas: el
+  // envío es lo que se compara con el servidor; si se registraron sin conexión, se informa aparte
+  const declarada = Date.parse(evento.datos?.enviadaEn || evento.fecha);
+  const desfase = Number.isFinite(declarada) && Math.abs(declarada - servidor.getTime()) > TOLERANCIA_HORA_MS;
+  const sinConexion = Boolean(evento.datos?.enviadaEn) && Math.abs(Date.parse(evento.datos.enviadaEn) - Date.parse(evento.fecha)) > TOLERANCIA_HORA_MS;
+  return { servidor, desfase, sinConexion };
 }
 
 /**
@@ -480,7 +626,7 @@ export async function crearOrden(
         estado,
         observaciones: datos.observaciones.trim(),
         historial: [
-          nuevoEvento(
+          await encadenarEvento([], nuevoEvento(
             0,
             'Creación',
             confirmar ? 'Orden creada, asignada y con cantidades reservadas' : 'Orden creada como borrador (sin reservas)',
@@ -492,12 +638,12 @@ export async function crearOrden(
               procedencias,
               repartidor: datos.repartidor?.nombre || null
             }
-          )
+          ))
         ]
       };
 
       for (const m of movimientos) tx.set(m.ref, m.datos);
-      tx.set(ordenRef(id), orden);
+      tx.set(ordenRef(id), { ...orden, registradoEnServidor: { '0': serverTimestamp() } });
       return orden;
     });
   } catch (err) {
@@ -534,16 +680,13 @@ export async function actualizarBorrador(ordenId: string, datos: DatosOrden): Pr
       tx.update(ordenRef(ordenId), {
         ...cambios,
         actualizadoEn: new Date().toISOString(),
-        historial: [
-          ...orden.historial,
-          nuevoEvento(orden.historial.length, 'Modificación', 'Datos del borrador modificados', {
+        ...(await agregarEvento(orden.historial, nuevoEvento(orden.historial.length, 'Modificación', 'Datos del borrador modificados', {
             cliente: cambios.clienteNombre,
             cantidadSolicitada: cambios.cantidadSolicitada,
             unidad: cambios.unidad,
             procedencias,
             repartidor: cambios.repartidorNombre
-          })
-        ]
+          })))
       });
     });
   } catch (err) {
@@ -578,15 +721,12 @@ export async function confirmarBorrador(ordenId: string): Promise<void> {
         procedencias,
         cantidadAutorizada,
         actualizadoEn: new Date().toISOString(),
-        historial: [
-          ...orden.historial,
-          nuevoEvento(orden.historial.length, 'Asignación y reserva', 'Orden confirmada: cantidades reservadas y repartidor asignado', {
+        ...(await agregarEvento(orden.historial, nuevoEvento(orden.historial.length, 'Asignación y reserva', 'Orden confirmada: cantidades reservadas y repartidor asignado', {
             procedencias,
             cantidadAutorizada,
             unidad: orden.unidad,
             repartidor: orden.repartidorNombre
-          })
-        ]
+          })))
       });
     });
   } catch (err) {
@@ -613,13 +753,10 @@ export async function cambiarRepartidor(ordenId: string, repartidor: Repartidor,
         repartidorUid: repartidor.uid,
         repartidorNombre: repartidor.nombre,
         actualizadoEn: new Date().toISOString(),
-        historial: [
-          ...orden.historial,
-          nuevoEvento(orden.historial.length, 'Cambio de repartidor', motivo.trim(), {
+        ...(await agregarEvento(orden.historial, nuevoEvento(orden.historial.length, 'Cambio de repartidor', motivo.trim(), {
             anterior: orden.repartidorNombre,
             nuevo: repartidor.nombre
-          })
-        ]
+          })))
       });
     });
   } catch (err) {
@@ -658,9 +795,7 @@ export async function cambiarEstadoOrden(ordenId: string, nuevoEstado: EstadoOrd
       tx.update(ordenRef(ordenId), {
         estado: nuevoEstado,
         actualizadoEn: ahora,
-        historial: [
-          ...orden.historial,
-          nuevoEvento(
+        ...(await agregarEvento(orden.historial, nuevoEvento(
             orden.historial.length,
             nuevoEstado === 'cancelado' ? 'Cancelación' : 'Cambio de estado',
             motivo.trim(),
@@ -669,8 +804,7 @@ export async function cambiarEstadoOrden(ordenId: string, nuevoEstado: EstadoOrd
               a: nuevoEstado,
               ...(liberar ? { liberado: saldosPorLote(orden), unidad: orden.unidad } : {})
             }
-          )
-        ]
+          )))
       });
     });
   } catch (err) {
@@ -737,15 +871,12 @@ export async function reprogramarSaldo(ordenId: string, motivo: string, repartid
         llegadaEn: null,
         ...(nuevoRepartidor ? { repartidorUid: nuevoRepartidor.uid, repartidorNombre: nuevoRepartidor.nombre } : {}),
         actualizadoEn: new Date().toISOString(),
-        historial: [
-          ...orden.historial,
-          nuevoEvento(orden.historial.length, 'Reprogramación de saldo', motivo.trim(), {
+        ...(await agregarEvento(orden.historial, nuevoEvento(orden.historial.length, 'Reprogramación de saldo', motivo.trim(), {
             saldo: saldosPorLote(orden),
             unidad: orden.unidad,
             repartidorAnterior: orden.repartidorNombre,
             repartidor: nuevoRepartidor?.nombre || orden.repartidorNombre
-          })
-        ]
+          })))
       });
     });
   } catch (err) {
@@ -773,14 +904,11 @@ export async function liberarSaldoYCerrar(ordenId: string, motivo: string): Prom
         estado: 'entregado',
         cantidadLiberada,
         actualizadoEn: new Date().toISOString(),
-        historial: [
-          ...orden.historial,
-          nuevoEvento(orden.historial.length, 'Cierre con saldo liberado', motivo.trim(), {
+        ...(await agregarEvento(orden.historial, nuevoEvento(orden.historial.length, 'Cierre con saldo liberado', motivo.trim(), {
             liberado: saldosPorLote(orden),
             cantidadLiberada,
             unidad: orden.unidad
-          })
-        ]
+          })))
       });
     });
   } catch (err) {
@@ -813,14 +941,11 @@ export async function rechazarAjuste(ordenId: string, ajusteId: string, respuest
           respuesta: respuesta.trim().slice(0, 1000)
         },
         actualizadoEn: new Date().toISOString(),
-        historial: [
-          ...orden.historial,
-          nuevoEvento(orden.historial.length, 'Ajuste rechazado', respuesta.trim(), {
+        ...(await agregarEvento(orden.historial, nuevoEvento(orden.historial.length, 'Ajuste rechazado', respuesta.trim(), {
             ajusteId,
             propuesta: ajuste.propuesta,
             solicitadoPor: ajuste.solicitadoPor
-          })
-        ]
+          })))
       });
     });
   } catch (err) {
@@ -929,17 +1054,14 @@ export async function aprobarAjuste(ordenId: string, ajusteId: string, respuesta
           respuesta: respuesta.trim().slice(0, 1000)
         },
         actualizadoEn: new Date().toISOString(),
-        historial: [
-          ...orden.historial,
-          nuevoEvento(orden.historial.length, 'Ajuste aplicado', respuesta.trim() || 'Solicitud de ajuste aprobada y aplicada', {
+        ...(await agregarEvento(orden.historial, nuevoEvento(orden.historial.length, 'Ajuste aplicado', respuesta.trim() || 'Solicitud de ajuste aprobada y aplicada', {
             ajusteId,
             anterior: orden.procedencias,
             nueva: nuevas,
             cantidadAutorizadaAnterior: orden.cantidadAutorizada,
             cantidadAutorizada,
             solicitadoPor: ajuste.solicitadoPor
-          })
-        ]
+          })))
       });
     });
   } catch (err) {
@@ -974,15 +1096,12 @@ export async function atenderNovedad(
       tx.update(ordenRef(ordenId), {
         [`atencionNovedades.${novedadId}`]: { estado, actualizadoPor: email, actualizadoPorUid: uid, actualizadoEn: ahora },
         actualizadoEn: ahora,
-        historial: [
-          ...orden.historial,
-          nuevoEvento(orden.historial.length, 'Atención de novedad', observacion.trim().slice(0, 1000), {
+        ...(await agregarEvento(orden.historial, nuevoEvento(orden.historial.length, 'Atención de novedad', observacion.trim().slice(0, 1000), {
             novedadId,
             novedadIndice,
             estadoAnterior: anterior,
             estado
-          })
-        ]
+          })))
       });
     });
   } catch (err) {
@@ -1044,10 +1163,7 @@ export async function corregirEntrega(ordenId: string, nuevo: Record<string, num
         cantidadEntregada,
         estado: completa ? 'entregado' : 'entrega_parcial',
         actualizadoEn: ahora,
-        historial: [
-          ...orden.historial,
-          nuevoEvento(orden.historial.length, 'Corrección de entrega', motivoLimpio, { anterior, nuevo: corregido })
-        ]
+        ...(await agregarEvento(orden.historial, nuevoEvento(orden.historial.length, 'Corrección de entrega', motivoLimpio, { anterior, nuevo: corregido })))
       });
     });
   } catch (err) {

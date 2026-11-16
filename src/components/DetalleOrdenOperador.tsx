@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Edit3, Send, History } from 'lucide-react';
 import { InventarioLote, Lote, OrdenEntrega, UsuarioPerfil } from '../types';
 import {
@@ -9,7 +9,10 @@ import {
   cambiarRepartidor,
   cantidadPendiente,
   confirmarBorrador,
+  horaServidorEvento,
   liberarSaldoYCerrar,
+  RevisionHistorialOrden,
+  verificarHistorialOrden,
   redondear,
   reprogramarSaldo,
   saldoLote
@@ -23,6 +26,7 @@ import { DocumentacionEntrega } from './DocumentacionEntrega';
 import { verificarPermiso, quienRegistro } from '../services/usuariosService';
 import { FotosEntregaOrden } from './FotosEntregaOrden';
 import { CorreccionEntrega } from './CorreccionEntrega';
+import { AvisoIntegridad, IndicadorVerificado } from './AvisoIntegridad';
 
 type Ejecutar = (accion: () => Promise<void>, exito: string) => Promise<void>;
 
@@ -63,6 +67,18 @@ export const DetalleOrdenOperador: React.FC<{
   const faltantesRegistrados = o.historial.filter((e) => e.tipo === 'Entrega' && Number(e.datos?.faltante) > 0);
   const novedades = novedadesDeOrden(o);
   const ajustes = Object.values(o.ajustes || {}).sort((a, b) => b.solicitadoEn.localeCompare(a.solicitadoEn));
+
+  // Cadena del historial (H14): se verifica sola al abrir la orden y cada vez que cambia
+  const [revisionHistorial, setRevisionHistorial] = useState<RevisionHistorialOrden | null>(null);
+  useEffect(() => {
+    let activo = true;
+    verificarHistorialOrden(o.historial, o.registradoEnServidor)
+      .then((r) => activo && setRevisionHistorial(r))
+      .catch(() => activo && setRevisionHistorial(null));
+    return () => {
+      activo = false;
+    };
+  }, [o.historial, o.registradoEnServidor]);
 
   const correr = (accion: () => Promise<void>, exito: string) =>
     ejecutar(accion, exito).then(() => {
@@ -334,20 +350,43 @@ export const DetalleOrdenOperador: React.FC<{
 
       {/* D. Seguimiento cronológico */}
       <Seccion titulo="Seguimiento cronológico">
+        {revisionHistorial?.estado === 'verificado' && <IndicadorVerificado texto={revisionHistorial.mensaje} />}
+        {revisionHistorial?.estado === 'alterado' && (
+          <AvisoIntegridad
+            estado="alterado"
+            avisos={[revisionHistorial.mensaje]}
+            nota="Los eventos del historial no se pueden modificar desde la plataforma: alguien los cambió directamente en la base de datos."
+          />
+        )}
+        {revisionHistorial?.estado === 'no_verificable' && <AvisoIntegridad estado="no_verificable" avisos={[revisionHistorial.mensaje]} />}
+        {revisionHistorial?.estado === 'sin_cadena' && <p className="text-xs text-slate-500">{revisionHistorial.mensaje}</p>}
         <ol className="relative border-l-2 border-sky-200 ml-2 space-y-2">
-          {o.historial.map((ev) => (
-            <li key={ev.indice} className="ml-3">
-              <span className="absolute -left-[5px] mt-1 w-2 h-2 rounded-full bg-sky-500" />
-              <span className="font-semibold text-slate-800">{ev.tipo}</span>
-              <span className="text-slate-500">
-                {' · ' + formatearFechaColombia(ev.fecha) + ' · ' + quienRegistro(ev)}
-                {ev.funcion ? ' (' + (ETIQUETA_FUNCION[ev.funcion] || ev.funcion) + ')' : ''}
-              </span>
-              {(ev.descripcion || cambiosDeEvento(ev)) && (
-                <span className="block text-slate-600">{[ev.descripcion, cambiosDeEvento(ev)].filter(Boolean).join(' · ')}</span>
-              )}
-            </li>
-          ))}
+          {o.historial.map((ev, i) => {
+            const hora = horaServidorEvento(o, ev);
+            const alterado = revisionHistorial?.alteracion?.indice === i;
+            const anterior = Boolean(revisionHistorial && revisionHistorial.anteriores > 0 && i < revisionHistorial.anteriores && revisionHistorial.encadenados > 0);
+            return (
+              <li key={ev.indice} className="ml-3">
+                <span className={`absolute -left-[5px] mt-1 w-2 h-2 rounded-full ${alterado ? 'bg-red-600' : 'bg-sky-500'}`} />
+                <span className={`font-semibold ${alterado ? 'text-red-700' : 'text-slate-800'}`}>{ev.tipo}</span>
+                <span className="text-slate-500">
+                  {' · ' + formatearFechaColombia(ev.fecha) + ' · ' + quienRegistro(ev)}
+                  {ev.funcion ? ' (' + (ETIQUETA_FUNCION[ev.funcion] || ev.funcion) + ')' : ''}
+                </span>
+                {(ev.descripcion || cambiosDeEvento(ev)) && (
+                  <span className="block text-slate-600">{[ev.descripcion, cambiosDeEvento(ev)].filter(Boolean).join(' · ')}</span>
+                )}
+                {hora.servidor && (
+                  <span className={`block text-xs ${hora.desfase ? 'text-amber-800' : 'text-slate-500'}`}>
+                    Hora del servidor: {formatearFechaColombia(hora.servidor.toISOString())}
+                    {hora.desfase && ' · la hora declarada por el equipo difiere en más de 10 minutos'}
+                    {!hora.desfase && hora.sinConexion && ' · registrado sin conexión en el teléfono y enviado después'}
+                  </span>
+                )}
+                {anterior && <span className="block text-xs text-slate-500">Registro anterior a la cadena</span>}
+              </li>
+            );
+          })}
         </ol>
         <p className="flex items-center space-x-1 text-xs text-slate-500">
           <History className="w-3 h-3" />

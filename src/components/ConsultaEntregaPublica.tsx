@@ -5,6 +5,7 @@ import { BloqueAnulacion, ComprobanteEntrega, ConsultaEntrega } from '../types';
 import {
   EMPRESA,
   esAnulacion,
+  horaServidorBloque,
   leerConsultaEntrega,
   revisarConsultaEntrega,
   RevisionConsultaEntrega,
@@ -19,7 +20,9 @@ const num = (n: number) => (Number(n) || 0).toLocaleString('es-CO');
 /**
  * Consulta pública de una entrega con el código del QR del comprobante (sin cuenta). Muestra solo
  * los comprobantes definitivos emitidos para esa orden; desde cada lote se puede abrir su
- * trazabilidad pública (el QR del lote), que no muestra entregas.
+ * trazabilidad pública (el QR del lote), que no muestra entregas. No muestra la dirección del
+ * cliente ni las novedades de la entrega (son internas), aunque un comprobante anterior las guarde.
+ * En los comprobantes nuevos compara el sello de cada lote registrado al emitir con el lote actual.
  */
 export const ConsultaEntregaPublica: React.FC<{
   token: string;
@@ -119,6 +122,13 @@ export const ConsultaEntregaPublica: React.FC<{
             )}
             {revision && !revision.avisos.length && revision.noVerificable && (
               <AvisoIntegridad estado="no_verificable" avisos={[]} nota="Abra el enlace por https para comprobar la integridad." />
+            )}
+            {revision && revision.notas.length > 0 && (
+              <div className="bg-white rounded-lg border border-slate-200 p-3 text-xs text-slate-600 space-y-1">
+                {revision.notas.map((n) => (
+                  <p key={n}>{n}</p>
+                ))}
+              </div>
             )}
             <section className="bg-white rounded-lg border border-slate-200 p-4 space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -245,6 +255,18 @@ export const ConsultaEntregaPublica: React.FC<{
                       Anulado el {formatearFechaColombia(anulaciones[c.id].emitidoEn)} (registro N.º {anulaciones[c.id].version} de la cadena). Motivo:{' '}
                       {anulaciones[c.id].motivo}
                     </span>
+                  )}
+                  {(() => {
+                    const h = horaServidorBloque(c);
+                    return h.servidor ? (
+                      <span className={`block ${h.desfase ? 'text-amber-800' : 'text-slate-500'}`}>
+                        Registrado en el servidor: {formatearFechaColombia(h.servidor.toISOString())}
+                        {h.desfase && ' · la hora indicada en el comprobante difiere en más de 10 minutos'}
+                      </span>
+                    ) : null;
+                  })()}
+                  {c.sellosLotes && revision && !hayAvisos && !revision.notas.some((n) => n.startsWith('No se')) && (
+                    <span className="block text-slate-500">Incluye el sello de cada lote al emitirse; coincide con la trazabilidad actual del lote.</span>
                   )}
                   {verificacion[c.id] ? (
                     <span className={`flex items-start ${verificacion[c.id].ok ? 'text-emerald-700' : 'text-red-600'}`}>

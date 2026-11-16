@@ -6,3 +6,6 @@ coverage/
 *.log
 .env*
 !.env.example
+respaldos_despliegue/
+tests/integridad/.salida/
+tests/integridad/reglas-copia.rules

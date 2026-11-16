@@ -1,9 +1,10 @@
-import React, { useState, useEffect, Suspense, lazy, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, Suspense, lazy, useRef } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { EsqueletoPantalla } from './components/Esqueleto';
 import { PantallaVerificando } from './components/PantallaVerificando';
 const PantallaIngreso = lazy(() => import('./components/PantallaIngreso').then((m) => ({ default: m.PantallaIngreso })));
-import { DISTANCIA, VAR_CONTENIDO_TAB, entrada } from './lib/motion';
+import { DISTANCIA, DURACION, VAR_CONTENIDO_TAB, entrada, salida } from './lib/motion';
+import { LimiteError, recargarUnaVez } from './components/LimiteError';
 import { useConservar, usePresencia } from './lib/presencia';
 import { onAuthStateChanged, signOut, User } from 'firebase/auth';
 import { auth, db } from './firebase/firebaseConfig';
@@ -15,7 +16,6 @@ import { establecerFuncionActiva } from './services/pedidosService';
 import {
   sincronizarPerfilUsuario,
   escucharPerfilPropio,
-  borrarCopiaPerfil,
   esAdminMaestro,
   funcionesDisponibles,
   verificarPermiso,
@@ -40,7 +40,8 @@ const Cargando = () => <EsqueletoPantalla />;
 import { LotesTab } from './components/LotesTab';
 import { AuthModal } from './components/AuthModal';
 import { NuevoLoteModal } from './components/NuevoLoteModal';
-import { LoteDetailModal } from './components/LoteDetailModal';
+// El detalle del lote se descarga al abrirlo por primera vez (mantiene el paquete inicial bajo 500 kB)
+const LoteDetailModal = lazy(() => import('./components/LoteDetailModal').then((m) => ({ default: m.LoteDetailModal })));
 import { QrModal } from './components/QrModal';
 import { PublicTraceabilityView } from './components/PublicTraceabilityView';
 import { AlertCircle, Lock, Shield, ShieldAlert } from 'lucide-react';
@@ -50,6 +51,26 @@ const SESION_STORAGE_KEY_ANTIGUA = 'cultivos_lore_sesion_activa';
 // Función elegida por cada cuenta en este navegador. Solo decide qué se muestra; los permisos
 // reales los aplica Firestore según los roles asignados.
 const claveFuncion = (uid: string) => `cultivos_lore_funcion_${uid}`;
+
+/**
+ * Borra las copias locales de perfiles y de "mis entregas" (nombres, direcciones y teléfonos de
+ * clientes) de toda cuenta distinta de `conservarUid`; con null, las de todas (H50). La bandeja de
+ * acciones del repartidor sin enviar se conserva para no perderlas.
+ */
+function limpiarCopiasLocales(conservarUid: string | null): void {
+  try {
+    localStorage.removeItem('cultivos_lore_lotes_backup');
+    const prefijos = ['cultivos_lore_perfil_', 'cultivos_lore_mis_entregas_'];
+    const borrar: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const clave = localStorage.key(i);
+      if (!clave) continue;
+      const prefijo = prefijos.find((p) => clave.startsWith(p));
+      if (prefijo && clave.slice(prefijo.length) !== conservarUid) borrar.push(clave);
+    }
+    borrar.forEach((clave) => localStorage.removeItem(clave));
+  } catch {}
+}
 
 function leerFuncionGuardada(uid: string): string | null {
   try {
@@ -79,15 +100,64 @@ export default function App() {
   const scrollPorTab = useRef<Partial<Record<TabTipo, number>>>({});
   const ORDEN_TABS: TabTipo[] = ['inicio', 'lotes', 'pedidos', 'analitica', 'configuracion', 'usuarios', 'reparto'];
   const direccionTab = ORDEN_TABS.indexOf(tabActiva) >= ORDEN_TABS.indexOf(tabAnterior.current) ? 1 : -1;
+  // Pestaña cuyo scroll se está registrando; nula mientras se cambia de pestaña, para que el recorte
+  // que hace el navegador al cambiar la altura de la página no pise la posición guardada (H31)
+  const tabMedida = useRef<TabTipo | null>('inicio');
   useEffect(() => {
+    const alDesplazar = () => {
+      if (tabMedida.current) scrollPorTab.current[tabMedida.current] = window.scrollY;
+    };
+    window.addEventListener('scroll', alDesplazar, { passive: true });
+    return () => window.removeEventListener('scroll', alDesplazar);
+  }, []);
+  useLayoutEffect(() => {
     tabAnterior.current = tabActiva;
+    tabMedida.current = null;
     const y = scrollPorTab.current[tabActiva] ?? 0;
-    const raf = requestAnimationFrame(() => window.scrollTo({ top: y }));
+    // Se restaura cuando la pestaña nueva ya está montada con su contenido real (sin esqueletos) y la
+    // página alcanza la altura necesaria; se renuncia a los 2 s o si la persona se desplaza antes
+    const inicio = performance.now();
+    let raf = 0;
+    const terminar = () => {
+      cancelAnimationFrame(raf);
+      quitarEscuchas();
+      tabMedida.current = tabActiva;
+    };
+    const intento = () => {
+      const main = document.querySelector(`main[data-tab="${tabActiva}"]`);
+      const listo = main && !main.querySelector('.esqueleto');
+      const alcanza = document.documentElement.scrollHeight - window.innerHeight >= y - 1;
+      if (listo && (alcanza || y === 0)) {
+        window.scrollTo({ top: y });
+        terminar();
+        return;
+      }
+      if (performance.now() - inicio > 2000) {
+        if (main) window.scrollTo({ top: Math.min(y, document.documentElement.scrollHeight - window.innerHeight) });
+        terminar();
+        return;
+      }
+      raf = requestAnimationFrame(intento);
+    };
+    const porLaPersona = () => terminar();
+    const EVENTOS = ['wheel', 'touchstart', 'keydown'] as const;
+    const quitarEscuchas = () => EVENTOS.forEach((ev) => window.removeEventListener(ev, porLaPersona));
+    EVENTOS.forEach((ev) => window.addEventListener(ev, porLaPersona, { passive: true }));
+    raf = requestAnimationFrame(intento);
     return () => {
       cancelAnimationFrame(raf);
-      scrollPorTab.current[tabActiva] = window.scrollY;
+      quitarEscuchas();
     };
   }, [tabActiva]);
+
+  // Tras un despliegue nuevo los paquetes viejos ya no existen: se recarga una sola vez (H33)
+  useEffect(() => {
+    const alFallarPaquete = (e: Event) => {
+      if (recargarUnaVez()) e.preventDefault();
+    };
+    window.addEventListener('vite:preloadError', alFallarPaquete);
+    return () => window.removeEventListener('vite:preloadError', alFallarPaquete);
+  }, []);
 
   // Si se ingresó mediante escaneo de QR (con parámetro ?lote=...), mostrar vista pública
   const [lotePublicoCodigo, setLotePublicoCodigo] = useState<string | null>(() => {
@@ -114,13 +184,9 @@ export default function App() {
   const [authCargando, setAuthCargando] = useState(true);
 
   const [config, setConfig] = useState<ConfiguracionGeneral>(CONFIG_DEFAULT);
-  const [lotes, setLotes] = useState<Lote[]>(() => {
-    try {
-      const cached = localStorage.getItem('cultivos_lore_lotes_backup');
-      if (cached) return JSON.parse(cached);
-    } catch {}
-    return [];
-  });
+  // Los lotes se leen solo de Firestore en vivo. La copia completa que se guardaba en localStorage
+  // (todos los lotes con sus fases) crecía sin límite y nunca se llegaba a usar (H54): se retira.
+  const [lotes, setLotes] = useState<Lote[]>([]);
   const [lotesCargando, setLotesCargando] = useState(true);
   const [errorConexion, setErrorConexion] = useState<string | null>(null);
 
@@ -232,10 +298,14 @@ export default function App() {
   useEffect(() => {
     try {
       localStorage.removeItem(SESION_STORAGE_KEY_ANTIGUA);
+      localStorage.removeItem('cultivos_lore_lotes_backup');
     } catch {}
 
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
       if (!fbUser) {
+        // La sesión terminó sin pasar por "Cerrar sesión" (vencida, revocada o cerrada en otra
+        // pestaña): no quedan en el navegador copias de perfiles ni entregas de nadie (H50)
+        limpiarCopiasLocales(null);
         setUsuario(null);
         setPerfilUsuario(null);
         setErrorPerfil(null);
@@ -251,6 +321,7 @@ export default function App() {
         // consultando y guardando acciones en el teléfono). Solo se cierra si la sesión es inválida.
         if (tokenErr?.code !== 'auth/network-request-failed' && navigator.onLine) {
           console.warn('Sesión previa inválida, restableciendo autenticación limpia:', tokenErr);
+          limpiarCopiasLocales(null);
           try {
             await signOut(auth);
           } catch {}
@@ -261,6 +332,8 @@ export default function App() {
         }
       }
 
+      // Otra cuenta en este navegador: se borran las copias locales de las demás (H50)
+      limpiarCopiasLocales(fbUser.uid);
       setUsuario({
         uid: fbUser.uid,
         email: fbUser.email || '',
@@ -313,20 +386,10 @@ export default function App() {
     setLotesCargando(true);
     const unsubLotes = escucharLotes(
       (listaLotes) => {
+        // El lote abierto en detalle se toma de esta misma lista (ver loteDetalleVivo)
         setLotes(listaLotes);
         setLotesCargando(false);
         setErrorConexion(null);
-        try {
-          localStorage.setItem('cultivos_lore_lotes_backup', JSON.stringify(listaLotes));
-        } catch {}
-
-        // Si hay un lote abierto en detalle, mantenerlo actualizado en vivo
-        if (loteDetalle) {
-          const actualizado = listaLotes.find((l) => l.codigo === loteDetalle.codigo);
-          if (actualizado) {
-            setLoteDetalle(actualizado);
-          }
-        }
       },
       (err) => {
         console.warn('Error escuchando lotes en Firestore:', err);
@@ -347,13 +410,7 @@ export default function App() {
     // con un clic desde la barra superior)
     // Las copias locales (lotes, perfil, entregas) no quedan en el navegador para la siguiente
     // persona. La bandeja de acciones del repartidor sin enviar se conserva para no perderlas.
-    try {
-      localStorage.removeItem('cultivos_lore_lotes_backup');
-      if (usuario) {
-        borrarCopiaPerfil(usuario.uid);
-        localStorage.removeItem(`cultivos_lore_mis_entregas_${usuario.uid}`);
-      }
-    } catch {}
+    limpiarCopiasLocales(null);
     try {
       await signOut(auth);
     } catch (err) {
@@ -363,6 +420,18 @@ export default function App() {
     setPerfilUsuario(null);
     setFuncionActiva(null);
   };
+
+  // Mientras llega el perfil (o se aplica su única función) no se muestra el aviso de acceso
+  // restringido: sería falso para quien sí tiene funciones (H26)
+  const perfilPendiente = Boolean(usuario) && (!perfilUsuario || (funciones.length > 0 && !funcionActiva));
+
+  // Lote abierto en detalle: la versión más reciente entre la de la lista en vivo y la recibida al
+  // registrar una acción (la lista puede tardar un instante en reflejarla)
+  const loteDetalleEnLista = loteDetalleVisible ? lotes.find((l) => l.codigo === loteDetalleVisible.codigo) : undefined;
+  const loteDetalleVivo =
+    loteDetalleEnLista && loteDetalleVisible && (loteDetalleEnLista.actualizadoEn || '') >= (loteDetalleVisible.actualizadoEn || '')
+      ? loteDetalleEnLista
+      : loteDetalleVisible;
 
   const accesoRestringido = (
     <div className="max-w-2xl mx-auto bg-white rounded-xl border border-slate-200 shadow-xs p-6 flex items-start space-x-3 text-xs text-slate-700">
@@ -400,6 +469,7 @@ export default function App() {
 
   if (entregaPublicaToken && !lotePublicoCodigo) {
     return (
+      <LimiteError pantallaCompleta>
       <Suspense fallback={<Cargando />}>
       <ConsultaEntregaPublica
         token={entregaPublicaToken}
@@ -414,6 +484,7 @@ export default function App() {
         }}
       />
       </Suspense>
+      </LimiteError>
     );
   }
 
@@ -442,14 +513,17 @@ export default function App() {
   if (!usuario || ingreso.saliendo) {
     return (
       <div className={ingreso.saliendo ? "opacity-0 transition-opacity duration-(--mov-salida) ease-(--curva-salida)" : ""}>
-        <Suspense fallback={<PantallaVerificando />}>
-          <PantallaIngreso onRolElegido={(rol) => setFuncionPedida(rol)} />
-        </Suspense>
+        <LimiteError pantallaCompleta>
+          <Suspense fallback={<PantallaVerificando />}>
+            <PantallaIngreso onRolElegido={(rol) => setFuncionPedida(rol)} />
+          </Suspense>
+        </LimiteError>
       </div>
     );
   }
 
   return (
+    <>
     <motion.div
       initial={{ opacity: 0, y: DISTANCIA.tarjeta }}
       animate={{ opacity: 1, y: 0, transition: entrada() }}
@@ -481,16 +555,6 @@ export default function App() {
         </div>
       )}
 
-      {/* AVISO DISCRETO AL ENTRAR COMO ADMINISTRADOR: aparece unos segundos abajo a la izquierda */}
-      {avisoFuncion && (
-        <div
-          role="status"
-          className="aviso-inferior fixed bottom-4 left-4 z-50 max-w-xs flex items-center space-x-2 rounded-lg bg-slate-900 text-white shadow-lg px-3 py-2 text-xs"
-        >
-          <Shield className="w-4 h-4 text-sky-300 shrink-0" />
-          <span>{avisoFuncion}</span>
-        </div>
-      )}
 
       {/* BANNER 3: SI EL USUARIO ESTÁ PENDIENTE DE APROBACIÓN */}
       {usuario && !esAdmin && perfilUsuario?.estado === 'pendiente' && (
@@ -546,9 +610,11 @@ export default function App() {
 
       {/* CONTENIDO PRINCIPAL SEGÚN PESTAÑA SELECCIONADA */}
       <div className="relative flex-1 flex flex-col min-h-[60vh]">
-      <AnimatePresence mode="popLayout" initial={false} custom={direccionTab}>
+      {/* mode="wait": solo un main sale a la vez y la pestaña nueva se monta cuando termina (H58) */}
+      <AnimatePresence mode="wait" initial={false} custom={direccionTab}>
       <motion.main
         key={tabActiva}
+        data-tab={tabActiva}
         custom={direccionTab}
         variants={VAR_CONTENIDO_TAB}
         initial="entra"
@@ -556,6 +622,7 @@ export default function App() {
         exit="sale"
         className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6"
       >
+        <LimiteError>
         <Suspense fallback={<Cargando />}>
         {/* SELECCIÓN DE FUNCIÓN (CUENTAS CON VARIOS ROLES) */}
         {mostrarSelectorFuncion && perfilUsuario && (
@@ -575,13 +642,20 @@ export default function App() {
         )}
 
         {/* SIN FUNCIÓN DE PRODUCCIÓN: SIN ACCESO A LOTES */}
-        {!puedeVerProduccion && (tabActiva === 'inicio' || tabActiva === 'lotes' || tabActiva === 'pedidos' || tabActiva === 'analitica') && accesoRestringido}
+        {!puedeVerProduccion && (tabActiva === 'inicio' || tabActiva === 'lotes' || tabActiva === 'pedidos' || tabActiva === 'analitica') && (
+          perfilPendiente ? (
+            <div role="status" aria-live="polite">
+              <p className="sr-only">Cargando tu perfil...</p>
+              <EsqueletoPantalla />
+            </div>
+          ) : accesoRestringido
+        )}
 
         {puedeVerProduccion && (
         <>
         {/* 1. INICIO */}
         {tabActiva === 'inicio' && tabsPermitidas.includes('inicio') && (funcionActiva === 'admin' || puede('verInicio') || puede('crearLotes')) && (
-          lotesCargando ? <EsqueletoPantalla /> : <DashboardTab
+          lotesCargando && lotes.length === 0 ? <EsqueletoPantalla /> : <DashboardTab
             lotes={lotes}
             config={config}
             onNuevoLote={handleAbrirNuevoLote}
@@ -600,7 +674,7 @@ export default function App() {
 
         {/* 2. LOTES */}
         {tabActiva === 'lotes' && tabsPermitidas.includes('lotes') && (
-          lotesCargando ? <EsqueletoPantalla /> : <LotesTab
+          lotesCargando && lotes.length === 0 ? <EsqueletoPantalla /> : <LotesTab
             lotes={lotes}
             config={config}
             onNuevoLote={handleAbrirNuevoLote}
@@ -618,7 +692,7 @@ export default function App() {
 
         {/* 3. ANALÍTICA */}
         {tabActiva === 'analitica' && tabsPermitidas.includes('analitica') && (
-          lotesCargando ? <EsqueletoPantalla /> : <AnaliticaTab
+          lotesCargando && lotes.length === 0 ? <EsqueletoPantalla /> : <AnaliticaTab
             lotes={lotes}
             config={config}
             onSeleccionarLote={(lote) => setLoteDetalle(lote)}
@@ -635,6 +709,8 @@ export default function App() {
             userEmail={usuario?.email || ''}
             perfilActual={perfilUsuario}
             onConfigActualizada={(nuevaConfig) => setConfig(nuevaConfig)}
+            lotes={lotes}
+            lotesListos={puedeVerProduccion && !lotesCargando && !errorConexion}
           />
         )}
 
@@ -649,6 +725,7 @@ export default function App() {
         </>
         )}
         </Suspense>
+        </LimiteError>
       </motion.main>
       </AnimatePresence>
       </div>
@@ -668,7 +745,9 @@ export default function App() {
         </div>
       </footer>
 
-      {/* MODALES */}
+    </motion.div>
+
+      {/* MODALES: fuera del contenedor animado, por la misma razón que el aviso de función */}
       <AuthModal
         isOpen={authModalOpen}
         onClose={() => setAuthModalOpen(false)}
@@ -685,11 +764,13 @@ export default function App() {
         />
       )}
 
-      {loteDetalleVisible && (
+      {loteDetalleVivo && (
+        <LimiteError>
+        <Suspense fallback={null}>
         <LoteDetailModal
           isOpen={Boolean(loteDetalle)}
           onClose={() => setLoteDetalle(null)}
-          loteInicial={loteDetalleVisible}
+          loteInicial={loteDetalleVivo}
           config={config}
           userEmail={usuario?.email || ''}
           perfilActual={perfilUsuario}
@@ -702,6 +783,8 @@ export default function App() {
             }
           }}
         />
+        </Suspense>
+        </LimiteError>
       )}
 
       {loteQrVisible && (
@@ -719,6 +802,23 @@ export default function App() {
           }}
         />
       )}
-    </motion.div>
+      {/* AVISO DISCRETO DE LA FUNCIÓN: aparece unos segundos abajo a la izquierda. Va fuera del contenedor
+          animado: mientras este entra con transform, un fixed dentro quedaría anclado a él y no a la pantalla */}
+      {/* No recibe toques (no tapa los botones de esa esquina) y sale como el aviso de Personal */}
+      <AnimatePresence>
+        {avisoFuncion && (
+          <motion.div
+            role="status"
+            initial={{ opacity: 0, y: DISTANCIA.pantalla }}
+            animate={{ opacity: 1, y: 0, transition: entrada(DURACION.base) }}
+            exit={{ opacity: 0, y: DISTANCIA.pequena, transition: salida() }}
+            className="pointer-events-none fixed bottom-4 left-4 z-50 max-w-[calc(100vw-2rem)] sm:max-w-xs flex items-center space-x-2 rounded-lg bg-slate-900 text-white shadow-lg px-3 py-2 text-xs"
+          >
+            <Shield className="w-4 h-4 text-sky-300 shrink-0" />
+            <span>{avisoFuncion}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
   );
 }

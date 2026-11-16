@@ -2,6 +2,7 @@ import { doc, onSnapshot, runTransaction } from 'firebase/firestore';
 import { auth, db } from '../firebase/firebaseConfig';
 import { AnotacionesLote, Lote, RegistroAnotacion, TipoRegistroAnotacion } from '../types';
 import { calcularSha256, jsonCanonico } from './hashService';
+import { esErrorSinHuellaSegura, huellaParaComparar, MENSAJE_NO_VERIFICABLE } from '../lib/integridad';
 import { nombreRegistro } from './usuariosService';
 
 // Anotaciones posteriores al cierre de un lote. El lote sellado NO se modifica: las anotaciones
@@ -21,9 +22,8 @@ function generarId(): string {
   return typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : `an_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 }
 
-export async function hashRegistroAnotacion(codigoLote: string, r: Omit<RegistroAnotacion, 'hash'>): Promise<string> {
-  return calcularSha256(
-    jsonCanonico({
+function textoRegistroAnotacion(codigoLote: string, r: Omit<RegistroAnotacion, 'hash'>): string {
+  return jsonCanonico({
       codigoLote,
       indice: r.indice,
       tipo: r.tipo,
@@ -32,8 +32,19 @@ export async function hashRegistroAnotacion(codigoLote: string, r: Omit<Registro
       registradoPor: r.registradoPor,
       ...(r.registradoPorNombre ? { registradoPorNombre: r.registradoPorNombre } : {}),
       hashAnterior: r.hashAnterior
-    })
-  );
+    });
+}
+
+export async function hashRegistroAnotacion(codigoLote: string, r: Omit<RegistroAnotacion, 'hash'>): Promise<string> {
+  return calcularSha256(textoRegistroAnotacion(codigoLote, r));
+}
+
+/** Valor numérico válido (acepta coma decimal) o null */
+export function numeroValido(valor: string): number | null {
+  const t = String(valor ?? '').trim().replace(',', '.');
+  if (!t || !/^-?\d+(\.\d+)?$/.test(t)) return null;
+  const n = Number(t);
+  return Number.isFinite(n) ? n : null;
 }
 
 /**
@@ -140,12 +151,18 @@ export async function proponerAnotacion(
 ): Promise<void> {
   const motivo = datos.motivo.trim();
   if (motivo.length < 10) throw new Error('Explica el motivo de la anotación (mínimo 10 caracteres).');
+  // Si el dato sellado es un número, el valor correcto también debe serlo
+  const original = (lote.eventos || [])[datos.fase]?.datos?.[datos.dato];
+  if (datos.dato && typeof original === 'number' && numeroValido(datos.valorCorrecto) === null) {
+    throw new Error('El dato registrado es un número: escribe el valor correcto como número (por ejemplo 125 o 12.5).');
+  }
   try {
     await agregarRegistro(lote, 'Propuesta', {
       fase: datos.fase,
       dato: datos.dato,
       valorRegistrado: datos.valorRegistrado.trim(),
-      valorCorrecto: datos.valorCorrecto.trim(),
+      valorCorrecto:
+        datos.dato && typeof original === 'number' ? String(numeroValido(datos.valorCorrecto)) : datos.valorCorrecto.trim(),
       motivo
     });
   } catch (err) {
@@ -177,6 +194,7 @@ export interface VerificacionAnotaciones {
   mensaje: string;
   alteradas: number[]; // N.º de las anotaciones afectadas (propuesta o su resolución alterada)
   selloCambiado: boolean;
+  noVerificable?: boolean; // el navegador no puede calcular SHA-256: no hay resultado
 }
 
 /**
@@ -204,18 +222,43 @@ export async function verificarAnotaciones(lote: Lote, d: AnotacionesLote | null
   const alteradas = new Set<number>();
   const detalles: string[] = [];
   let previo = d.hashAnclaje;
-  for (const r of d.registros) {
-    const { hash, ...resto } = r;
-    const n = numeroDe.get(r.indice);
-    const quien = n ? `La anotación N.º ${n} (${r.tipo.toLowerCase()})` : `Un registro de anotación (${r.tipo.toLowerCase()})`;
-    if (r.hashAnterior !== previo) {
-      if (n) alteradas.add(n);
-      detalles.push(`${quien} no enlaza con el registro anterior: la cadena se rompió.`);
-    } else if ((await hashRegistroAnotacion(lote.codigo, resto)) !== hash) {
-      if (n) alteradas.add(n);
-      detalles.push(`${quien} fue alterada después de guardarse.`);
+  try {
+    for (const [pos, r] of d.registros.entries()) {
+      const { hash, ...resto } = r;
+      const n = numeroDe.get(r.indice);
+      const quien = n ? `La anotación N.º ${n} (${r.tipo.toLowerCase()})` : `Un registro de anotación (${r.tipo.toLowerCase()})`;
+      if (r.indice !== pos) {
+        if (n) alteradas.add(n);
+        detalles.push(`${quien} no está en su posición: falta un registro o se reordenaron.`);
+      } else if (r.hashAnterior !== previo) {
+        if (n) alteradas.add(n);
+        detalles.push(`${quien} no enlaza con el registro anterior: la cadena se rompió.`);
+      } else if ((await huellaParaComparar(textoRegistroAnotacion(lote.codigo, resto), hash)).hash !== hash) {
+        if (n) alteradas.add(n);
+        detalles.push(`${quien} fue alterada después de guardarse.`);
+      }
+      previo = hash;
     }
-    previo = hash;
+  } catch (e) {
+    if (esErrorSinHuellaSegura(e)) {
+      return { integra: false, mensaje: MENSAJE_NO_VERIFICABLE, alteradas: [], selloCambiado: false, noVerificable: true };
+    }
+    throw e;
+  }
+  // Las resoluciones registradas y el índice "resueltas" deben coincidir: si falta una resolución
+  // que el índice declara (o al revés), se borró un registro
+  const resueltas = d.resueltas || {};
+  for (const a of anotacionesDe(d)) {
+    const declarada = resueltas[String(a.propuesta.indice)];
+    const real = a.estado === 'pendiente' ? undefined : a.estado;
+    if ((declarada || undefined) !== real) {
+      alteradas.add(a.numero);
+      detalles.push(
+        declarada && !real
+          ? `La anotación N.º ${a.numero} figura como ${declarada}, pero falta el registro de esa decisión: se borró.`
+          : `La anotación N.º ${a.numero} no coincide con el índice de decisiones.`
+      );
+    }
   }
   return detalles.length
     ? { integra: false, mensaje: detalles.join(' '), alteradas: [...alteradas], selloCambiado: false }

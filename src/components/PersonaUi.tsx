@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { MoreHorizontal } from 'lucide-react';
 import { varMenu } from '../lib/motion';
@@ -70,8 +70,8 @@ export interface AccionMenu {
 }
 
 /**
- * Menú de tres puntos: se abre con escala y opacidad desde su esquina superior derecha y se cierra
- * al elegir, al tocar fuera o con Escape.
+ * Menú de tres puntos: se abre con escala y opacidad desde su esquina derecha (hacia arriba si no
+ * cabe debajo) y se cierra al elegir, al tocar fuera o con Escape. Durante la salida no recibe toques.
  */
 export const MenuTresPuntos: React.FC<{
   abierto: boolean;
@@ -81,6 +81,10 @@ export const MenuTresPuntos: React.FC<{
   etiqueta: string;
 }> = ({ abierto, onAbrir, onCerrar, acciones, etiqueta }) => {
   const ref = useRef<HTMLDivElement>(null);
+  const [haciaArriba, setHaciaArriba] = useState(false);
+  // El menú que sale conserva sus manejadores; este ref permite ignorar un segundo toque durante la salida
+  const abiertoRef = useRef(abierto);
+  abiertoRef.current = abierto;
   useEffect(() => {
     if (!abierto) return;
     const fuera = (e: PointerEvent) => {
@@ -102,11 +106,20 @@ export const MenuTresPuntos: React.FC<{
         aria-haspopup="menu"
         aria-expanded={abierto}
         aria-label={etiqueta}
-        onClick={() => (abierto ? onCerrar() : onAbrir())}
+        onClick={() => {
+          if (abierto) return onCerrar();
+          // Altura aproximada del menú: 44 px por opción más el relleno; si no cabe debajo, se abre hacia arriba
+          const caja = ref.current?.getBoundingClientRect();
+          const alto = acciones.length * 44 + 16;
+          setHaciaArriba(!!caja && caja.bottom + alto > window.innerHeight && caja.top - alto > 0);
+          onAbrir();
+        }}
         className="min-h-11 min-w-11 grid place-items-center rounded-md text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors"
       >
         <MoreHorizontal className="w-5 h-5" strokeWidth={1.75} />
       </button>
+      {/* El contenedor no recibe toques mientras el menú sale (pointer-events se hereda) */}
+      <div className="contents" style={{ pointerEvents: abierto ? undefined : 'none' }}>
       <AnimatePresence>
         {abierto && (
           <motion.div
@@ -115,8 +128,8 @@ export const MenuTresPuntos: React.FC<{
             initial="oculto"
             animate="visible"
             exit="salida"
-            style={{ transformOrigin: 'top right' }}
-            className="absolute right-0 top-full mt-1 z-20 w-56 rounded-lg border border-slate-300 bg-white py-1 shadow-sm"
+            style={{ transformOrigin: haciaArriba ? 'bottom right' : 'top right' }}
+            className={`absolute right-0 ${haciaArriba ? 'bottom-full mb-1' : 'top-full mt-1'} z-20 w-56 rounded-lg border border-slate-300 bg-white py-1 shadow-sm`}
           >
             {acciones.map((a) => (
               <button
@@ -125,6 +138,8 @@ export const MenuTresPuntos: React.FC<{
                 role="menuitem"
                 disabled={a.deshabilitado}
                 onClick={() => {
+                  if (!abiertoRef.current) return;
+                  abiertoRef.current = false;
                   onCerrar();
                   a.onClick();
                 }}
@@ -138,6 +153,7 @@ export const MenuTresPuntos: React.FC<{
           </motion.div>
         )}
       </AnimatePresence>
+      </div>
     </div>
   );
 };

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowLeft,
   MapPin,
@@ -60,6 +60,9 @@ const ETIQUETA_AJUSTE: Record<EstadoAjuste, string> = {
 
 const num = (n: number) => (Number(n) || 0).toLocaleString('es-CO');
 
+// Pasos que solo se registran una vez por orden: un segundo toque no crea otra acción
+const PASOS_UNICOS: TipoAccionReparto[] = ['Inicio de ruta', 'Llegada', 'Entrega'];
+
 const ESTILO_ACCION: Record<string, string> = {
   guardada: 'bg-amber-50 text-amber-800 border-amber-200',
   enviando: 'bg-sky-50 text-sky-800 border-sky-200',
@@ -97,9 +100,20 @@ export const DetalleEntregaRepartidor: React.FC<DetalleEntregaRepartidorProps> =
   const [cantidadExtra, setCantidadExtra] = useState<number | ''>('');
   const [motivoAjuste, setMotivoAjuste] = useState('');
 
+  // Pasos ya tocados en esta vista (H10): el primer toque bloquea el botón al instante, antes de que
+  // la bandeja y la orden se actualicen, para que un doble toque no registre la acción dos veces.
+  // Se liberan cuando la orden cambia de estado o una acción queda en conflicto.
+  const tocadosRef = useRef<Set<TipoAccionReparto>>(new Set());
+  const [tocados, setTocados] = useState<TipoAccionReparto[]>([]);
+  const conflictos = acciones.filter((a) => a.estado === 'conflicto').length;
+  useEffect(() => {
+    tocadosRef.current.clear();
+    setTocados([]);
+  }, [orden.id, orden.estado, orden.llegadaEn, conflictos]);
+
   const lotes = Object.entries(orden.procedencias || {});
   const pendientes = acciones.filter((a) => a.estado === 'guardada' || a.estado === 'enviando');
-  const pendiente = (tipo: TipoAccionReparto) => pendientes.some((a) => a.tipo === tipo);
+  const pendiente = (tipo: TipoAccionReparto) => pendientes.some((a) => a.tipo === tipo) || tocados.includes(tipo);
 
   // Paso actual, teniendo en cuenta las acciones guardadas en el teléfono que aún no se envían
   const rutaIniciada = orden.estado === 'en_ruta' || pendiente('Inicio de ruta');
@@ -123,10 +137,17 @@ export const DetalleEntregaRepartidor: React.FC<DetalleEntregaRepartidorProps> =
   );
 
   const registrar = (accion: Parameters<typeof registrarAccion>[1]): boolean => {
+    const unico = PASOS_UNICOS.includes(accion.tipo);
+    if (unico) {
+      if (tocadosRef.current.has(accion.tipo)) return false;
+      tocadosRef.current.add(accion.tipo);
+    }
     try {
       registrarAccion(uid, accion);
+      if (unico) setTocados(Array.from(tocadosRef.current));
       return true;
     } catch (err: any) {
+      if (unico) tocadosRef.current.delete(accion.tipo);
       setMensaje(null);
       setErrorMsg(err?.message || 'No se pudo guardar la acción.');
       return false;

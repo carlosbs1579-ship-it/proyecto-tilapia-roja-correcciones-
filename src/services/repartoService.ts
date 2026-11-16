@@ -175,6 +175,8 @@ function marcarConfirmadas(uid: string, ordenes: OrdenEntrega[]): void {
 
 // ---------- Registro y envío de acciones ----------
 
+const TIPOS_UNICOS: TipoAccionReparto[] = ['Inicio de ruta', 'Llegada', 'Entrega'];
+
 /**
  * Registra una acción del repartidor: la guarda en el teléfono y la intenta enviar de inmediato
  */
@@ -182,6 +184,14 @@ export function registrarAccion(
   uid: string,
   accion: { ordenId: string; tipo: TipoAccionReparto; descripcion?: string; datos?: Record<string, any>; foto?: FotoPreparada }
 ): AccionReparto {
+  // Idempotencia local (H10): un segundo toque en Iniciar ruta, Llegada o Entrega mientras la primera
+  // sigue pendiente de enviar no crea otra acción; devuelve la que ya está en la bandeja.
+  if (TIPOS_UNICOS.includes(accion.tipo)) {
+    const existente = leerBandeja(uid).find(
+      (a) => a.ordenId === accion.ordenId && a.tipo === accion.tipo && (a.estado === 'guardada' || a.estado === 'enviando')
+    );
+    if (existente) return existente;
+  }
   const ahora = new Date().toISOString();
   const nueva: AccionReparto = {
     id: generarId('ev'),
@@ -308,6 +318,10 @@ async function aplicarAccion(uid: string, accion: AccionReparto): Promise<'aplic
 
     switch (accion.tipo) {
       case 'Inicio de ruta': {
+        // Ya iniciada por este mismo repartidor (por ejemplo, un toque repetido): no es un conflicto
+        if (orden.estado === 'en_ruta' && (orden.historial || []).some((e) => e.tipo === 'Inicio de ruta' && e.registradoPorUid === uid)) {
+          return 'duplicada' as const;
+        }
         if (!['asignado', 'en_preparacion'].includes(orden.estado)) {
           throw new ConflictoReparto(`La orden está "${ETIQUETA_ESTADO_ORDEN[orden.estado]}"; ya no se puede iniciar la ruta.`);
         }
@@ -318,7 +332,8 @@ async function aplicarAccion(uid: string, accion: AccionReparto): Promise<'aplic
         if (orden.estado !== 'en_ruta' || !orden.rutaIniciadaEn) {
           throw new ConflictoReparto('No hay una ruta iniciada para esta orden.');
         }
-        if (orden.llegadaEn) throw new ConflictoReparto('La llegada ya estaba registrada.');
+        // Llegada ya registrada (toque repetido): se toma como la misma acción, no como conflicto
+        if (orden.llegadaEn) return 'duplicada' as const;
         cambios = { llegadaEn: accion.registradaEn };
         break;
       }

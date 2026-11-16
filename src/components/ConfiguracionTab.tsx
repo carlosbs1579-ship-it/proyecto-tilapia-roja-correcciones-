@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Settings,
   Plus,
@@ -16,8 +16,10 @@ import {
 import {
   ConfiguracionGeneral,
   EstanqueConfig,
+  Lote,
   UsuarioPerfil
 } from '../types';
+import { derivarCabeceraLote, normalizarEstanque } from '../services/calculosService';
 import {
   guardarConfiguracion,
   sanitizarEstanques
@@ -33,13 +35,19 @@ interface ConfiguracionTabProps {
   userEmail: string;
   perfilActual: UsuarioPerfil | null;
   onConfigActualizada: (nuevaConfig: ConfiguracionGeneral) => void;
+  /** Lotes de la granja, para no eliminar un estanque que todavía los tiene (H28) */
+  lotes?: Lote[];
+  /** La lista de lotes ya cargó desde el servidor (si no, no se sabe si el estanque está en uso) */
+  lotesListos?: boolean;
 }
 
 export const ConfiguracionTab: React.FC<ConfiguracionTabProps> = ({
   config,
   userEmail,
   perfilActual,
-  onConfigActualizada
+  onConfigActualizada,
+  lotes = [],
+  lotesListos = false
 }) => {
   const esAdmin = esAdminMaestro(userEmail) || esAdministrador(perfilActual);
   const puedeEstanques = esAdmin || verificarPermiso(perfilActual, 'gestionarEstanques');
@@ -67,25 +75,53 @@ export const ConfiguracionTab: React.FC<ConfiguracionTabProps> = ({
   const [mensajeExito, setMensajeExito] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Mantener sincronizado si cambia la configuración externa
-  useEffect(() => {
-    if (config.estanques) {
-      setEstanques(sanitizarEstanques(config.estanques));
-    }
-    if (config.rangosReferencia) {
-      setRangos(config.rangosReferencia);
-    }
-    if (config.fichaNutricional) {
-      setFicha(config.fichaNutricional);
-    }
-  }, [config]);
+  // Un solo temporizador para el mensaje de éxito, limpiado al desmontar (H55)
+  const temporizadorExito = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mostrarExito = (texto: string) => {
+    if (temporizadorExito.current) clearTimeout(temporizadorExito.current);
+    setMensajeExito(texto);
+    temporizadorExito.current = setTimeout(() => {
+      temporizadorExito.current = null;
+      setMensajeExito(null);
+    }, 4000);
+  };
+  useEffect(() => () => {
+    if (temporizadorExito.current) clearTimeout(temporizadorExito.current);
+  }, []);
 
-  // Función interna para persistir la configuración completa en Firestore
-  const guardarEnFirestore = async (estanquesActualizados: EstanqueConfig[]) => {
+  // Lotes de un estanque, según el estanque que registra la cadena de cada lote
+  const lotesDeEstanque = (codigo: string) => {
+    const buscado = normalizarEstanque(codigo);
+    const propios = lotes.filter((l) => normalizarEstanque(derivarCabeceraLote(l).cabecera.estanque) === buscado);
+    return {
+      activos: propios.filter((l) => l.estado !== 'cerrado'),
+      cerrados: propios.filter((l) => l.estado === 'cerrado')
+    };
+  };
+
+  // Mantener sincronizado si cambia la configuración externa
+  // (por partes: guardar un estanque no borra los rangos o la ficha que se están editando)
+  const claveEstanques = JSON.stringify(config.estanques || null);
+  const claveRangos = JSON.stringify(config.rangosReferencia || null);
+  const claveFicha = JSON.stringify(config.fichaNutricional || null);
+  useEffect(() => {
+    if (config.estanques) setEstanques(sanitizarEstanques(config.estanques));
+  }, [claveEstanques]);
+  useEffect(() => {
+    if (config.rangosReferencia) setRangos(config.rangosReferencia);
+  }, [claveRangos]);
+  useEffect(() => {
+    if (config.fichaNutricional) setFicha(config.fichaNutricional);
+  }, [claveFicha]);
+
+  // Función interna para persistir la configuración en Firestore. Al guardar solo estanques
+  // (agregar, editar o eliminar) se envían los rangos y la ficha vigentes en el servidor, no los
+  // editados sin confirmar en el formulario (H53); "Guardar Configuración General" envía todo.
+  const guardarEnFirestore = async (estanquesActualizados: EstanqueConfig[], incluirFormulario = false) => {
     const nuevaConfig: ConfiguracionGeneral = {
       estanques: sanitizarEstanques(estanquesActualizados),
-      rangosReferencia: rangos,
-      fichaNutricional: ficha
+      rangosReferencia: incluirFormulario ? rangos : config.rangosReferencia,
+      fichaNutricional: incluirFormulario ? ficha : config.fichaNutricional
     };
 
     setGuardando(true);
@@ -93,12 +129,13 @@ export const ConfiguracionTab: React.FC<ConfiguracionTabProps> = ({
     try {
       const guardada = await guardarConfiguracion(nuevaConfig, userEmail);
       onConfigActualizada(guardada);
-      setMensajeExito('Configuración guardada.');
-      setTimeout(() => setMensajeExito(null), 4000);
+      mostrarExito('Configuración guardada.');
       return true;
     } catch (err: any) {
       console.error('Error guardando configuración:', err);
       setErrorMsg(err.message || 'No se pudo guardar la configuración.');
+      // La lista de estanques vuelve a la del servidor: lo que no se guardó no queda a la vista
+      setEstanques(sanitizarEstanques(config.estanques || []));
       return false;
     } finally {
       setGuardando(false);
@@ -172,15 +209,18 @@ export const ConfiguracionTab: React.FC<ConfiguracionTabProps> = ({
 
   // Confirmar y persistir eliminación en Firestore
   const handleConfirmarEliminar = async (codigo: string) => {
-    setEstanqueAEliminar(null);
     setErrorMsg(null);
+    // No se elimina un estanque con lotes activos ni sin saber si los tiene (H28)
+    if (!lotesListos) {
+      setErrorMsg('Espera a que carguen los lotes para comprobar si el estanque está en uso.');
+      return;
+    }
+    if (lotesDeEstanque(codigo).activos.length > 0) return;
+    setEstanqueAEliminar(null);
     const nuevaLista = estanques.filter((e) => e.codigo !== codigo);
     setEstanques(nuevaLista);
     const ok = await guardarEnFirestore(nuevaLista);
-    if (ok) {
-      setMensajeExito(`Estanque ${codigo} eliminado exitosamente.`);
-      setTimeout(() => setMensajeExito(null), 4000);
-    }
+    if (ok) mostrarExito(`Estanque ${codigo} eliminado exitosamente.`);
   };
 
   // Cancelar eliminación
@@ -190,7 +230,8 @@ export const ConfiguracionTab: React.FC<ConfiguracionTabProps> = ({
 
   // Guardar todo el formulario de rangos y ficha nutricional
   const handleGuardarTodo = async () => {
-    await guardarEnFirestore(estanques);
+    if (!puedeConfig) return;
+    await guardarEnFirestore(estanques, true);
   };
 
   return (
@@ -207,7 +248,8 @@ export const ConfiguracionTab: React.FC<ConfiguracionTabProps> = ({
 
         <button
           onClick={handleGuardarTodo}
-          disabled={guardando}
+          disabled={guardando || !puedeConfig}
+          title={puedeConfig ? undefined : 'No tienes permiso para cambiar la configuración general'}
           className="inline-flex items-center space-x-2 px-5 py-3 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors disabled:opacity-50 shrink-0"
         >
           {guardando ? (
@@ -326,15 +368,35 @@ export const ConfiguracionTab: React.FC<ConfiguracionTabProps> = ({
                     </div>
                   ) : isDeleting ? (
                     /* Confirmación inline de eliminación (sin window.confirm) */
+                    (() => {
+                      const { activos, cerrados } = lotesDeEstanque(est.codigo);
+                      const bloqueado = !lotesListos || activos.length > 0;
+                      const plural = (n: number, uno: string, varios: string) => (n === 1 ? uno : varios);
+                      return (
                     <div className="space-y-2">
                       <div className="flex items-center space-x-2 text-red-700">
                         <AlertCircle className="w-4 h-4 shrink-0" />
-                        <span className="text-xs font-semibold">¿Eliminar estanque {est.codigo}?</span>
+                        <span className="text-xs font-semibold">
+                          {activos.length > 0 ? `No se puede eliminar ${est.codigo}` : `¿Eliminar estanque ${est.codigo}?`}
+                        </span>
                       </div>
-                      <p className="text-xs text-slate-600">
-                        Se retirará de la lista.
-                      </p>
+                      {!lotesListos ? (
+                        <p className="text-xs text-slate-600">Cargando los lotes para comprobar si el estanque está en uso...</p>
+                      ) : activos.length > 0 ? (
+                        <p className="text-xs text-red-800">
+                          Tiene {activos.length} {plural(activos.length, 'lote activo', 'lotes activos')} ({activos.map((l) => l.codigo).join(', ')}).
+                          Ciérralos o corrige su estanque antes de eliminarlo.
+                        </p>
+                      ) : cerrados.length > 0 ? (
+                        <p className="text-xs text-red-800">
+                          {cerrados.length} {plural(cerrados.length, 'lote cerrado lo registra', 'lotes cerrados lo registran')}. Sus certificados no cambian,
+                          pero la densidad, la analítica y la ocupación ya no mostrarán este estanque.
+                        </p>
+                      ) : (
+                        <p className="text-xs text-slate-600">Ningún lote lo usa. Se retirará de la lista.</p>
+                      )}
                       <div className="flex items-center space-x-2 pt-1">
+                        {!bloqueado && (
                         <button
                           type="button"
                           onClick={() => handleConfirmarEliminar(est.codigo)}
@@ -343,15 +405,18 @@ export const ConfiguracionTab: React.FC<ConfiguracionTabProps> = ({
                         >
                           Sí, eliminar
                         </button>
+                        )}
                         <button
                           type="button"
                           onClick={handleCancelarEliminar}
                           className="px-3 py-1 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-md text-xs font-medium transition-colors"
                         >
-                          Cancelar
+                          {bloqueado ? 'Entendido' : 'Cancelar'}
                         </button>
                       </div>
                     </div>
+                      );
+                    })()
                   ) : (
                     /* Vista normal */
                     <div className="flex items-start justify-between">

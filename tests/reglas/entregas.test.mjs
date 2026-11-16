@@ -57,7 +57,7 @@ const como = (uid) =>
 before(async () => {
   env = await initializeTestEnvironment({
     projectId: 'demo-tilapia-entregas',
-    firestore: { rules: readFileSync(new URL('../../firestore.rules', import.meta.url), 'utf8'), host: '127.0.0.1', port: 8085 }
+    firestore: { rules: readFileSync(new URL('../../firestore.rules', import.meta.url), 'utf8'), host: '127.0.0.1', port: Number((process.env.FIRESTORE_EMULATOR_HOST || '').split(':')[1] || 8085) }
   });
 });
 after(async () => env?.cleanup());
@@ -562,7 +562,7 @@ describe('Comprobantes de entrega (fase 5)', () => {
   }
 
   // Emite un comprobante como lo hace el servicio: comprobante + índice público + orden, en una sola operación
-  async function emitir(uid, ordenId, { token = TOKEN, alterar = {}, alterarProc, indice, idComp, versionForzada, hashAnterior } = {}) {
+  async function emitir(uid, ordenId, { token = TOKEN, alterar = {}, alterarProc, indice, idComp, versionForzada, hashAnterior, alterarEvento = {} } = {}) {
     const o = await leer(`ordenes/${ordenId}`);
     const consulta = await leer(`consultasEntrega/${token}`);
     const previo = consulta ? await leer(`comprobantes/${consulta.ultimaVersion}`) : null;
@@ -578,14 +578,27 @@ describe('Comprobantes de entrega (fase 5)', () => {
       Object.entries(o.procedencias).map(([c, p]) => [c, { estanque: p.estanque, autorizada: p.cantidad, entregada: (o.entregadoPorLote || {})[c] || 0 }])
     );
     if (alterarProc) Object.assign(procedencias[alterarProc.lote], alterarProc.cambios);
+    // Cliente, repartidor, fechas y entregas como los arma construirComprobante a partir de la orden
+    const ultimoDe = (tipo) => o.historial.filter((e) => e.tipo === tipo).pop();
+    const fechas = {
+      creacion: o.creadoEn, programada: o.fechaProgramada || null,
+      salida: o.rutaIniciadaEn || ultimoDe('Inicio de ruta')?.fecha || null,
+      llegada: o.llegadaEn || ultimoDe('Llegada')?.fecha || null,
+      confirmacion: ultimoDe('Entrega')?.fecha || '',
+      ...(entrega.tipo === 'Corrección de entrega' ? { correccion: entrega.fecha } : {})
+    };
+    const entregas = o.historial.filter((e) => e.tipo === 'Entrega').map((e) => ({
+      eventoId: e.eventoId || '', fecha: e.fecha, cantidades: e.datos?.entregas || {}, faltante: 0, observacion: e.descripcion || '',
+      ...(e.datos?.foto?.hash ? { fotoHash: e.datos.foto.hash } : {})
+    }));
     const comprobante = {
       id, version: versionForzada ?? Object.keys(versiones).length, ordenId, granjaId: GRANJA, tokenConsulta: token, emitidoEn: 'x',
-      emitidoPorUid: uid, empresa: 'Cultivos Loré', estadoEntrega: o.estado, cliente: { nombre: 'Restaurante', direccion: 'Calle 1' },
-      repartidor: 'r', fechas: { creacion: 'x', programada: null, salida: 'x', llegada: 'x', confirmacion: 'x' }, unidad: o.unidad,
+      emitidoPorUid: uid, empresa: 'Cultivos Loré', estadoEntrega: o.estado, cliente: { nombre: o.clienteNombre, direccion: o.clienteDireccion || '' },
+      repartidor: o.repartidorNombre || '', fechas, unidad: o.unidad,
       cantidadSolicitada: o.cantidadSolicitada, cantidadAutorizada: o.cantidadAutorizada, cantidadEntregada: o.cantidadEntregada,
       cantidadLiberada: o.cantidadLiberada || 0,
       cantidadPendiente: o.cantidadAutorizada - o.cantidadEntregada - (o.cantidadLiberada || 0),
-      procedencias, entregas: [], novedades: [], ajustes: [], eventoEntregaId: entrega.eventoId, eventoEntregaIndice: idx,
+      procedencias, entregas, novedades: [], ajustes: [], eventoEntregaId: entrega.eventoId, eventoEntregaIndice: idx,
       eventosUsados: [entrega.eventoId], hashEventos: H64, hashComprobante: idComp ? H64 : (id.slice(-1) + 'e'.repeat(63)).slice(0, 64),
       hashAnterior: hashAnterior ?? (previo ? previo.hashComprobante : '0'.repeat(64)), ...alterar
     };
@@ -598,12 +611,50 @@ describe('Comprobantes de entrega (fase 5)', () => {
       actualizadoEn: 'y',
       historial: [
         ...o.historial,
-        evento(uid, o.historial.length, 'Comprobante emitido', { datos: { comprobanteId: id, eventoEntregaId: entrega.eventoId, version: comprobante.version } })
+        evento(uid, o.historial.length, 'Comprobante emitido', {
+          datos: { comprobanteId: id, eventoEntregaId: entrega.eventoId, version: comprobante.version, estadoEntrega: comprobante.estadoEntrega, hashComprobante: comprobante.hashComprobante, ...alterarEvento }
+        })
       ]
     });
     await batch.commit();
     return id;
   }
+
+  test('H05: el comprobante no puede inventar cliente, repartidor, fechas ni la foto de la entrega', async () => {
+    await entregaParcial('PED-H5');
+    const o = await leer('ordenes/PED-H5');
+    const ultimaEntrega = o.historial.filter((e) => e.tipo === 'Entrega').pop();
+    await assertFails(emitir('vendedor', 'PED-H5', { alterar: { cliente: { nombre: 'Otro Cliente', direccion: 'Calle 1' } } }));
+    await assertFails(emitir('vendedor', 'PED-H5', { alterar: { cliente: { nombre: 'Restaurante', direccion: 'Otra dirección' } } }));
+    await assertFails(emitir('vendedor', 'PED-H5', { alterar: { cliente: { nombre: 'Restaurante', direccion: 'Calle 1', nit: '1' } } }));
+    await assertFails(emitir('vendedor', 'PED-H5', { alterar: { repartidor: 'Otro repartidor' } }));
+    await assertFails(emitir('vendedor', 'PED-H5', { alterar: { fechas: { creacion: '2020-01-01', programada: null, salida: null, llegada: null, confirmacion: ultimaEntrega.fecha } } }));
+    await assertFails(emitir('vendedor', 'PED-H5', { alterar: { fechas: { creacion: o.creadoEn, programada: null, salida: o.rutaIniciadaEn, llegada: o.llegadaEn, confirmacion: '2020-01-01' } } }));
+    await assertFails(emitir('vendedor', 'PED-H5', { alterar: { entregas: [{ eventoId: ultimaEntrega.eventoId, fecha: ultimaEntrega.fecha, cantidades: {}, faltante: 0, observacion: '', fotoHash: 'b'.repeat(64) }] } }));
+    await assertFails(emitir('vendedor', 'PED-H5', { alterar: { entregas: [] } }));
+    await assertFails(emitir('vendedor', 'PED-H5', { alterar: { hashComprobante: 'A'.repeat(64) } }));
+    await assertSucceeds(emitir('vendedor', 'PED-H5'));
+  });
+
+  test('H05: el evento "Comprobante emitido" de la orden lleva el hash de ese comprobante', async () => {
+    await entregaParcial('PED-H6');
+    await assertFails(emitir('vendedor', 'PED-H6', { alterarEvento: { hashComprobante: 'f'.repeat(64) } }));
+    await assertSucceeds(emitir('vendedor', 'PED-H6'));
+  });
+
+  test('H44: emitir el comprobante de una orden con historial largo no agota el límite de expresiones', async () => {
+    await entregaParcial('PED-H44');
+    const o = await leer('ordenes/PED-H44');
+    // Muchas novedades antes de emitir (se agregan sin reglas para no alargar la prueba)
+    const extra = [];
+    for (let i = 0; i < 150; i++) {
+      extra.push({ ...evento('repartidor', o.historial.length + i, 'Novedad', { descripcion: `Novedad ${i}`, datos: { categoria: 'Otra' } }), eventoId: `nov-${i}`, funcion: 'courier' });
+    }
+    await env.withSecurityRulesDisabled((ctx) => updateDoc(doc(ctx.firestore(), 'ordenes', 'PED-H44'), { historial: [...o.historial, ...extra] }));
+    const v1 = await emitir('vendedor', 'PED-H44', { indice: o.historial.map((e) => e.tipo).lastIndexOf('Entrega') });
+    assert.ok(v1);
+    await anular('vendedor', v1);
+  });
 
   const reprogramar = (id) =>
     accion('vendedor', id, { estado: 'asignado', rutaIniciadaEn: null, llegadaEn: null }, 'Reprogramación de saldo', {}, false);

@@ -8,23 +8,19 @@ const SALIDA_MS = 180; // = --mov-salida (src/styles/motion.css)
  */
 export function usePresencia(abierto: boolean, ms: number = SALIDA_MS): { montado: boolean; saliendo: boolean } {
   const [montado, setMontado] = useState(abierto);
-  const [saliendo, setSaliendo] = useState(false);
   useEffect(() => {
     if (abierto) {
       setMontado(true);
-      setSaliendo(false);
       return;
     }
     if (!montado) return;
-    setSaliendo(true);
-    const t = setTimeout(() => {
-      setMontado(false);
-      setSaliendo(false);
-    }, ms);
+    const t = setTimeout(() => setMontado(false), ms);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [abierto]);
-  return { montado: abierto || montado, saliendo: !abierto && saliendo };
+  // `saliendo` se deriva del estado montado y no de un efecto: así el primer render tras cerrar ya
+  // lleva los estilos de salida sobre el mismo elemento y no se dibuja un cuadro intermedio
+  return { montado: abierto || montado, saliendo: !abierto && montado };
 }
 
 /**

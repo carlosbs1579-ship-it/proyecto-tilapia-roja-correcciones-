@@ -1,0 +1,1416 @@
+{
+  "fecha": "2026-11-16T14:20:34.965Z",
+  "lote": "20260801-A-E1",
+  "lote2": "20260801-A-E2",
+  "contexto": {
+    "ordenId": "PED-20261116-854C9",
+    "fotoId": "foto-563e14cd-4caf-457b-a53e-88637bb87e83",
+    "comprobanteId": "cmpd87410f029a0cc7ff1b067952d17bdd3bda15024",
+    "token": "ce03d570c4cafca19f8133fae1b3585abe6643a22",
+    "selloQr": "a465185e06040d82"
+  },
+  "ataques": [
+    {
+      "id": "1",
+      "nombre": "Reemplazar la foto de entrega (campo datos) por otra imagen",
+      "resultado": "detectado y avisado",
+      "senales": {
+        "automaticas": [
+          "Fotos de la orden: Posible alteración detectada: la imagen no coincide con la registrada en la entrega."
+        ],
+        "manuales": [
+          "Botón \"Verificar foto\" (anterior): \"La foto no coincide con el hash registrado.\""
+        ],
+        "datos": {
+          "qrAntiguoSinSello": "sin aviso",
+          "lote": {
+            "estanque": "E1",
+            "fechaSiembra": "2026-08-01",
+            "fechaCierre": "2026-11-16",
+            "producto": "Tilapia roja entera fresca",
+            "cantidadSembrada": 1000,
+            "supervivencia": 98,
+            "pesoPromedioActualG": 480,
+            "biomasaEstimadaKg": 38.4,
+            "fases": 6,
+            "alimentoFase2": 120,
+            "anotacionesValidas": 1,
+            "qrAntiguoSinSello": "sin aviso"
+          },
+          "foto": {
+            "mostrada": "data:image/jpeg;base64,/9j/4AAQSkZJRgABA…",
+            "hashDoc": "d1da3e6695f6",
+            "hashEvento": "d1da3e6695f6",
+            "estado": "alterada"
+          },
+          "entregaPublica": {
+            "cantidadEntregada": 50,
+            "cliente": "PRUEBA-Restaurante Integridad",
+            "vigente": "N.º 1",
+            "versionesIndice": 1,
+            "bloquesLeidos": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "2",
+      "nombre": "Cambiar un carácter del base64 de la foto",
+      "resultado": "detectado y avisado",
+      "senales": {
+        "automaticas": [
+          "Fotos de la orden: Posible alteración detectada: la imagen no coincide con la registrada en la entrega."
+        ],
+        "manuales": [
+          "Botón \"Verificar foto\" (anterior): \"La foto no coincide con el hash registrado.\""
+        ],
+        "datos": {
+          "qrAntiguoSinSello": "sin aviso",
+          "lote": {
+            "estanque": "E1",
+            "fechaSiembra": "2026-08-01",
+            "fechaCierre": "2026-11-16",
+            "producto": "Tilapia roja entera fresca",
+            "cantidadSembrada": 1000,
+            "supervivencia": 98,
+            "pesoPromedioActualG": 480,
+            "biomasaEstimadaKg": 38.4,
+            "fases": 6,
+            "alimentoFase2": 120,
+            "anotacionesValidas": 1,
+            "qrAntiguoSinSello": "sin aviso"
+          },
+          "foto": {
+            "mostrada": "data:image/jpeg;base64,/9j/4AAQSkZJRgABA…",
+            "hashDoc": "d1da3e6695f6",
+            "hashEvento": "d1da3e6695f6",
+            "estado": "alterada"
+          },
+          "entregaPublica": {
+            "cantidadEntregada": 50,
+            "cliente": "PRUEBA-Restaurante Integridad",
+            "vigente": "N.º 1",
+            "versionesIndice": 1,
+            "bloquesLeidos": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "3",
+      "nombre": "Cambiar datos y hash de la foto a la vez (sin tocar el evento de la orden)",
+      "resultado": "detectado y avisado",
+      "senales": {
+        "automaticas": [
+          "Fotos de la orden: Posible alteración detectada: la imagen no coincide con la registrada en la entrega; la huella guardada junto a la imagen no es la de la entrega."
+        ],
+        "manuales": [
+          "Botón \"Verificar foto\" (anterior): \"La foto no coincide con el hash registrado.\""
+        ],
+        "datos": {
+          "qrAntiguoSinSello": "sin aviso",
+          "lote": {
+            "estanque": "E1",
+            "fechaSiembra": "2026-08-01",
+            "fechaCierre": "2026-11-16",
+            "producto": "Tilapia roja entera fresca",
+            "cantidadSembrada": 1000,
+            "supervivencia": 98,
+            "pesoPromedioActualG": 480,
+            "biomasaEstimadaKg": 38.4,
+            "fases": 6,
+            "alimentoFase2": 120,
+            "anotacionesValidas": 1,
+            "qrAntiguoSinSello": "sin aviso"
+          },
+          "foto": {
+            "mostrada": "data:image/jpeg;base64,/9j/4AAQSkZJRgABA…",
+            "hashDoc": "a46d5db29343",
+            "hashEvento": "d1da3e6695f6",
+            "estado": "alterada"
+          },
+          "entregaPublica": {
+            "cantidadEntregada": 50,
+            "cliente": "PRUEBA-Restaurante Integridad",
+            "vigente": "N.º 1",
+            "versionesIndice": 1,
+            "bloquesLeidos": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "3b",
+      "nombre": "Cambiar datos y hash de la foto y también el hash en el evento \"Entrega\" de la orden",
+      "resultado": "detectado y avisado",
+      "senales": {
+        "automaticas": [
+          "Fotos de la orden: Posible alteración detectada: el comprobante emitido registra otra foto.",
+          "Panel interno de la orden, comprobante N.º 1: Verificación fallida: los eventos de la orden no coinciden con los usados; las entregas o sus fotos no coinciden con la orden."
+        ],
+        "manuales": [],
+        "datos": {
+          "qrAntiguoSinSello": "sin aviso",
+          "lote": {
+            "estanque": "E1",
+            "fechaSiembra": "2026-08-01",
+            "fechaCierre": "2026-11-16",
+            "producto": "Tilapia roja entera fresca",
+            "cantidadSembrada": 1000,
+            "supervivencia": 98,
+            "pesoPromedioActualG": 480,
+            "biomasaEstimadaKg": 38.4,
+            "fases": 6,
+            "alimentoFase2": 120,
+            "anotacionesValidas": 1,
+            "qrAntiguoSinSello": "sin aviso"
+          },
+          "foto": {
+            "mostrada": "data:image/jpeg;base64,/9j/4AAQSkZJRgABA…",
+            "hashDoc": "a46d5db29343",
+            "hashEvento": "a46d5db29343",
+            "estado": "alterada"
+          },
+          "entregaPublica": {
+            "cantidadEntregada": 50,
+            "cliente": "PRUEBA-Restaurante Integridad",
+            "vigente": "N.º 1",
+            "versionesIndice": 1,
+            "bloquesLeidos": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "4",
+      "nombre": "Alterar un dato de una fase intermedia (Alimentación: 120 kg -> 80 kg)",
+      "resultado": "detectado y avisado",
+      "senales": {
+        "automaticas": [
+          "QR lote y detalle: Fase #2 (Alimentación) alterada. Dato(s) modificado(s): Alimento (kg). | Alimento acumulado (kg): el dato guardado (120) no corresponde a las fases registradas (80). | FCA: el dato guardado (0.26) no corresponde a las fases registradas (0.17)."
+        ],
+        "manuales": [
+          "Botón \"Verificar integridad\" / IntegrityCheckModal: Alteración detectada en la fase #2 (Alimentación): sus datos fueron modificados después del registro."
+        ],
+        "datos": {
+          "qrAntiguoSinSello": "avisado",
+          "lote": {
+            "estanque": "E1",
+            "fechaSiembra": "2026-08-01",
+            "fechaCierre": "2026-11-16",
+            "producto": "Tilapia roja entera fresca",
+            "cantidadSembrada": 1000,
+            "supervivencia": 98,
+            "pesoPromedioActualG": 480,
+            "biomasaEstimadaKg": 38.4,
+            "fases": 6,
+            "alimentoFase2": 80,
+            "anotacionesValidas": 1,
+            "qrAntiguoSinSello": "avisado"
+          },
+          "foto": {
+            "mostrada": "data:image/jpeg;base64,/9j/4AAQSkZJRgABA…",
+            "hashDoc": "d1da3e6695f6",
+            "hashEvento": "d1da3e6695f6",
+            "estado": "verificada"
+          },
+          "entregaPublica": {
+            "cantidadEntregada": 50,
+            "cliente": "PRUEBA-Restaurante Integridad",
+            "vigente": "N.º 1",
+            "versionesIndice": 1,
+            "bloquesLeidos": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "5",
+      "nombre": "Alterar el hash guardado de un evento intermedio (fase #2)",
+      "resultado": "detectado y avisado",
+      "senales": {
+        "automaticas": [
+          "QR lote y detalle: Fase #2 (Alimentación) alterada: sus datos cambiaron después del registro (quien la cambió también modificó el rastro). | Fase #3 (Muestreo de crecimiento (biometría)): no enlaza con la fase anterior (la cadena se rompió aquí)."
+        ],
+        "manuales": [
+          "Botón \"Verificar integridad\" / IntegrityCheckModal: Alteración detectada en la fase #2 (Alimentación): sus datos fueron modificados después del registro."
+        ],
+        "datos": {
+          "qrAntiguoSinSello": "avisado",
+          "lote": {
+            "estanque": "E1",
+            "fechaSiembra": "2026-08-01",
+            "fechaCierre": "2026-11-16",
+            "producto": "Tilapia roja entera fresca",
+            "cantidadSembrada": 1000,
+            "supervivencia": 98,
+            "pesoPromedioActualG": 480,
+            "biomasaEstimadaKg": 38.4,
+            "fases": 6,
+            "alimentoFase2": 120,
+            "anotacionesValidas": 1,
+            "qrAntiguoSinSello": "avisado"
+          },
+          "foto": {
+            "mostrada": "data:image/jpeg;base64,/9j/4AAQSkZJRgABA…",
+            "hashDoc": "d1da3e6695f6",
+            "hashEvento": "d1da3e6695f6",
+            "estado": "verificada"
+          },
+          "entregaPublica": {
+            "cantidadEntregada": 50,
+            "cliente": "PRUEBA-Restaurante Integridad",
+            "vigente": "N.º 1",
+            "versionesIndice": 1,
+            "bloquesLeidos": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "6",
+      "nombre": "Alterar la fase #2 y recalcular toda la cadena, huellas y resumen.hashFinal",
+      "resultado": "detectado y avisado",
+      "senales": {
+        "automaticas": [
+          "QR lote y detalle: Alimento acumulado (kg): el dato guardado (120) no corresponde a las fases registradas (80). | FCA: el dato guardado (0.26) no corresponde a las fases registradas (0.17). | El sello del lote cambió después de registrar sus anotaciones: el registro sellado fue modificado.",
+          "QR lote, sección anotaciones: El sello del lote cambió después de anotar: las anotaciones ya no corresponden a este registro sellado."
+        ],
+        "manuales": [],
+        "datos": {
+          "qrAntiguoSinSello": "avisado",
+          "lote": {
+            "estanque": "E1",
+            "fechaSiembra": "2026-08-01",
+            "fechaCierre": "2026-11-16",
+            "producto": "Tilapia roja entera fresca",
+            "cantidadSembrada": 1000,
+            "supervivencia": 98,
+            "pesoPromedioActualG": 480,
+            "biomasaEstimadaKg": 38.4,
+            "fases": 6,
+            "alimentoFase2": 80,
+            "anotacionesValidas": 0,
+            "qrAntiguoSinSello": "avisado"
+          },
+          "foto": {
+            "mostrada": "data:image/jpeg;base64,/9j/4AAQSkZJRgABA…",
+            "hashDoc": "d1da3e6695f6",
+            "hashEvento": "d1da3e6695f6",
+            "estado": "verificada"
+          },
+          "entregaPublica": {
+            "cantidadEntregada": 50,
+            "cliente": "PRUEBA-Restaurante Integridad",
+            "vigente": "N.º 1",
+            "versionesIndice": 1,
+            "bloquesLeidos": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "6b",
+      "nombre": "Igual que 6 y además recalcular la cadena de anotaciones (nueva ancla)",
+      "resultado": "detectado y avisado",
+      "senales": {
+        "automaticas": [
+          "QR lote y detalle: Alimento acumulado (kg): el dato guardado (120) no corresponde a las fases registradas (80). | FCA: el dato guardado (0.26) no corresponde a las fases registradas (0.17)."
+        ],
+        "manuales": [],
+        "datos": {
+          "qrAntiguoSinSello": "avisado",
+          "lote": {
+            "estanque": "E1",
+            "fechaSiembra": "2026-08-01",
+            "fechaCierre": "2026-11-16",
+            "producto": "Tilapia roja entera fresca",
+            "cantidadSembrada": 1000,
+            "supervivencia": 98,
+            "pesoPromedioActualG": 480,
+            "biomasaEstimadaKg": 38.4,
+            "fases": 6,
+            "alimentoFase2": 80,
+            "anotacionesValidas": 1,
+            "qrAntiguoSinSello": "avisado"
+          },
+          "foto": {
+            "mostrada": "data:image/jpeg;base64,/9j/4AAQSkZJRgABA…",
+            "hashDoc": "d1da3e6695f6",
+            "hashEvento": "d1da3e6695f6",
+            "estado": "verificada"
+          },
+          "entregaPublica": {
+            "cantidadEntregada": 50,
+            "cliente": "PRUEBA-Restaurante Integridad",
+            "vigente": "N.º 1",
+            "versionesIndice": 1,
+            "bloquesLeidos": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "6c",
+      "nombre": "Igual que 6 y borrar el documento de anotaciones",
+      "resultado": "detectado y avisado",
+      "senales": {
+        "automaticas": [
+          "QR lote y detalle: Alimento acumulado (kg): el dato guardado (120) no corresponde a las fases registradas (80). | FCA: el dato guardado (0.26) no corresponde a las fases registradas (0.17)."
+        ],
+        "manuales": [],
+        "datos": {
+          "qrAntiguoSinSello": "avisado",
+          "lote": {
+            "estanque": "E1",
+            "fechaSiembra": "2026-08-01",
+            "fechaCierre": "2026-11-16",
+            "producto": "Tilapia roja entera fresca",
+            "cantidadSembrada": 1000,
+            "supervivencia": 98,
+            "pesoPromedioActualG": 480,
+            "biomasaEstimadaKg": 38.4,
+            "fases": 6,
+            "alimentoFase2": 80,
+            "anotacionesValidas": 0,
+            "qrAntiguoSinSello": "avisado"
+          },
+          "foto": {
+            "mostrada": "data:image/jpeg;base64,/9j/4AAQSkZJRgABA…",
+            "hashDoc": "d1da3e6695f6",
+            "hashEvento": "d1da3e6695f6",
+            "estado": "verificada"
+          },
+          "entregaPublica": {
+            "cantidadEntregada": 50,
+            "cliente": "PRUEBA-Restaurante Integridad",
+            "vigente": "N.º 1",
+            "versionesIndice": 1,
+            "bloquesLeidos": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "6d",
+      "nombre": "Igual que 6b y además recalcular el resumen guardado (reescritura completa)",
+      "resultado": "detectado y avisado",
+      "senales": {
+        "automaticas": [
+          "Solo QR con sello impreso: El sello impreso en el código QR (a465185e06040d82) no coincide con el sello actual del lote: el registro cambió después de imprimir la etiqueta."
+        ],
+        "manuales": [],
+        "datos": {
+          "qrAntiguoSinSello": "sin aviso",
+          "lote": {
+            "estanque": "E1",
+            "fechaSiembra": "2026-08-01",
+            "fechaCierre": "2026-11-16",
+            "producto": "Tilapia roja entera fresca",
+            "cantidadSembrada": 1000,
+            "supervivencia": 98,
+            "pesoPromedioActualG": 480,
+            "biomasaEstimadaKg": 38.4,
+            "fases": 6,
+            "alimentoFase2": 80,
+            "anotacionesValidas": 1,
+            "qrAntiguoSinSello": "sin aviso"
+          },
+          "foto": {
+            "mostrada": "data:image/jpeg;base64,/9j/4AAQSkZJRgABA…",
+            "hashDoc": "d1da3e6695f6",
+            "hashEvento": "d1da3e6695f6",
+            "estado": "verificada"
+          },
+          "entregaPublica": {
+            "cantidadEntregada": 50,
+            "cliente": "PRUEBA-Restaurante Integridad",
+            "vigente": "N.º 1",
+            "versionesIndice": 1,
+            "bloquesLeidos": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "7",
+      "nombre": "Editar la cabecera del lote mostrada al público (estanque, siembra, producto, peces, supervivencia, peso, biomasa)",
+      "resultado": "detectado y avisado",
+      "senales": {
+        "automaticas": [
+          "QR lote y detalle: Estanque: el dato guardado (E9) no corresponde a las fases registradas (E1). | Fecha de siembra: el dato guardado (2026-01-01) no corresponde a las fases registradas (2026-08-01). | Peces sembrados: el dato guardado (5000) no corresponde a las fases registradas (1000). | Producto: el dato guardado (Tilapia roja orgánica certificada) no corresponde a las fases registradas (Tilapia roja entera fresca, limpia (escamada y eviscerada), calibre 450 a 500 g). | Peces vivos: el dato guardado (4995) no corresponde a las fases registradas (80). | Supervivencia (%): el dato guardado (99.9) no corresponde a las fases registradas (98). | Peso promedio (g): el dato guardado (900) no corresponde a las fases registradas (480). | Biomasa estimada (kg): el dato guardado (4500) no corresponde a las fases registradas (38.4)."
+        ],
+        "manuales": [],
+        "datos": {
+          "qrAntiguoSinSello": "avisado",
+          "lote": {
+            "estanque": "E1",
+            "fechaSiembra": "2026-08-01",
+            "fechaCierre": "2026-11-16",
+            "producto": "Tilapia roja entera fresca",
+            "cantidadSembrada": 1000,
+            "supervivencia": 98,
+            "pesoPromedioActualG": 480,
+            "biomasaEstimadaKg": 38.4,
+            "fases": 6,
+            "alimentoFase2": 120,
+            "anotacionesValidas": 1,
+            "qrAntiguoSinSello": "avisado"
+          },
+          "foto": {
+            "mostrada": "data:image/jpeg;base64,/9j/4AAQSkZJRgABA…",
+            "hashDoc": "d1da3e6695f6",
+            "hashEvento": "d1da3e6695f6",
+            "estado": "verificada"
+          },
+          "entregaPublica": {
+            "cantidadEntregada": 50,
+            "cliente": "PRUEBA-Restaurante Integridad",
+            "vigente": "N.º 1",
+            "versionesIndice": 1,
+            "bloquesLeidos": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "8",
+      "nombre": "Borrar el último evento (Cosecha) sin tocar el sello",
+      "resultado": "detectado y avisado",
+      "senales": {
+        "automaticas": [
+          "QR lote y detalle: El sello de cierre guardado no coincide con la última fase registrada: se borró o se cambió una fase. | Peces cosechados: el dato guardado (900) no corresponde a las fases registradas (0). | Peces vivos: el dato guardado (80) no corresponde a las fases registradas (980). | Peso promedio (g): el dato guardado (480) no corresponde a las fases registradas (350). | Biomasa estimada (kg): el dato guardado (38.4) no corresponde a las fases registradas (343). | Biomasa cosechada (kg): el dato guardado (432) no corresponde a las fases registradas (0). | FCA: el dato guardado (0.26) no corresponde a las fases registradas (0.36). | Ganancia diaria (g): el dato guardado (4.44) no corresponde a las fases registradas (3.22). | El sello del lote cambió después de registrar sus anotaciones: el registro sellado fue modificado.",
+          "QR lote, sección anotaciones: El sello del lote cambió después de anotar: las anotaciones ya no corresponden a este registro sellado."
+        ],
+        "manuales": [
+          "Botón \"Verificar integridad\" / IntegrityCheckModal: El sello de cierre registrado (a465185e0604…) no coincide con el último hash de la cadena (b00b97df7842…): se borró o se cambió una fase."
+        ],
+        "datos": {
+          "qrAntiguoSinSello": "avisado",
+          "lote": {
+            "estanque": "E1",
+            "fechaSiembra": "2026-08-01",
+            "fechaCierre": "2026-11-16",
+            "producto": "Tilapia roja entera fresca",
+            "cantidadSembrada": 1000,
+            "supervivencia": 98,
+            "pesoPromedioActualG": 350,
+            "biomasaEstimadaKg": 343,
+            "fases": 5,
+            "alimentoFase2": 120,
+            "anotacionesValidas": 0,
+            "qrAntiguoSinSello": "avisado"
+          },
+          "foto": {
+            "mostrada": "data:image/jpeg;base64,/9j/4AAQSkZJRgABA…",
+            "hashDoc": "d1da3e6695f6",
+            "hashEvento": "d1da3e6695f6",
+            "estado": "verificada"
+          },
+          "entregaPublica": {
+            "cantidadEntregada": 50,
+            "cliente": "PRUEBA-Restaurante Integridad",
+            "vigente": "N.º 1",
+            "versionesIndice": 1,
+            "bloquesLeidos": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "8b",
+      "nombre": "Borrar el último evento y actualizar resumen.hashFinal",
+      "resultado": "detectado y avisado",
+      "senales": {
+        "automaticas": [
+          "QR lote y detalle: Peces cosechados: el dato guardado (900) no corresponde a las fases registradas (0). | Peces vivos: el dato guardado (80) no corresponde a las fases registradas (980). | Peso promedio (g): el dato guardado (480) no corresponde a las fases registradas (350). | Biomasa estimada (kg): el dato guardado (38.4) no corresponde a las fases registradas (343). | Biomasa cosechada (kg): el dato guardado (432) no corresponde a las fases registradas (0). | FCA: el dato guardado (0.26) no corresponde a las fases registradas (0.36). | Ganancia diaria (g): el dato guardado (4.44) no corresponde a las fases registradas (3.22). | El sello del lote cambió después de registrar sus anotaciones: el registro sellado fue modificado.",
+          "QR lote, sección anotaciones: El sello del lote cambió después de anotar: las anotaciones ya no corresponden a este registro sellado."
+        ],
+        "manuales": [],
+        "datos": {
+          "qrAntiguoSinSello": "avisado",
+          "lote": {
+            "estanque": "E1",
+            "fechaSiembra": "2026-08-01",
+            "fechaCierre": "2026-11-16",
+            "producto": "Tilapia roja entera fresca",
+            "cantidadSembrada": 1000,
+            "supervivencia": 98,
+            "pesoPromedioActualG": 350,
+            "biomasaEstimadaKg": 343,
+            "fases": 5,
+            "alimentoFase2": 120,
+            "anotacionesValidas": 0,
+            "qrAntiguoSinSello": "avisado"
+          },
+          "foto": {
+            "mostrada": "data:image/jpeg;base64,/9j/4AAQSkZJRgABA…",
+            "hashDoc": "d1da3e6695f6",
+            "hashEvento": "d1da3e6695f6",
+            "estado": "verificada"
+          },
+          "entregaPublica": {
+            "cantidadEntregada": 50,
+            "cliente": "PRUEBA-Restaurante Integridad",
+            "vigente": "N.º 1",
+            "versionesIndice": 1,
+            "bloquesLeidos": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "8c",
+      "nombre": "Borrar el último evento, actualizar hashFinal y recalcular las anotaciones",
+      "resultado": "detectado y avisado",
+      "senales": {
+        "automaticas": [
+          "QR lote y detalle: Peces cosechados: el dato guardado (900) no corresponde a las fases registradas (0). | Peces vivos: el dato guardado (80) no corresponde a las fases registradas (980). | Peso promedio (g): el dato guardado (480) no corresponde a las fases registradas (350). | Biomasa estimada (kg): el dato guardado (38.4) no corresponde a las fases registradas (343). | Biomasa cosechada (kg): el dato guardado (432) no corresponde a las fases registradas (0). | FCA: el dato guardado (0.26) no corresponde a las fases registradas (0.36). | Ganancia diaria (g): el dato guardado (4.44) no corresponde a las fases registradas (3.22)."
+        ],
+        "manuales": [],
+        "datos": {
+          "qrAntiguoSinSello": "avisado",
+          "lote": {
+            "estanque": "E1",
+            "fechaSiembra": "2026-08-01",
+            "fechaCierre": "2026-11-16",
+            "producto": "Tilapia roja entera fresca",
+            "cantidadSembrada": 1000,
+            "supervivencia": 98,
+            "pesoPromedioActualG": 350,
+            "biomasaEstimadaKg": 343,
+            "fases": 5,
+            "alimentoFase2": 120,
+            "anotacionesValidas": 1,
+            "qrAntiguoSinSello": "avisado"
+          },
+          "foto": {
+            "mostrada": "data:image/jpeg;base64,/9j/4AAQSkZJRgABA…",
+            "hashDoc": "d1da3e6695f6",
+            "hashEvento": "d1da3e6695f6",
+            "estado": "verificada"
+          },
+          "entregaPublica": {
+            "cantidadEntregada": 50,
+            "cliente": "PRUEBA-Restaurante Integridad",
+            "vigente": "N.º 1",
+            "versionesIndice": 1,
+            "bloquesLeidos": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "8d",
+      "nombre": "Igual que 8c y además recalcular el resumen guardado (reescritura completa)",
+      "resultado": "detectado y avisado",
+      "senales": {
+        "automaticas": [
+          "Solo QR con sello impreso: El sello impreso en el código QR (a465185e06040d82) no coincide con el sello actual del lote: el registro cambió después de imprimir la etiqueta."
+        ],
+        "manuales": [],
+        "datos": {
+          "qrAntiguoSinSello": "sin aviso",
+          "lote": {
+            "estanque": "E1",
+            "fechaSiembra": "2026-08-01",
+            "fechaCierre": "2026-11-16",
+            "producto": "Tilapia roja entera fresca",
+            "cantidadSembrada": 1000,
+            "supervivencia": 98,
+            "pesoPromedioActualG": 350,
+            "biomasaEstimadaKg": 343,
+            "fases": 5,
+            "alimentoFase2": 120,
+            "anotacionesValidas": 1,
+            "qrAntiguoSinSello": "sin aviso"
+          },
+          "foto": {
+            "mostrada": "data:image/jpeg;base64,/9j/4AAQSkZJRgABA…",
+            "hashDoc": "d1da3e6695f6",
+            "hashEvento": "d1da3e6695f6",
+            "estado": "verificada"
+          },
+          "entregaPublica": {
+            "cantidadEntregada": 50,
+            "cliente": "PRUEBA-Restaurante Integridad",
+            "vigente": "N.º 1",
+            "versionesIndice": 1,
+            "bloquesLeidos": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "9a",
+      "nombre": "Alterar la cantidad entregada del comprobante (sin recalcular)",
+      "resultado": "detectado y avisado",
+      "senales": {
+        "automaticas": [
+          "QR entrega: Registro N.º 1: Verificación fallida: el contenido no corresponde a su hash.",
+          "Panel interno de la orden, comprobante N.º 1: Verificación fallida: el contenido no corresponde a su hash."
+        ],
+        "manuales": [],
+        "datos": {
+          "qrAntiguoSinSello": "sin aviso",
+          "lote": {
+            "estanque": "E1",
+            "fechaSiembra": "2026-08-01",
+            "fechaCierre": "2026-11-16",
+            "producto": "Tilapia roja entera fresca",
+            "cantidadSembrada": 1000,
+            "supervivencia": 98,
+            "pesoPromedioActualG": 480,
+            "biomasaEstimadaKg": 38.4,
+            "fases": 6,
+            "alimentoFase2": 120,
+            "anotacionesValidas": 1,
+            "qrAntiguoSinSello": "sin aviso"
+          },
+          "foto": {
+            "mostrada": "data:image/jpeg;base64,/9j/4AAQSkZJRgABA…",
+            "hashDoc": "d1da3e6695f6",
+            "hashEvento": "d1da3e6695f6",
+            "estado": "verificada"
+          },
+          "entregaPublica": {
+            "cantidadEntregada": 80,
+            "cliente": "PRUEBA-Restaurante Integridad",
+            "vigente": "ninguno (la cadena tiene problemas)",
+            "versionesIndice": 1,
+            "bloquesLeidos": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "9b",
+      "nombre": "Alterar el comprobante y recalcular su hashComprobante",
+      "resultado": "detectado y avisado",
+      "senales": {
+        "automaticas": [
+          "QR entrega: Registro N.º 1: Verificación fallida: el índice de consulta registra otro hash.",
+          "Panel interno de la orden, comprobante N.º 1: Verificación fallida: la orden registró otro hash al emitirlo."
+        ],
+        "manuales": [],
+        "datos": {
+          "qrAntiguoSinSello": "sin aviso",
+          "lote": {
+            "estanque": "E1",
+            "fechaSiembra": "2026-08-01",
+            "fechaCierre": "2026-11-16",
+            "producto": "Tilapia roja entera fresca",
+            "cantidadSembrada": 1000,
+            "supervivencia": 98,
+            "pesoPromedioActualG": 480,
+            "biomasaEstimadaKg": 38.4,
+            "fases": 6,
+            "alimentoFase2": 120,
+            "anotacionesValidas": 1,
+            "qrAntiguoSinSello": "sin aviso"
+          },
+          "foto": {
+            "mostrada": "data:image/jpeg;base64,/9j/4AAQSkZJRgABA…",
+            "hashDoc": "d1da3e6695f6",
+            "hashEvento": "d1da3e6695f6",
+            "estado": "verificada"
+          },
+          "entregaPublica": {
+            "cantidadEntregada": 80,
+            "cliente": "PRUEBA-Restaurante Integridad",
+            "vigente": "ninguno (la cadena tiene problemas)",
+            "versionesIndice": 1,
+            "bloquesLeidos": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "9c",
+      "nombre": "Alterar el comprobante, recalcular su hash y actualizar consultasEntrega",
+      "resultado": "detectado y avisado",
+      "senales": {
+        "automaticas": [
+          "Panel interno de la orden, comprobante N.º 1: Verificación fallida: la orden registró otro hash al emitirlo; el cliente no coincide con la orden."
+        ],
+        "manuales": [],
+        "datos": {
+          "qrAntiguoSinSello": "sin aviso",
+          "lote": {
+            "estanque": "E1",
+            "fechaSiembra": "2026-08-01",
+            "fechaCierre": "2026-11-16",
+            "producto": "Tilapia roja entera fresca",
+            "cantidadSembrada": 1000,
+            "supervivencia": 98,
+            "pesoPromedioActualG": 480,
+            "biomasaEstimadaKg": 38.4,
+            "fases": 6,
+            "alimentoFase2": 120,
+            "anotacionesValidas": 1,
+            "qrAntiguoSinSello": "sin aviso"
+          },
+          "foto": {
+            "mostrada": "data:image/jpeg;base64,/9j/4AAQSkZJRgABA…",
+            "hashDoc": "d1da3e6695f6",
+            "hashEvento": "d1da3e6695f6",
+            "estado": "verificada"
+          },
+          "entregaPublica": {
+            "cantidadEntregada": 80,
+            "cliente": "PRUEBA-Otro cliente",
+            "vigente": "N.º 1",
+            "versionesIndice": 1,
+            "bloquesLeidos": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "9d",
+      "nombre": "Alterar solo el hash del índice consultasEntrega",
+      "resultado": "detectado y avisado",
+      "senales": {
+        "automaticas": [
+          "QR entrega: Registro N.º 1: Verificación fallida: el índice de consulta registra otro hash."
+        ],
+        "manuales": [],
+        "datos": {
+          "qrAntiguoSinSello": "sin aviso",
+          "lote": {
+            "estanque": "E1",
+            "fechaSiembra": "2026-08-01",
+            "fechaCierre": "2026-11-16",
+            "producto": "Tilapia roja entera fresca",
+            "cantidadSembrada": 1000,
+            "supervivencia": 98,
+            "pesoPromedioActualG": 480,
+            "biomasaEstimadaKg": 38.4,
+            "fases": 6,
+            "alimentoFase2": 120,
+            "anotacionesValidas": 1,
+            "qrAntiguoSinSello": "sin aviso"
+          },
+          "foto": {
+            "mostrada": "data:image/jpeg;base64,/9j/4AAQSkZJRgABA…",
+            "hashDoc": "d1da3e6695f6",
+            "hashEvento": "d1da3e6695f6",
+            "estado": "verificada"
+          },
+          "entregaPublica": {
+            "cantidadEntregada": 50,
+            "cliente": "PRUEBA-Restaurante Integridad",
+            "vigente": "ninguno (la cadena tiene problemas)",
+            "versionesIndice": 1,
+            "bloquesLeidos": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "9e",
+      "nombre": "Borrar el comprobante (el índice sigue apuntándolo)",
+      "resultado": "detectado y avisado",
+      "senales": {
+        "automaticas": [
+          "QR entrega: \"Falta el comprobante registrado\" (Falta el registro N.º 1 de la cadena: el comprobante registrado fue borrado.)",
+          "Panel interno de la orden: \"Cadena incompleta: el historial registra 1, existen 0\""
+        ],
+        "manuales": [],
+        "datos": {
+          "qrAntiguoSinSello": "sin aviso",
+          "lote": {
+            "estanque": "E1",
+            "fechaSiembra": "2026-08-01",
+            "fechaCierre": "2026-11-16",
+            "producto": "Tilapia roja entera fresca",
+            "cantidadSembrada": 1000,
+            "supervivencia": 98,
+            "pesoPromedioActualG": 480,
+            "biomasaEstimadaKg": 38.4,
+            "fases": 6,
+            "alimentoFase2": 120,
+            "anotacionesValidas": 1,
+            "qrAntiguoSinSello": "sin aviso"
+          },
+          "foto": {
+            "mostrada": "data:image/jpeg;base64,/9j/4AAQSkZJRgABA…",
+            "hashDoc": "d1da3e6695f6",
+            "hashEvento": "d1da3e6695f6",
+            "estado": "verificada"
+          },
+          "entregaPublica": null
+        }
+      }
+    },
+    {
+      "id": "10",
+      "nombre": "Borrar la foto de entrega antes de su vencimiento",
+      "resultado": "detectado y avisado",
+      "senales": {
+        "automaticas": [
+          "Fotos de la orden: La foto se borró antes de su vencimiento: la entrega tiene 0 día(s) y la imagen debía conservarse 15."
+        ],
+        "manuales": [],
+        "datos": {
+          "qrAntiguoSinSello": "sin aviso",
+          "lote": {
+            "estanque": "E1",
+            "fechaSiembra": "2026-08-01",
+            "fechaCierre": "2026-11-16",
+            "producto": "Tilapia roja entera fresca",
+            "cantidadSembrada": 1000,
+            "supervivencia": 98,
+            "pesoPromedioActualG": 480,
+            "biomasaEstimadaKg": 38.4,
+            "fases": 6,
+            "alimentoFase2": 120,
+            "anotacionesValidas": 1,
+            "qrAntiguoSinSello": "sin aviso"
+          },
+          "foto": {
+            "mostrada": "La foto se borró antes de su vencimiento: la entrega tiene 0 día(s) y la imagen debía conservarse 15.",
+            "estado": "borrada"
+          },
+          "entregaPublica": {
+            "cantidadEntregada": 50,
+            "cliente": "PRUEBA-Restaurante Integridad",
+            "vigente": "N.º 1",
+            "versionesIndice": 1,
+            "bloquesLeidos": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "A1-b",
+      "nombre": "Vaciar los eventos del lote cerrado y dejar resumen.hashFinal vacío",
+      "resultado": "detectado y avisado",
+      "senales": {
+        "automaticas": [
+          "QR lote y detalle: El lote está sellado pero no tiene fases registradas: su historial fue vaciado. | El lote está sellado pero su sello de cierre está vacío. | El sello del lote cambió después de registrar sus anotaciones: el registro sellado fue modificado.",
+          "QR lote, sección anotaciones: El sello del lote cambió después de anotar: las anotaciones ya no corresponden a este registro sellado."
+        ],
+        "manuales": [
+          "Botón \"Verificar integridad\" / IntegrityCheckModal: El lote está sellado pero no tiene fases registradas: su historial fue vaciado. El lote está sellado pero su sello de cierre está vacío."
+        ],
+        "datos": {
+          "qrAntiguoSinSello": "avisado",
+          "lote": {
+            "estanque": "E1",
+            "fechaSiembra": "2026-08-01",
+            "fechaCierre": "2026-11-16",
+            "producto": "Tilapia roja entera fresca",
+            "cantidadSembrada": 1000,
+            "supervivencia": 100,
+            "pesoPromedioActualG": 5,
+            "biomasaEstimadaKg": 5,
+            "fases": 0,
+            "anotacionesValidas": 0,
+            "qrAntiguoSinSello": "avisado"
+          },
+          "foto": {
+            "mostrada": "data:image/jpeg;base64,/9j/4AAQSkZJRgABA…",
+            "hashDoc": "d1da3e6695f6",
+            "hashEvento": "d1da3e6695f6",
+            "estado": "verificada"
+          },
+          "entregaPublica": {
+            "cantidadEntregada": 50,
+            "cliente": "PRUEBA-Restaurante Integridad",
+            "vigente": "N.º 1",
+            "versionesIndice": 1,
+            "bloquesLeidos": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "A1-b2",
+      "nombre": "Dejar vacío solo resumen.hashFinal del lote cerrado",
+      "resultado": "detectado y avisado",
+      "senales": {
+        "automaticas": [
+          "QR lote y detalle: El lote está sellado pero su sello de cierre está vacío."
+        ],
+        "manuales": [
+          "Botón \"Verificar integridad\" / IntegrityCheckModal: El lote está sellado pero su sello de cierre está vacío."
+        ],
+        "datos": {
+          "qrAntiguoSinSello": "avisado",
+          "lote": {
+            "estanque": "E1",
+            "fechaSiembra": "2026-08-01",
+            "fechaCierre": "2026-11-16",
+            "producto": "Tilapia roja entera fresca",
+            "cantidadSembrada": 1000,
+            "supervivencia": 98,
+            "pesoPromedioActualG": 480,
+            "biomasaEstimadaKg": 38.4,
+            "fases": 6,
+            "alimentoFase2": 120,
+            "anotacionesValidas": 1,
+            "qrAntiguoSinSello": "avisado"
+          },
+          "foto": {
+            "mostrada": "data:image/jpeg;base64,/9j/4AAQSkZJRgABA…",
+            "hashDoc": "d1da3e6695f6",
+            "hashEvento": "d1da3e6695f6",
+            "estado": "verificada"
+          },
+          "entregaPublica": {
+            "cantidadEntregada": 50,
+            "cliente": "PRUEBA-Restaurante Integridad",
+            "vigente": "N.º 1",
+            "versionesIndice": 1,
+            "bloquesLeidos": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "A1-c",
+      "nombre": "Cambiar estanque y peces sembrados en la cabecera sin evento de corrección",
+      "resultado": "detectado y avisado",
+      "senales": {
+        "automaticas": [
+          "QR lote y detalle: Estanque: el dato guardado (E7) no corresponde a las fases registradas (E1). | Peces sembrados: el dato guardado (1200) no corresponde a las fases registradas (1000)."
+        ],
+        "manuales": [],
+        "datos": {
+          "qrAntiguoSinSello": "avisado",
+          "lote": {
+            "estanque": "E1",
+            "fechaSiembra": "2026-08-01",
+            "fechaCierre": "2026-11-16",
+            "producto": "Tilapia roja entera fresca",
+            "cantidadSembrada": 1000,
+            "supervivencia": 98,
+            "pesoPromedioActualG": 480,
+            "biomasaEstimadaKg": 38.4,
+            "fases": 6,
+            "alimentoFase2": 120,
+            "anotacionesValidas": 1,
+            "qrAntiguoSinSello": "avisado"
+          },
+          "foto": {
+            "mostrada": "data:image/jpeg;base64,/9j/4AAQSkZJRgABA…",
+            "hashDoc": "d1da3e6695f6",
+            "hashEvento": "d1da3e6695f6",
+            "estado": "verificada"
+          },
+          "entregaPublica": {
+            "cantidadEntregada": 50,
+            "cliente": "PRUEBA-Restaurante Integridad",
+            "vigente": "N.º 1",
+            "versionesIndice": 1,
+            "bloquesLeidos": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "A1-h",
+      "nombre": "Quitar la última resolución de una anotación (el índice \"resueltas\" la sigue declarando)",
+      "resultado": "detectado y avisado",
+      "senales": {
+        "automaticas": [
+          "QR lote, sección anotaciones: La anotación N.º 1 figura como aprobada, pero falta el registro de esa decisión: se borró."
+        ],
+        "manuales": [],
+        "datos": {
+          "qrAntiguoSinSello": "sin aviso",
+          "lote": {
+            "estanque": "E1",
+            "fechaSiembra": "2026-08-01",
+            "fechaCierre": "2026-11-16",
+            "producto": "Tilapia roja entera fresca",
+            "cantidadSembrada": 1000,
+            "supervivencia": 98,
+            "pesoPromedioActualG": 480,
+            "biomasaEstimadaKg": 38.4,
+            "fases": 6,
+            "alimentoFase2": 120,
+            "anotacionesValidas": 0,
+            "qrAntiguoSinSello": "sin aviso"
+          },
+          "foto": {
+            "mostrada": "data:image/jpeg;base64,/9j/4AAQSkZJRgABA…",
+            "hashDoc": "d1da3e6695f6",
+            "hashEvento": "d1da3e6695f6",
+            "estado": "verificada"
+          },
+          "entregaPublica": {
+            "cantidadEntregada": 50,
+            "cliente": "PRUEBA-Restaurante Integridad",
+            "vigente": "N.º 1",
+            "versionesIndice": 1,
+            "bloquesLeidos": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "A1-i",
+      "nombre": "Quitar hashAnterior del comprobante y recalcular su hash y el índice",
+      "resultado": "detectado y avisado",
+      "senales": {
+        "automaticas": [
+          "Panel interno de la orden, comprobante N.º 1: Verificación fallida: la orden registró otro hash al emitirlo."
+        ],
+        "manuales": [],
+        "datos": {
+          "qrAntiguoSinSello": "sin aviso",
+          "lote": {
+            "estanque": "E1",
+            "fechaSiembra": "2026-08-01",
+            "fechaCierre": "2026-11-16",
+            "producto": "Tilapia roja entera fresca",
+            "cantidadSembrada": 1000,
+            "supervivencia": 98,
+            "pesoPromedioActualG": 480,
+            "biomasaEstimadaKg": 38.4,
+            "fases": 6,
+            "alimentoFase2": 120,
+            "anotacionesValidas": 1,
+            "qrAntiguoSinSello": "sin aviso"
+          },
+          "foto": {
+            "mostrada": "data:image/jpeg;base64,/9j/4AAQSkZJRgABA…",
+            "hashDoc": "d1da3e6695f6",
+            "hashEvento": "d1da3e6695f6",
+            "estado": "verificada"
+          },
+          "entregaPublica": {
+            "cantidadEntregada": 50,
+            "cliente": "PRUEBA-Restaurante Integridad",
+            "vigente": "N.º 1",
+            "versionesIndice": 1,
+            "bloquesLeidos": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "A1",
+      "nombre": "Alterar el valor correcto de la anotación aprobada",
+      "resultado": "detectado y avisado",
+      "senales": {
+        "automaticas": [
+          "QR lote, sección anotaciones: La anotación N.º 1 (propuesta) fue alterada después de guardarse."
+        ],
+        "manuales": [],
+        "datos": {
+          "qrAntiguoSinSello": "sin aviso",
+          "lote": {
+            "estanque": "E1",
+            "fechaSiembra": "2026-08-01",
+            "fechaCierre": "2026-11-16",
+            "producto": "Tilapia roja entera fresca",
+            "cantidadSembrada": 1000,
+            "supervivencia": 98,
+            "pesoPromedioActualG": 480,
+            "biomasaEstimadaKg": 38.4,
+            "fases": 6,
+            "alimentoFase2": 120,
+            "anotacionesValidas": 0,
+            "qrAntiguoSinSello": "sin aviso"
+          },
+          "foto": {
+            "mostrada": "data:image/jpeg;base64,/9j/4AAQSkZJRgABA…",
+            "hashDoc": "d1da3e6695f6",
+            "hashEvento": "d1da3e6695f6",
+            "estado": "verificada"
+          },
+          "entregaPublica": {
+            "cantidadEntregada": 50,
+            "cliente": "PRUEBA-Restaurante Integridad",
+            "vigente": "N.º 1",
+            "versionesIndice": 1,
+            "bloquesLeidos": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "A2",
+      "nombre": "Alterar la anotación y recalcular la cadena de anotaciones",
+      "resultado": "NO DETECTADO",
+      "senales": {
+        "automaticas": [],
+        "manuales": [],
+        "datos": {
+          "qrAntiguoSinSello": "sin aviso",
+          "lote": {
+            "estanque": "E1",
+            "fechaSiembra": "2026-08-01",
+            "fechaCierre": "2026-11-16",
+            "producto": "Tilapia roja entera fresca",
+            "cantidadSembrada": 1000,
+            "supervivencia": 98,
+            "pesoPromedioActualG": 480,
+            "biomasaEstimadaKg": 38.4,
+            "fases": 6,
+            "alimentoFase2": 120,
+            "anotacionesValidas": 1,
+            "qrAntiguoSinSello": "sin aviso"
+          },
+          "foto": {
+            "mostrada": "data:image/jpeg;base64,/9j/4AAQSkZJRgABA…",
+            "hashDoc": "d1da3e6695f6",
+            "hashEvento": "d1da3e6695f6",
+            "estado": "verificada"
+          },
+          "entregaPublica": {
+            "cantidadEntregada": 50,
+            "cliente": "PRUEBA-Restaurante Integridad",
+            "vigente": "N.º 1",
+            "versionesIndice": 1,
+            "bloquesLeidos": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "9f",
+      "nombre": "Borrar el bloque de anulación de un comprobante anulado",
+      "resultado": "detectado y avisado",
+      "senales": {
+        "automaticas": [
+          "QR entrega: Falta el registro N.º 2 de la cadena: era una anulación y fue borrada. El comprobante que anulaba no tiene validez.",
+          "Panel interno de la orden: \"Cadena incompleta: el historial registra 2, existen 1\""
+        ],
+        "manuales": [],
+        "datos": {
+          "qrAntiguoSinSello": "sin aviso",
+          "lote": {
+            "estanque": "E1",
+            "fechaSiembra": "2026-08-01",
+            "fechaCierre": "2026-11-16",
+            "producto": "Tilapia roja entera fresca",
+            "cantidadSembrada": 1000,
+            "supervivencia": 98,
+            "pesoPromedioActualG": 480,
+            "biomasaEstimadaKg": 38.4,
+            "fases": 6,
+            "alimentoFase2": 120,
+            "anotacionesValidas": 1,
+            "qrAntiguoSinSello": "sin aviso"
+          },
+          "foto": {
+            "mostrada": "data:image/jpeg;base64,/9j/4AAQSkZJRgABA…",
+            "hashDoc": "d1da3e6695f6",
+            "hashEvento": "d1da3e6695f6",
+            "estado": "verificada"
+          },
+          "entregaPublica": {
+            "cantidadEntregada": 50,
+            "cliente": "PRUEBA-Restaurante Integridad",
+            "vigente": "ninguno (la cadena tiene problemas)",
+            "versionesIndice": 2,
+            "bloquesLeidos": 1
+          }
+        }
+      },
+      "antes": {
+        "cantidadEntregada": 50,
+        "cliente": "PRUEBA-Restaurante Integridad",
+        "vigente": "ninguno (todos anulados)",
+        "versionesIndice": 2,
+        "bloquesLeidos": 2
+      }
+    }
+  ],
+  "reglas": [
+    {
+      "quien": "operador-prueba@prueba.co",
+      "intento": "Lote cerrado: alterar dato de la fase #2",
+      "resultado": "bloqueado (permission-denied)"
+    },
+    {
+      "quien": "operador-prueba@prueba.co",
+      "intento": "Lote cerrado: cambiar estanque y peces sembrados",
+      "resultado": "bloqueado (permission-denied)"
+    },
+    {
+      "quien": "operador-prueba@prueba.co",
+      "intento": "Lote cerrado: cambiar resumen.supervivencia",
+      "resultado": "bloqueado (permission-denied)"
+    },
+    {
+      "quien": "operador-prueba@prueba.co",
+      "intento": "Lote cerrado: borrarlo",
+      "resultado": "bloqueado (permission-denied)"
+    },
+    {
+      "quien": "repartidor-prueba@prueba.co",
+      "intento": "Foto: reemplazar datos",
+      "resultado": "bloqueado (permission-denied)"
+    },
+    {
+      "quien": "repartidor-prueba@prueba.co",
+      "intento": "Foto: borrarla",
+      "resultado": "bloqueado (permission-denied)"
+    },
+    {
+      "quien": "vendedor-prueba@prueba.co",
+      "intento": "Foto: reemplazar datos (operador de pedidos)",
+      "resultado": "bloqueado (permission-denied)"
+    },
+    {
+      "quien": "vendedor-prueba@prueba.co",
+      "intento": "Comprobante: alterar cantidad",
+      "resultado": "bloqueado (permission-denied)"
+    },
+    {
+      "quien": "vendedor-prueba@prueba.co",
+      "intento": "Comprobante: borrarlo",
+      "resultado": "bloqueado (permission-denied)"
+    },
+    {
+      "quien": "vendedor-prueba@prueba.co",
+      "intento": "consultasEntrega: cambiar el hash registrado",
+      "resultado": "bloqueado (permission-denied)"
+    },
+    {
+      "quien": "vendedor-prueba@prueba.co",
+      "intento": "consultasEntrega: borrarla",
+      "resultado": "bloqueado (permission-denied)"
+    },
+    {
+      "quien": "vendedor-prueba@prueba.co",
+      "intento": "Orden: cambiar el hash de la foto en el historial",
+      "resultado": "bloqueado (permission-denied)"
+    },
+    {
+      "quien": "repartidor-prueba@prueba.co",
+      "intento": "Orden: cambiar el hash de la foto en el historial (repartidor)",
+      "resultado": "bloqueado (permission-denied)"
+    },
+    {
+      "quien": "anota-a@prueba.co",
+      "intento": "Anotación: alterar el valor correcto",
+      "resultado": "bloqueado (permission-denied)"
+    },
+    {
+      "quien": "anota-a@prueba.co",
+      "intento": "Anotación: borrar el documento",
+      "resultado": "bloqueado (permission-denied)"
+    },
+    {
+      "quien": "anónimo",
+      "intento": "Anónimo: alterar el lote",
+      "resultado": "bloqueado (permission-denied)"
+    },
+    {
+      "quien": "anónimo",
+      "intento": "Anónimo: crear un lote falso",
+      "resultado": "bloqueado (permission-denied)"
+    },
+    {
+      "quien": "intruso@prueba.co",
+      "intento": "Operador sin permisos: crear un lote",
+      "resultado": "error: No tienes permiso para crear el lote."
+    },
+    {
+      "quien": "intruso@prueba.co",
+      "intento": "Operador sin permisos: leer la foto",
+      "resultado": "bloqueado (permission-denied)"
+    },
+    {
+      "quien": "anónimo",
+      "intento": "Anónimo: leer la foto",
+      "resultado": "bloqueado (permission-denied)"
+    },
+    {
+      "quien": "operador-prueba@prueba.co",
+      "intento": "Lote ACTIVO: cambiar resumen (supervivencia 99.9, peso 900 g, biomasa 4500 kg) sin registrar ningún evento",
+      "resultado": "bloqueado (permission-denied)"
+    },
+    {
+      "quien": "operador-prueba@prueba.co",
+      "intento": "Lote ACTIVO: cambiar producto y origen sin evento",
+      "resultado": "bloqueado (permission-denied)"
+    },
+    {
+      "quien": "operador-prueba@prueba.co",
+      "intento": "CIERRE: sellar el lote cambiando a la vez estanque, peces sembrados, producto, origen y fecha de cierre",
+      "resultado": "bloqueado (permission-denied)"
+    },
+    {
+      "quien": "(verificación)",
+      "intento": "Lote 20260801-A-E2 tras el cierre manipulado: estado=activo, estanque=E2, cantidadSembrada=1000, producto=\"Tilapia roja entera fresca, limpia (escamada y eviscerada), calibre 450 a 500 g\", supervivencia=100",
+      "resultado": "verificarIntegridadLote: ÍNTEGRO · analizarCadenaLote: ÍNTEGRO · revisión automática al abrir: sin aviso"
+    }
+  ],
+  "parametros": [
+    {
+      "param": "?lote=NOEXISTE-20991231-Z-E9",
+      "resultado": "\"Lote no disponible\": El lote \"NOEXISTE-20991231-Z-E9\" no se encuentra registrado (texto escapado por React)"
+    },
+    {
+      "param": "?lote=20260801-a-e1",
+      "resultado": "muestra el lote 20260801-A-E1"
+    },
+    {
+      "param": "?lote=%3Cscript%3Ealert(1)%3C%2Fscript%3E",
+      "resultado": "\"Lote no disponible\": El código del lote no es válido (sin consultar el servidor)"
+    },
+    {
+      "param": "?lote=PRUEBA'%20OR%20'1'%3D'1",
+      "resultado": "\"Lote no disponible\": El código del lote no es válido (sin consultar el servidor)"
+    },
+    {
+      "param": "?lote=..%2Fusuarios%2Fx",
+      "resultado": "\"Lote no disponible\": El código del lote no es válido (sin consultar el servidor)"
+    },
+    {
+      "param": "?lote=a%2Fb%2Fc",
+      "resultado": "\"Lote no disponible\": El código del lote no es válido (sin consultar el servidor)"
+    },
+    {
+      "param": "?lote=a%2Fb",
+      "resultado": "\"Lote no disponible\": El código del lote no es válido (sin consultar el servidor)"
+    },
+    {
+      "param": "?lote=__nombre__",
+      "resultado": "\"Lote no disponible\": El código del lote no es válido (sin consultar el servidor)"
+    },
+    {
+      "param": "?lote=%25",
+      "resultado": "\"Lote no disponible\": El código del lote no es válido (sin consultar el servidor)"
+    },
+    {
+      "param": "?lote=%25E0%25A4%25A",
+      "resultado": "\"Lote no disponible\": El código del lote no es válido (sin consultar el servidor)"
+    },
+    {
+      "param": "?lote=AAAAAAAAAAAAAAAAAAAA…(1600 caracteres)",
+      "resultado": "\"Lote no disponible\": El código del lote no es válido (sin consultar el servidor)"
+    },
+    {
+      "param": "?entrega=c0000000000000000000000000000000000000000",
+      "resultado": "\"No se encontró ninguna entrega con este código.\""
+    },
+    {
+      "param": "?entrega=cFALSO",
+      "resultado": "\"No se encontró ninguna entrega con este código.\""
+    },
+    {
+      "param": "?entrega=a%2Fb",
+      "resultado": "\"No se pudo consultar la entrega. Intente de nuevo.\" (invalid-argument)"
+    },
+    {
+      "param": "?entrega=__x__",
+      "resultado": "\"No se pudo consultar la entrega. Intente de nuevo.\" (invalid-argument)"
+    },
+    {
+      "param": "?entrega=%3Cimg%20src%3Dx%3E",
+      "resultado": "\"No se encontró ninguna entrega con este código.\""
+    },
+    {
+      "param": "?entrega=(token real)",
+      "resultado": "muestra la entrega PED-20261116-854C9"
+    }
+  ]
+}

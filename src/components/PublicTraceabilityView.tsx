@@ -5,8 +5,9 @@ import { LogoLore } from './LogoLore';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase/firebaseConfig';
 import { Lote, ConfiguracionGeneral } from '../types';
-import { verificarIntegridadLote, analizarCadenaLote, DiagnosticoFase, nombreDato } from '../services/hashService';
-import { anotacionesDe, verificarAnotaciones } from '../services/anotacionesService';
+import { verificarIntegridadLote, analizarCadenaLote, DiagnosticoFase, nombreDato, revisarLote, RevisionLote } from '../services/hashService';
+import { anotacionesDe, verificarAnotaciones, VerificacionAnotaciones } from '../services/anotacionesService';
+import { AvisoIntegridad, IndicadorVerificado } from './AvisoIntegridad';
 import { AnotacionesLote } from '../types';
 import { descargarPdfLoteLocal } from '../services/pdfService';
 import { CONFIG_DEFAULT, formatearFechaColombia, ocultarCorreo } from '../utils/constants';
@@ -29,6 +30,31 @@ import {
   Clock,
   Info
 } from 'lucide-react';
+
+// Códigos de lote válidos: letras, cifras, guion y guion bajo (como los genera la app)
+const CODIGO_VALIDO = /^(?!__.*__$)[A-Za-z0-9_-]{1,64}$/; // los ids __x__ están reservados
+
+/** Decodifica el código sin lanzar errores (un "%" suelto ya no deja la carga colgada) */
+function codigoSeguro(valor: string): string {
+  let t = String(valor || '');
+  if (/%[0-9A-Fa-f]{2}/.test(t)) {
+    try {
+      t = decodeURIComponent(t);
+    } catch {
+      /* se usa tal cual: la validación de abajo lo rechaza si no es un código */
+    }
+  }
+  return t.trim();
+}
+
+/** Sello impreso en el QR (?s=), solo si la URL abierta es la de este mismo lote */
+function selloDeLaUrl(codigo: string): string | null {
+  if (typeof window === 'undefined') return null;
+  const p = new URLSearchParams(window.location.search);
+  const s = (p.get('s') || '').trim().toLowerCase();
+  if (!s || !/^[0-9a-f]{8,64}$/.test(s)) return null;
+  return codigoSeguro(p.get('lote') || '').toUpperCase() === codigo.toUpperCase() ? s : null;
+}
 
 interface PublicTraceabilityViewProps {
   codigoLote: string;
@@ -53,12 +79,16 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
   const [diagnostico, setDiagnostico] = useState<Record<number, DiagnosticoFase>>({});
   // Anotaciones posteriores al cierre (solo se muestran las aprobadas)
   const [datosAnotaciones, setDatosAnotaciones] = useState<AnotacionesLote | null>(null);
-  const [verifAnotaciones, setVerifAnotaciones] = useState<{ integra: boolean; mensaje: string; alteradas: number[] } | null>(null);
+  const [verifAnotaciones, setVerifAnotaciones] = useState<VerificacionAnotaciones | null>(null);
+  const [errorAnotaciones, setErrorAnotaciones] = useState(false);
+  // Revisión automática al abrir: cadena, sello, cabecera y resumen derivados, sello del QR
+  const [revision, setRevision] = useState<RevisionLote | null>(null);
   const [resultadoIntegridad, setResultadoIntegridad] = useState<{
     valido: boolean;
     totalEventos: number;
     primerErrorIndex?: number;
     mensaje: string;
+    noVerificable?: boolean;
   } | null>(null);
 
   const [copiado, setCopiado] = useState(false);
@@ -79,10 +109,14 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
       }
       setError(null);
 
-      const codigoLimpio = decodeURIComponent(codigoLote || '').trim();
+      const codigoLimpio = codigoSeguro(codigoLote);
 
       // Buscar en Cloud Firestore (para móviles y accesos externos por QR)
       try {
+        if (!CODIGO_VALIDO.test(codigoLimpio)) {
+          if (!loteInicial) setError('El código del lote no es válido. Revise que el enlace o el código QR estén completos.');
+          return;
+        }
         let snap = await getDoc(doc(db, 'lotes', codigoLimpio));
 
         // Si no se encuentra y difiere en mayúsculas, probar con mayúsculas
@@ -119,23 +153,38 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
   useEffect(() => {
     if (!lote || lote.estado !== 'cerrado') return;
     let activo = true;
+    setErrorAnotaciones(false);
     getDoc(doc(db, 'anotacionesLote', lote.codigo))
       .then(async (snap) => {
         const d = snap.exists() ? (snap.data() as AnotacionesLote) : null;
+        const v = await verificarAnotaciones(lote, d);
         if (!activo) return;
         setDatosAnotaciones(d);
-        setVerifAnotaciones(await verificarAnotaciones(lote, d));
+        setVerifAnotaciones(v);
       })
-      .catch(() => {});
+      .catch(() => activo && setErrorAnotaciones(true));
     return () => {
       activo = false;
     };
   }, [lote]);
-  // Solo las aprobadas e íntegras tienen validez; las alteradas se listan aparte como "sin validez"
-  const anotacionesAprobadas = anotacionesDe(datosAnotaciones).filter(
-    (a) => a.estado === 'aprobada' && !verifAnotaciones?.alteradas.includes(a.numero)
-  );
-  const anotacionesSinValidez = anotacionesDe(datosAnotaciones).filter((a) => verifAnotaciones?.alteradas.includes(a.numero));
+  // Solo las aprobadas e íntegras tienen validez; las alteradas se listan aparte como "sin validez".
+  // Nada se muestra antes de verificar ni si no se pudo verificar en este navegador.
+  const anotacionesVerificadas = Boolean(verifAnotaciones && !verifAnotaciones.noVerificable);
+  const anotacionesAprobadas = anotacionesVerificadas
+    ? anotacionesDe(datosAnotaciones).filter((a) => a.estado === 'aprobada' && !verifAnotaciones!.alteradas.includes(a.numero))
+    : [];
+  const anotacionesSinValidez = anotacionesVerificadas ? anotacionesDe(datosAnotaciones).filter((a) => verifAnotaciones!.alteradas.includes(a.numero)) : [];
+
+  useEffect(() => {
+    if (!lote) return;
+    let activo = true;
+    revisarLote(lote, { config, selloQr: selloDeLaUrl(lote.codigo), anotacionesSelloCambiado: verifAnotaciones?.selloCambiado })
+      .then((r) => activo && setRevision(r))
+      .catch(() => {});
+    return () => {
+      activo = false;
+    };
+  }, [lote, config, verifAnotaciones]);
 
   // El análisis de la cadena corre solo al abrir el QR: cualquier fase alterada se marca en rojo
   useEffect(() => {
@@ -159,7 +208,8 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
         valido: res.valido,
         totalEventos: res.totalEventos,
         primerErrorIndex: res.primerErrorIndex,
-        mensaje: res.mensaje
+        mensaje: res.mensaje,
+        noVerificable: res.noVerificable
       });
     } catch (err) {
       console.error('Error verificando hash:', err);
@@ -271,8 +321,11 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
     );
   }
 
-  const r = lote.resumen;
+  // Lo que se muestra sale de la cadena de fases; mientras se calcula, lo guardado
+  const r = revision?.resumen || lote.resumen;
+  const cab = revision?.cabecera;
   const esCerrado = lote.estado === 'cerrado';
+  const ultimaHuella = lote.eventos?.length ? lote.eventos[lote.eventos.length - 1].hash : '';
 
   return (
     <div className="min-h-dvh bg-white text-slate-900 pb-16">
@@ -311,6 +364,19 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
 
       {/* CONTENIDO PRINCIPAL */}
       <main className="max-w-4xl mx-auto px-4 pt-6 space-y-6">
+        {/* AVISO AUTOMÁTICO DE INTEGRIDAD (se calcula solo al abrir) */}
+        {revision && revision.estado !== 'integro' && (
+          <AvisoIntegridad
+            estado={revision.estado}
+            avisos={revision.avisos}
+            nota={
+              revision.estado === 'alterado' && revision.diferencias.length
+                ? 'Los datos de esta página se calcularon a partir de las fases registradas, no de los valores guardados aparte.'
+                : undefined
+            }
+          />
+        )}
+
         {/* TARJETA DE CERTIFICADO PRINCIPAL */}
         <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
           {/* Identidad del certificado */}
@@ -324,7 +390,7 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
             </div>
 
             <p className="text-sm text-slate-200 mt-3 pt-3 border-t-[3px] border-double border-amber-500">
-              {lote.producto}
+              {cab?.producto || lote.producto}
             </p>
           </div>
 
@@ -336,11 +402,11 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
             </div>
             <div>
               <span className="text-slate-500 block">Estanque:</span>
-              <strong className="text-slate-800 text-sm">{lote.estanque}</strong>
+              <strong className="text-slate-800 text-sm">{cab?.estanque || lote.estanque}</strong>
             </div>
             <div>
               <span className="text-slate-500 block">Fecha de siembra:</span>
-              <strong className="text-slate-800 text-sm">{lote.fechaSiembra}</strong>
+              <strong className="text-slate-800 text-sm">{cab?.fechaSiembra || lote.fechaSiembra}</strong>
             </div>
             <div>
               <span className="text-slate-500 block">Fecha de cosecha:</span>
@@ -395,7 +461,9 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
               className={`p-4 rounded-xl border flex items-start space-x-3 text-xs ${
                 resultadoIntegridad.valido
                   ? 'bg-emerald-50 border-emerald-300 text-emerald-900'
-                  : 'bg-red-50 border-red-300 text-red-900'
+                  : resultadoIntegridad.noVerificable
+                    ? 'bg-slate-50 border-slate-300 text-slate-800'
+                    : 'bg-red-50 border-red-300 text-red-900'
               }`}
             >
               {resultadoIntegridad.valido ? (
@@ -407,25 +475,41 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
                 <strong className="block text-sm">
                   {resultadoIntegridad.valido
                     ? 'Cadena íntegra: ninguna fase fue alterada'
-                    : 'Inconsistencia detectada en la cadena'}
+                    : resultadoIntegridad.noVerificable
+                      ? 'No se puede verificar en este navegador'
+                      : 'Inconsistencia detectada en la cadena'}
                 </strong>
                 <p className="mt-1 text-xs">
                   {resultadoIntegridad.valido
                     ? `Se validaron matemáticamente ${resultadoIntegridad.totalEventos} fases registradas desde la siembra. Ningún dato ha sido alterado desde su origen.`
-                    : `Se detectó una discrepancia a partir de la fase #${resultadoIntegridad.primerErrorIndex}.`}
+                    : resultadoIntegridad.mensaje}
                 </p>
               </div>
             </div>
           )}
 
-          {/* Visualización del Hash Final */}
-          <div className="bg-slate-50 rounded-xl p-3 border border-slate-200">
-            <span className="text-xs uppercase font-semibold text-slate-500 block mb-1">
-              Sello Hash SHA-256 de Cierre del Lote
+          {/* Huella final: sello de cierre en un lote cerrado, última fase en uno abierto */}
+          <div className="bg-slate-50 rounded-xl p-3 border border-slate-200 space-y-2">
+            <span className="text-xs uppercase font-semibold text-slate-500 block">
+              {esCerrado ? 'Sello SHA-256 de cierre del lote' : 'Huella de la última fase registrada (el lote sigue abierto)'}
             </span>
             <code className="text-xs font-mono text-slate-700 break-all select-all block">
-              {r?.hashFinal || (esCerrado ? 'No registrado' : 'En proceso de cultivo')}
+              {ultimaHuella || (esCerrado ? 'No registrado' : 'Sin fases registradas')}
             </code>
+            {revision?.estado === 'integro' && (
+              <IndicadorVerificado
+                texto={
+                  revision.selloQr === 'coincide'
+                    ? 'Cadena verificada al abrir. El sello impreso en el código QR coincide.'
+                    : 'Cadena verificada al abrir.'
+                }
+              />
+            )}
+            {revision && revision.respaldo.length > 0 && (
+              <p className="text-xs text-slate-600">
+                {revision.respaldo.length} fase(s) con huella de respaldo, no criptográfica (registradas sin conexión segura).
+              </p>
+            )}
           </div>
         </div>
 
@@ -434,7 +518,7 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
           <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs text-center">
             <span className="text-xs text-slate-500 font-medium block">Peces sembrados</span>
             <strong className="text-base font-semibold text-slate-900 mt-1 block">
-              {lote.cantidadSembrada.toLocaleString()}
+              {(cab?.cantidadSembrada ?? lote.cantidadSembrada).toLocaleString()}
             </strong>
             <span className="text-xs text-slate-500">Alevinos iniciales</span>
           </div>
@@ -555,6 +639,12 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
         </div>
 
         {/* ANOTACIONES POSTERIORES AL CIERRE */}
+        {esCerrado && (errorAnotaciones || verifAnotaciones?.noVerificable) && (
+          <p className="text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded-md p-3">
+            No se pudieron verificar las anotaciones posteriores al cierre, por eso no se muestran.
+            {verifAnotaciones?.noVerificable ? ' Abra la página por https.' : ' Intente de nuevo más tarde.'}
+          </p>
+        )}
         {(anotacionesAprobadas.length > 0 || anotacionesSinValidez.length > 0) && (
           <div className="bg-white rounded-2xl shadow-xs border border-slate-200 p-6 space-y-3">
             <h3 className="text-sm font-semibold text-slate-900">Anotaciones posteriores al cierre</h3>

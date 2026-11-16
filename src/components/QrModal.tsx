@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { Bloque } from './Esqueleto';
 import { usePresencia } from '../lib/presencia';
+import { useVentana } from '../lib/ventana';
 import { X, Download, Copy, Check, ExternalLink, QrCode } from 'lucide-react';
 import { Lote, ConfiguracionGeneral } from '../types';
-import { generarQrDataUrl, descargarQrConEtiqueta, construirUrlPublicaTrazabilidad } from '../services/qrService';
+import { generarQrDataUrl, descargarQrConEtiqueta, urlQrLote } from '../services/qrService';
 import { descargarPdfLoteLocal } from '../services/pdfService';
 import { CONFIG_DEFAULT } from '../utils/constants';
 
@@ -26,8 +27,8 @@ export const QrModal: React.FC<QrModalProps> = ({
   const [copiado, setCopiado] = useState(false);
   const [cargando, setCargando] = useState(true);
 
-  // La URL pública a la que apunta el QR para trazabilidad universal en móviles
-  const trazabilidadUrl = construirUrlPublicaTrazabilidad(lote.codigo);
+  // La URL pública a la que apunta el QR; en un lote cerrado lleva también el sello (H03)
+  const trazabilidadUrl = urlQrLote(lote);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -44,6 +45,7 @@ export const QrModal: React.FC<QrModalProps> = ({
   }, [isOpen, trazabilidadUrl]);
 
   const presencia = usePresencia(isOpen);
+  const ventana = useVentana(isOpen, onClose);
   if (!presencia.montado) return null;
 
   const handleCopiarUrl = () => {
@@ -54,7 +56,7 @@ export const QrModal: React.FC<QrModalProps> = ({
 
   const handleDescargar = () => {
     if (!qrDataUrl) return;
-    descargarQrConEtiqueta(qrDataUrl, lote.codigo);
+    void descargarQrConEtiqueta(qrDataUrl, lote.codigo, lote.estado === 'cerrado' ? lote.resumen?.hashFinal : null);
   };
 
   const handleDescargarPdf = () => {
@@ -62,16 +64,18 @@ export const QrModal: React.FC<QrModalProps> = ({
   };
 
   return (
-    <div role="dialog" aria-modal="true" data-saliendo={presencia.saliendo || undefined} className="velo fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4">
+    <div {...ventana.propsVelo} role="dialog" aria-modal="true" aria-labelledby="titulo-qr" data-saliendo={presencia.saliendo || undefined} className="velo fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4">
       <div className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-sm w-full overflow-hidden text-center">
         {/* Cabecera */}
         <div className="bg-slate-900 text-white px-5 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <QrCode className="w-5 h-5 text-sky-400" />
-            <span className="font-semibold text-sm">Código QR de Trazabilidad</span>
+            <h3 id="titulo-qr" className="font-semibold text-sm">Código QR de Trazabilidad</h3>
           </div>
           <button
+            type="button"
             onClick={onClose}
+            aria-label="Cerrar"
             className="text-slate-500 hover:text-white p-1 rounded-md transition-colors"
           >
             <X className="w-4 h-4" />

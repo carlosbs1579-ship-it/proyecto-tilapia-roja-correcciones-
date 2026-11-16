@@ -349,17 +349,33 @@ export async function sincronizarPerfilUsuario(user: User): Promise<UsuarioPerfi
         ...perfil,
         rol: 'admin',
         estado: 'activo',
-        permisos: PERMISOS_DEFAULT_ADMIN,
-        actualizadoEn: fechaIso
+        permisos: PERMISOS_DEFAULT_ADMIN
       };
-      await setDoc(userRef, {
-        rol: perfilAdmin.rol,
-        roles: perfilAdmin.roles,
-        granjaId: perfilAdmin.granjaId,
-        estado: perfilAdmin.estado,
-        permisos: perfilAdmin.permisos,
-        actualizadoEn: fechaIso
-      }, { merge: true });
+      // Solo se escribe si el documento guardado no refleja ya el perfil maestro, y sin esperar la
+      // confirmación del servidor: con señal débil la interfaz no se queda esperando (H26)
+      const guardado = snap.data() as Partial<UsuarioPerfil>;
+      const igualPermisos = (Object.keys(PERMISOS_DEFAULT_ADMIN) as (keyof PermisosUsuario)[]).every(
+        (k) => (guardado.permisos as Partial<PermisosUsuario> | undefined)?.[k] === PERMISOS_DEFAULT_ADMIN[k]
+      );
+      const yaAlDia =
+        guardado.rol === 'admin' &&
+        guardado.estado === 'activo' &&
+        Array.isArray(guardado.roles) &&
+        guardado.roles.includes('admin') &&
+        guardado.granjaId === perfilAdmin.granjaId &&
+        igualPermisos;
+      if (!yaAlDia) {
+        perfilAdmin.actualizadoEn = fechaIso;
+        setDoc(userRef, {
+          rol: perfilAdmin.rol,
+          roles: perfilAdmin.roles,
+          granjaId: perfilAdmin.granjaId,
+          estado: perfilAdmin.estado,
+          permisos: perfilAdmin.permisos,
+          actualizadoEn: fechaIso
+        }, { merge: true }).catch((err) => console.warn('No se pudo actualizar el perfil del administrador:', err?.message || err));
+      }
+      guardarCopiaPerfil(perfilAdmin);
       return perfilAdmin;
     }
 

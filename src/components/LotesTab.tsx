@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { escalon, usePrimerMontaje } from '../lib/montaje';
 import {
   Search,
@@ -12,6 +12,7 @@ import {
   Fish
 } from 'lucide-react';
 import { Lote, ConfiguracionGeneral } from '../types';
+import { derivarLote, normalizarEstanque } from '../services/calculosService';
 
 interface LotesTabProps {
   lotes: Lote[];
@@ -39,6 +40,11 @@ export const LotesTab: React.FC<LotesTabProps> = ({
   const [fechaDesde, setFechaDesde] = useState('');
   const [fechaHasta, setFechaHasta] = useState('');
 
+  // Estanque, siembra e indicadores calculados desde la cadena de fases (no desde los campos
+  // guardados aparte, que podrían diferir); un cálculo por lote mientras no cambien lotes o config
+  const derivados = useMemo(() => new Map(lotes.map((l) => [l.codigo, derivarLote(l, config)])), [lotes, config]);
+  const derivadoDe = (l: Lote) => derivados.get(l.codigo) || derivarLote(l, config);
+
   // Filtrado en memoria en cliente para máxima agilidad sin índices compuestos
   const lotesFiltrados = lotes.filter((lote) => {
     // 1. Búsqueda por código parcial
@@ -48,7 +54,7 @@ export const LotesTab: React.FC<LotesTabProps> = ({
     }
 
     // 2. Filtro estanque
-    if (filtroEstanque !== 'todos' && lote.estanque !== filtroEstanque) {
+    if (filtroEstanque !== 'todos' && normalizarEstanque(derivadoDe(lote).cabecera.estanque) !== normalizarEstanque(filtroEstanque)) {
       return false;
     }
 
@@ -58,10 +64,10 @@ export const LotesTab: React.FC<LotesTabProps> = ({
     }
 
     // 4. Rango de fechas de siembra
-    if (fechaDesde && lote.fechaSiembra < fechaDesde) {
+    if (fechaDesde && derivadoDe(lote).cabecera.fechaSiembra < fechaDesde) {
       return false;
     }
-    if (fechaHasta && lote.fechaSiembra > fechaHasta) {
+    if (fechaHasta && derivadoDe(lote).cabecera.fechaSiembra > fechaHasta) {
       return false;
     }
 
@@ -253,31 +259,31 @@ export const LotesTab: React.FC<LotesTabProps> = ({
                     </td>
                     <td className="px-4 py-4">
                       <span className="font-serif text-sm text-slate-900">
-                        {lote.estanque}
+                        {derivadoDe(lote).cabecera.estanque}
                       </span>
                     </td>
                     <td className="px-4 py-4 text-slate-700">
-                      {lote.fechaSiembra}
+                      {derivadoDe(lote).cabecera.fechaSiembra}
                     </td>
                     <td className="px-4 py-4 text-right font-medium text-slate-600">
-                      {lote.resumen.diasDeCultivo != null ? `${lote.resumen.diasDeCultivo} d` : 'Sin dato'}
+                      {derivadoDe(lote).resumen.diasDeCultivo != null ? `${derivadoDe(lote).resumen.diasDeCultivo} d` : 'Sin dato'}
                     </td>
                     <td className="px-4 py-4 text-right text-slate-800">
-                      {lote.resumen.pecesVivos.toLocaleString()}
+                      {derivadoDe(lote).resumen.pecesVivos.toLocaleString()}
                     </td>
                     <td className="px-4 py-4 text-right font-medium">
-                      <span className={lote.resumen.supervivencia >= 85 ? 'text-slate-900 font-semibold' : 'text-amber-700 font-semibold'}>
-                        {lote.resumen.supervivencia}%
+                      <span className={derivadoDe(lote).resumen.supervivencia >= 85 ? 'text-slate-900 font-semibold' : 'text-amber-700 font-semibold'}>
+                        {derivadoDe(lote).resumen.supervivencia}%
                       </span>
                     </td>
                     <td className="px-4 py-4 text-right font-semibold text-slate-800">
-                      {lote.resumen.pesoPromedioActualG} g
+                      {derivadoDe(lote).resumen.pesoPromedioActualG} g
                     </td>
                     <td className="px-4 py-4 text-right font-semibold text-slate-800">
-                      {lote.resumen.biomasaEstimadaKg.toLocaleString()} kg
+                      {derivadoDe(lote).resumen.biomasaEstimadaKg.toLocaleString()} kg
                     </td>
                     <td className="px-4 py-4 text-right font-mono font-semibold text-slate-700">
-                      {lote.resumen.FCA ?? '-'}
+                      {derivadoDe(lote).resumen.FCA ?? '-'}
                     </td>
                     <td className="px-4 py-4 text-center">
                       <span

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { usePresencia } from '../lib/presencia';
+import { useVentana } from '../lib/ventana';
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
@@ -36,6 +37,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
   }, [isOpen]);
 
   const presencia = usePresencia(isOpen);
+  const ventana = useVentana(isOpen, onClose, { bloqueada: cargando });
   if (!presencia.montado) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -135,18 +137,20 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
   };
 
   return (
-    <div role="dialog" aria-modal="true" data-saliendo={presencia.saliendo || undefined} className="velo fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4">
+    <div {...ventana.propsVelo} role="dialog" aria-modal="true" aria-labelledby="titulo-acceso" data-saliendo={presencia.saliendo || undefined} className="velo fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4">
       <div className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-md w-full overflow-hidden">
         {/* Cabecera */}
         <div className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <Shield className="w-5 h-5 text-sky-400" />
-            <h3 className="font-semibold text-base">
+            <h3 id="titulo-acceso" className="font-semibold text-base">
               {esRegistro ? 'Registrar nuevo operario' : 'Acceso al Sistema Loré'}
             </h3>
           </div>
           <button
+            type="button"
             onClick={onClose}
+            aria-label="Cerrar"
             className="text-slate-500 hover:text-white p-1 rounded-md transition-colors"
           >
             <X className="w-5 h-5" />

@@ -34,6 +34,7 @@
     --mov-base: var(--mov-reducido);
     --mov-entrada: var(--mov-reducido);
     --mov-salida: var(--mov-reducido);
+    --mov-interruptor: var(--mov-reducido);
     --dist-pequena: 0px;
     --dist-tarjeta: 0px;
     --dist-pantalla: 0px;

@@ -15,7 +15,8 @@ import {
   getDoc,
   getDocs,
   setDoc,
-  updateDoc
+  updateDoc,
+  writeBatch
 } from 'firebase/firestore';
 
 const MAESTRO = 'carlosbs1579@gmail.com';
@@ -88,7 +89,7 @@ function como(uid) {
 before(async () => {
   env = await initializeTestEnvironment({
     projectId: 'demo-tilapia',
-    firestore: { rules: readFileSync(new URL('../../firestore.rules', import.meta.url), 'utf8'), host: '127.0.0.1', port: 8085 }
+    firestore: { rules: readFileSync(new URL('../../firestore.rules', import.meta.url), 'utf8'), host: '127.0.0.1', port: Number((process.env.FIRESTORE_EMULATOR_HOST || '').split(':')[1] || 8085) }
   });
 });
 
@@ -112,6 +113,31 @@ const H1 = '1'.repeat(64);
 const eventoNuevo = (uid, extra = {}) => ({
   indice: 1, tipo: 'Alimentación', hashAnterior: 'h0', hash: H1, registradoPor: PERFILES[uid]?.email || `${uid}@prueba.co`, ...extra
 });
+// Lote nuevo como lo crea la app (crearNuevoLote): contador global y lote en la misma operación,
+// evento 0 de siembra firmado por quien crea y coherente con la cabecera
+const H0V = 'c'.repeat(64);
+function loteNuevo(uid, codigo, consecutivo = 2, extra = {}) {
+  const correo = PERFILES[uid]?.email || `${uid}@prueba.co`;
+  return {
+    codigo, consecutivo, estanque: 'E1', producto: 'Tilapia roja', modalidad: 'Estanque', origen: 'Cultivos Loré',
+    fechaSiembra: '2026-10-01', cantidadSembrada: 1000, pesoInicialPromedioG: 2, proveedorAlevinos: '', estado: 'activo',
+    fechaCierre: null,
+    eventos: [{ id: 'e0', indice: 0, tipo: 'Siembra', fechaEvento: '2026-10-01', descripcion: 'Siembra', datos: { cantidad: 1000, pesoPromedioInicialG: 2, proveedor: '' },
+                registradoPor: correo, registradoPorNombre: PERFILES[uid]?.displayName || uid, registradoEn: 'x', hashAnterior: '0'.repeat(64), hash: H0V }],
+    resumen: { mortalidadAcumulada: 0, pecesCosechados: 0, pecesVivos: 1000, supervivencia: 100, biomasaCosechadaKg: 0, hashFinal: H0V },
+    pdfPath: `lotes/${codigo}.pdf`, pdfUrl: `https://proyecto-tilapia-roja-claude.vercel.app/?lote=${codigo}`, versionPdf: 1, pdfActualizadoEn: 'x',
+    granjaId: 'cultivos-lore', creadoPor: correo, creadoPorUid: uid, creadoEn: 'x', actualizadoEn: 'x', observacionesIniciales: '',
+    ...extra
+  };
+}
+function crearLoteComoApp(db, uid, codigo, extra = {}, consecutivo = 2) {
+  const b = writeBatch(db);
+  b.set(doc(db, 'contadores', 'lotes_global'), { valor: consecutivo, actualizadoEn: 'x' }, { merge: true });
+  b.set(doc(db, 'contadores', 'diario_20261001_E1'), { valor: 1, actualizadoEn: 'x' }, { merge: true });
+  b.set(doc(db, 'lotes', codigo), loteNuevo(uid, codigo, consecutivo, extra));
+  return b.commit();
+}
+
 const agregarEvento = (db, uid) =>
   updateDoc(doc(db, 'lotes', 'L-ACTIVO'), {
     eventos: [...LOTE_ACTIVO.eventos, eventoNuevo(uid)],
@@ -333,7 +359,7 @@ describe('Integridad de los lotes (fase 6)', () => {
     const db = como('operador');
     await assertFails(updateDoc(doc(db, 'lotes', 'L-OTRA'), { eventos: [...LOTE_ACTIVO.eventos, eventoNuevo('operador')] }));
     await assertFails(setDoc(doc(db, 'lotes', 'L-NUEVA'), { ...LOTE_ACTIVO, codigo: 'L-NUEVA', granjaId: 'otra-granja' }));
-    await assertSucceeds(setDoc(doc(db, 'lotes', 'L-PROPIA'), { ...LOTE_ACTIVO, codigo: 'L-PROPIA' }));
+    await assertSucceeds(crearLoteComoApp(db, 'operador', 'L-PROPIA'));
   });
 
   test('un lote nuevo empieza solo con su evento de siembra', async () => {
@@ -385,7 +411,7 @@ describe('Lote activo: cosecha y siembra coherentes (revisión de hashes)', () =
   test('un evento Cosecha sube la cosecha exactamente en lo que registra', async () => {
     await conResumen({ biomasaCosechadaKg: 300, pecesCosechados: 600 });
     await assertFails(cosecha(100, 200, { biomasaCosechadaKg: 900, pecesCosechados: 800 }));
-    await assertSucceeds(cosecha(100, 200, { biomasaCosechadaKg: 400, pecesCosechados: 800 }));
+    await assertSucceeds(cosecha(100, 200, { biomasaCosechadaKg: 400, pecesCosechados: 800, pecesVivos: 1200, hashFinal: H1 }));
   });
 
   test('los datos de siembra solo cambian con una Corrección de siembra que registre el mismo valor', async () => {
@@ -399,8 +425,12 @@ describe('Lote activo: cosecha y siembra coherentes (revisión de hashes)', () =
 
   test('al sellar, la cosecha guardada no cambia', async () => {
     await conResumen({ biomasaCosechadaKg: 300, pecesCosechados: 600 });
-    await assertFails(updateDoc(lote(como('operador')), { estado: 'cerrado', resumen: { biomasaCosechadaKg: 999, pecesCosechados: 600 } }));
-    await assertSucceeds(updateDoc(lote(como('operador')), { estado: 'cerrado', fechaCierre: '2026-11-14' }));
+    await assertFails(updateDoc(lote(como('operador')), { estado: 'cerrado', fechaCierre: '2026-11-14', resumen: { biomasaCosechadaKg: 999, pecesCosechados: 600 } }));
+    // Al sellar, la app recalcula el resumen con los mismos eventos: misma cosecha, sello en la última fase
+    await assertSucceeds(updateDoc(lote(como('operador')), {
+      estado: 'cerrado', fechaCierre: '2026-11-14',
+      resumen: { biomasaCosechadaKg: 300, pecesCosechados: 600, mortalidadAcumulada: 0, pecesVivos: 1400, supervivencia: 100, hashFinal: 'h0' }
+    }));
   });
 
   test('un lote nuevo no puede traer cosecha', async () => {
@@ -449,7 +479,8 @@ describe('Anotaciones posteriores al cierre de un lote', () => {
   const SELLADO = { ...LOTE_ACTIVO, codigo: 'L-SELLADO', estado: 'cerrado', eventos: [{ indice: 0, tipo: 'Siembra', hash: 'h0' }, { indice: 1, tipo: 'Cosecha', hash: 'h1', datos: { biomasaCosechadaKg: 912 } }] };
   const H = (c) => c.repeat(64);
   const reg = (uid, indice, tipo, datos, hashAnterior, extra = {}) => ({
-    id: `r${indice}`, indice, tipo, fecha: 'x', datos, hashAnterior, hash: H(String(indice)),
+    // Hash con forma de SHA-256 (64 hex); nunca 64 ceros, que las reglas rechazan
+    id: `r${indice}`, indice, tipo, fecha: 'x', datos, hashAnterior, hash: H(String(indice + 1)).slice(0, 64),
     registradoPor: PERFILES[uid]?.email || `${uid}@prueba.co`, registradoPorUid: uid, ...extra
   });
   const propuesta = { fase: 1, dato: 'biomasaCosechadaKg', valorRegistrado: '912', valorCorrecto: '950', motivo: 'Error al digitar la biomasa en la báscula' };

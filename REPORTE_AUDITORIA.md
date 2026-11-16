@@ -1,3 +1,4 @@
+| Despliegue 2: web a producción (PR #24, merge bb792c4; Vercel 5f3h9ikqe; versión anterior para revertir: hpc7j252w) | 2026-11-16 | Bien. Las cabeceras de seguridad están presentes. La consulta pública del lote real dice "Cadena verificada al abrir", sin falsas alarmas. El panel de operador, el detalle del lote (carga diferida), el desplazamiento con rueda y el cierre con Escape funcionan sin errores en consola. |
 # Reporte de auditoría: integridad, seguridad y regresiones
 
 Fecha: 2026-11-16. Rama `correciones-claude`. Une los reportes de `auditoria/agente1-integridad.md`, `agente2-alteraciones.md`, `agente3-seguridad.md`, `agente4-funcional.md`, `agente5-regresiones.md` y `tests/integridad/resultados.md`. Ningún archivo de la app se modificó durante la auditoría.

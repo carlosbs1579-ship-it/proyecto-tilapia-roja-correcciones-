@@ -106,9 +106,14 @@ export function escucharConfiguracion(
  */
 export async function guardarConfiguracion(
   config: ConfiguracionGeneral,
-  userEmail: string
+  userEmail: string,
+  soloEstanques = false
 ): Promise<ConfiguracionGeneral> {
   const estanquesSaneados = sanitizarEstanques(config.estanques !== undefined ? config.estanques : CONFIG_DEFAULT.estanques);
+  // Solo estanques: no se reenvían rangos ni ficha (quien solo gestiona estanques no puede tocarlos)
+  const escrito: Partial<ConfiguracionGeneral> = soloEstanques
+    ? { estanques: estanquesSaneados, actualizadoPor: userEmail, actualizadoEn: new Date().toISOString() }
+    : {};
   const payload: ConfiguracionGeneral = {
     estanques: estanquesSaneados,
     rangosReferencia: config.rangosReferencia || CONFIG_DEFAULT.rangosReferencia,
@@ -119,7 +124,7 @@ export async function guardarConfiguracion(
 
   const configDocRef = doc(db, 'configuracion', 'general');
   try {
-    await setDoc(configDocRef, payload, { merge: true });
+    await setDoc(configDocRef, soloEstanques ? escrito : payload, { merge: true });
   } catch (err: any) {
     if (err?.code === 'permission-denied') {
       throw new Error('No tienes permiso para guardar estos cambios de configuración. Pide al administrador el permiso correspondiente.');

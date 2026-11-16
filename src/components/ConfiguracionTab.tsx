@@ -127,7 +127,7 @@ export const ConfiguracionTab: React.FC<ConfiguracionTabProps> = ({
     setGuardando(true);
     setErrorMsg(null);
     try {
-      const guardada = await guardarConfiguracion(nuevaConfig, userEmail);
+      const guardada = await guardarConfiguracion(nuevaConfig, userEmail, !incluirFormulario);
       onConfigActualizada(guardada);
       mostrarExito('Configuración guardada.');
       return true;

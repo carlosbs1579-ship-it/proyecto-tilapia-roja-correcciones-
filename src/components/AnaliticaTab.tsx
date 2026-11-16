@@ -191,7 +191,7 @@ export const AnaliticaTab: React.FC<AnaliticaTabProps> = ({
     // retorno) lleva un apóstrofo delante para que la hoja de cálculo no lo ejecute como fórmula (H51).
     const celda = (valor: unknown) => {
       let t = valor === null || valor === undefined ? '' : String(valor);
-      if (typeof valor !== 'number' && /^[=+\-@\t\r]/.test(t)) t = `'${t}`;
+      if (typeof valor !== 'number' && /^[=+\-@\t\r]/.test(t) && !/^-?\d+([.,]\d+)?$/.test(t)) t = `'${t}`;
       return `"${t.replace(/"/g, '""')}"`;
     };
     const csvContent = [encabezados, ...filas].map((f) => f.map(celda).join(',')).join('\r\n');

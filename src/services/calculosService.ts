@@ -280,7 +280,8 @@ export function derivarCabeceraLote(
   const problemas: string[] = [];
   const ev0 = eventos[0];
   const guardadoEstanque = String(lote.estanque ?? '');
-  const sufijoCodigo = String(lote.codigo || '').split('-').pop() || '';
+  // Código AAAAMMDD-LETRA-ESTANQUE: el estanque puede llevar guiones (por ejemplo E-1)
+  const sufijoCodigo = String(lote.codigo || '').split('-').slice(2).join('-');
   const cab: CabeceraLote = {
     estanque: guardadoEstanque,
     fechaSiembra: String(lote.fechaSiembra ?? ''),

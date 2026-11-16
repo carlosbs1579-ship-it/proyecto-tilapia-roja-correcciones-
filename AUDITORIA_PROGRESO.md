@@ -76,7 +76,8 @@ Puertos asignados para que no choquen:
 
 ## Despliegues
 
-Ninguno todavía.
+- 2026-11-16 14:13 UTC: reglas de Firestore (commit 3d35745). Bien: lectura pública, ingreso y lista de lotes sin errores.
+- Antes de publicar se revisó en modo lectura producción: 1 solo lote real (20261031-A-E1, cerrado y coherente).
 
 ## Fase 3: plan de tandas
 

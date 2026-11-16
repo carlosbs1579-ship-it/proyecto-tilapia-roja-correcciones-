@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Pestanas } from './Pestanas';
 import { usePresencia } from '../lib/presencia';
+import { useVentana } from '../lib/ventana';
 import {
   X,
   Plus,
@@ -218,6 +219,12 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
   }, [isOpen, loteInicial]);
 
   const presencia = usePresencia(isOpen);
+  const ventana = useVentana(isOpen, onClose);
+  const editarSiembraAbierta = isOpen && modalEditarSiembraOpen && lote.estado === 'activo';
+  const ventanaEditarSiembra = useVentana(editarSiembraAbierta, () => setModalEditarSiembraOpen(false), {
+    bloqueada: guardandoEdicion,
+    cerrarAlTocarVelo: false
+  });
   if (!presencia.montado) return null;
 
   // Indicadores y cabecera calculados desde la cadena de fases; mientras se calculan, lo guardado
@@ -275,14 +282,14 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
 
   return (
     <>
-      <div role="dialog" aria-modal="true" data-saliendo={presencia.saliendo || undefined} className="velo fixed inset-0 z-40 flex items-center justify-center bg-slate-950/55 p-3 md:p-6 overflow-y-auto">
+      <div {...ventana.propsVelo} role="dialog" aria-modal="true" aria-labelledby="titulo-detalle-lote" data-saliendo={presencia.saliendo || undefined} className="velo fixed inset-0 z-40 flex items-center justify-center bg-slate-950/55 p-3 md:p-6 overflow-y-auto">
         <div className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-5xl w-full max-h-[92dvh] flex flex-col overflow-hidden">
           {/* BARRA SUPERIOR DEL LOTE */}
           <div className="bg-slate-900 text-white px-6 py-4 flex flex-wrap items-center justify-between gap-3 shrink-0">
             <div className="flex items-center space-x-3">
               <div>
                 <div className="flex flex-wrap items-baseline gap-x-3">
-                  <h2 className="text-2xl tabular-nums">{lote.codigo}</h2>
+                  <h2 id="titulo-detalle-lote" className="text-2xl tabular-nums">{lote.codigo}</h2>
                   <span className={`rotulo ${lote.estado === 'activo' ? 'text-emerald-300' : 'text-amber-300'}`}>
                     {lote.estado === 'activo' ? 'En cultivo' : 'Sellado · cosechado'}
                   </span>
@@ -293,7 +300,7 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
               </div>
             </div>
 
-            <div className="flex items-center space-x-2">
+            <div className="flex flex-wrap items-center gap-2">
               {puedeDocumentos && (
               <>
               <button
@@ -338,7 +345,9 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
               )}
 
               <button
+                type="button"
                 onClick={onClose}
+                aria-label="Cerrar"
                 className="p-2 text-slate-300 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
               >
                 <X className="w-5 h-5" />
@@ -755,20 +764,22 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
         />
       )}
 
-      {modalEditarSiembraOpen && lote.estado === 'activo' && (
-        <div className="velo fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4 overflow-y-auto">
+      {editarSiembraAbierta && (
+        <div {...ventanaEditarSiembra.propsVelo} role="dialog" aria-modal="true" aria-labelledby="titulo-editar-siembra" className="velo fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4 overflow-y-auto">
           <div className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-lg w-full overflow-hidden my-6">
             <div className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between">
               <div className="flex items-center space-x-2">
                 <Fish className="w-5 h-5 text-sky-400" />
                 <div>
-                  <h3 className="font-semibold text-base">Modificar Datos de Alevinos y Piscina</h3>
+                  <h3 id="titulo-editar-siembra" className="font-semibold text-base">Modificar Datos de Alevinos y Piscina</h3>
                   <p className="text-xs text-slate-500">Lote Activo: {lote.codigo}</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setModalEditarSiembraOpen(false)}
+                disabled={guardandoEdicion}
+                aria-label="Cerrar"
                 className="text-slate-500 hover:text-white p-1 rounded-md transition-colors"
               >
                 <X className="w-5 h-5" />

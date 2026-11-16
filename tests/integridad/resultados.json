@@ -1,13 +1,13 @@
 {
-  "fecha": "2026-11-16T09:21:12.132Z",
+  "fecha": "2026-11-16T14:20:34.965Z",
   "lote": "20260801-A-E1",
   "lote2": "20260801-A-E2",
   "contexto": {
-    "ordenId": "PED-20261116-VQ5KQ",
-    "fotoId": "foto-ba34551f-037f-45ca-a796-d821cf963ffc",
-    "comprobanteId": "cmpa6e2891a3c3e461fb2da6882b7fd98a1c0552ff7",
-    "token": "cbdd0bd56e1f20886f0bbde670c6429277a23d45b",
-    "selloQr": "d4f4493802710b15"
+    "ordenId": "PED-20261116-854C9",
+    "fotoId": "foto-563e14cd-4caf-457b-a53e-88637bb87e83",
+    "comprobanteId": "cmpd87410f029a0cc7ff1b067952d17bdd3bda15024",
+    "token": "ce03d570c4cafca19f8133fae1b3585abe6643a22",
+    "selloQr": "a465185e06040d82"
   },
   "ataques": [
     {
@@ -397,7 +397,7 @@
       "resultado": "detectado y avisado",
       "senales": {
         "automaticas": [
-          "Solo QR con sello impreso: El sello impreso en el código QR (d4f4493802710b15) no coincide con el sello actual del lote: el registro cambió después de imprimir la etiqueta."
+          "Solo QR con sello impreso: El sello impreso en el código QR (a465185e06040d82) no coincide con el sello actual del lote: el registro cambió después de imprimir la etiqueta."
         ],
         "manuales": [],
         "datos": {
@@ -483,7 +483,7 @@
           "QR lote, sección anotaciones: El sello del lote cambió después de anotar: las anotaciones ya no corresponden a este registro sellado."
         ],
         "manuales": [
-          "Botón \"Verificar integridad\" / IntegrityCheckModal: El sello de cierre registrado (d4f449380271…) no coincide con el último hash de la cadena (08ab4746f377…): se borró o se cambió una fase."
+          "Botón \"Verificar integridad\" / IntegrityCheckModal: El sello de cierre registrado (a465185e0604…) no coincide con el último hash de la cadena (b00b97df7842…): se borró o se cambió una fase."
         ],
         "datos": {
           "qrAntiguoSinSello": "avisado",
@@ -606,7 +606,7 @@
       "resultado": "detectado y avisado",
       "senales": {
         "automaticas": [
-          "Solo QR con sello impreso: El sello impreso en el código QR (d4f4493802710b15) no coincide con el sello actual del lote: el registro cambió después de imprimir la etiqueta."
+          "Solo QR con sello impreso: El sello impreso en el código QR (a465185e06040d82) no coincide con el sello actual del lote: el registro cambió después de imprimir la etiqueta."
         ],
         "manuales": [],
         "datos": {
@@ -1410,7 +1410,7 @@
     },
     {
       "param": "?entrega=(token real)",
-      "resultado": "muestra la entrega PED-20261116-VQ5KQ"
+      "resultado": "muestra la entrega PED-20261116-854C9"
     }
   ]
 }

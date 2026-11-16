@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { usePresencia } from '../lib/presencia';
+import { useVentana } from '../lib/ventana';
 import { X, Calendar, AlertTriangle, CheckCircle2, ShieldAlert, Lock } from 'lucide-react';
 import { Lote, TipoEvento, ConfiguracionGeneral } from '../types';
 import { getFechaHoyBogota } from '../utils/constants';
@@ -114,6 +115,7 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
   );
 
   const presencia = usePresencia(isOpen);
+  const ventana = useVentana(isOpen, onClose, { bloqueada: cargando, cerrarAlTocarVelo: false });
   if (!presencia.montado) return null;
 
   // Peces vivos según la cadena de fases (no según los campos guardados): tope de mortalidad y cosecha
@@ -283,19 +285,21 @@ export const NuevoEventoModal: React.FC<NuevoEventoModalProps> = ({
   };
 
   return (
-    <div role="dialog" aria-modal="true" data-saliendo={presencia.saliendo || undefined} className="velo fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4 overflow-y-auto">
+    <div {...ventana.propsVelo} role="dialog" aria-modal="true" aria-labelledby="titulo-nuevo-evento" data-saliendo={presencia.saliendo || undefined} className="velo fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4 overflow-y-auto">
       <div className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-2xl w-full overflow-hidden my-6">
         {/* Cabecera */}
         <div className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between">
           <div>
-            <h3 className="font-semibold text-base">Registrar Fase de Trazabilidad</h3>
+            <h3 id="titulo-nuevo-evento" className="font-semibold text-base">Registrar Fase de Trazabilidad</h3>
             <p className="text-xs text-slate-500">
               Lote: <strong className="text-sky-400">{lote.codigo}</strong> · Evento #{lote.eventos?.length || 0}
             </p>
           </div>
           <button
+            type="button"
             onClick={onClose}
             disabled={cargando}
+            aria-label="Cerrar"
             className="text-slate-500 hover:text-white p-1 rounded-md transition-colors"
           >
             <X className="w-5 h-5" />

@@ -47,6 +47,19 @@ function liberarScroll() {
   estiloPrevio = null;
 }
 
+/**
+ * Verdadero si el puntero está sobre el propio velo (no sobre la ventana ni sus hijos), con el botón
+ * principal, y dentro de su área de contenido: la barra de desplazamiento del velo queda fuera.
+ */
+function esToqueEnVelo(e: React.PointerEvent<HTMLDivElement>): boolean {
+  if (e.target !== e.currentTarget || !e.isPrimary || e.button !== 0) return false;
+  const velo = e.currentTarget;
+  const caja = velo.getBoundingClientRect();
+  const x = e.clientX - caja.left - velo.clientLeft;
+  const y = e.clientY - caja.top - velo.clientTop;
+  return x >= 0 && y >= 0 && x < velo.clientWidth && y < velo.clientHeight;
+}
+
 function enfocables(raiz: HTMLElement): HTMLElement[] {
   return Array.from(raiz.querySelectorAll<HTMLElement>(SELECTOR_ENFOCABLE)).filter(
     (el) => el.getClientRects().length > 0 && !el.closest('[inert]')
@@ -61,7 +74,9 @@ export function useVentana(
   propsVelo: {
     ref: React.RefObject<HTMLDivElement | null>;
     tabIndex: number;
-    onMouseDown: (e: React.MouseEvent<HTMLDivElement>) => void;
+    onPointerDown: (e: React.PointerEvent<HTMLDivElement>) => void;
+    onPointerUp: (e: React.PointerEvent<HTMLDivElement>) => void;
+    onPointerCancel: () => void;
     onClick: (e: React.MouseEvent<HTMLDivElement>) => void;
   };
 } {
@@ -69,7 +84,7 @@ export function useVentana(
   const ref = useRef<HTMLDivElement | null>(null);
   const cerrarRef = useRef(onCerrar);
   const bloqueadaRef = useRef(bloqueada);
-  const pulsoEnVelo = useRef(false);
+  const toque = useRef<{ x: number; y: number; valido: boolean } | null>(null);
   cerrarRef.current = onCerrar;
   bloqueadaRef.current = bloqueada;
 
@@ -130,14 +145,26 @@ export function useVentana(
     propsVelo: {
       ref,
       tabIndex: -1,
-      // Solo cierra si el toque empezó y terminó en el velo (no al arrastrar desde un campo)
-      onMouseDown: (e) => {
-        pulsoEnVelo.current = e.target === e.currentTarget;
+      // Solo cierra si el toque empezó y terminó sobre el propio velo con el botón principal y sin
+      // arrastrar: nunca con la rueda, al arrastrar desde un campo ni al usar la barra de desplazamiento
+      // del velo. El cierre espera al clic para que ese mismo toque no atraviese hacia la página de atrás.
+      onPointerDown: (e) => {
+        toque.current = esToqueEnVelo(e) ? { x: e.clientX, y: e.clientY, valido: false } : null;
+      },
+      onPointerUp: (e) => {
+        const t = toque.current;
+        if (!t) return;
+        const quieto = Math.abs(e.clientX - t.x) < 10 && Math.abs(e.clientY - t.y) < 10;
+        t.valido = quieto && esToqueEnVelo(e);
+        if (!t.valido) toque.current = null;
+      },
+      onPointerCancel: () => {
+        toque.current = null;
       },
       onClick: (e) => {
-        const enVelo = pulsoEnVelo.current && e.target === e.currentTarget;
-        pulsoEnVelo.current = false;
-        if (!enVelo || !abierta || !cerrarAlTocarVelo || bloqueadaRef.current) return;
+        const valido = toque.current?.valido === true && e.target === e.currentTarget;
+        toque.current = null;
+        if (!valido || !abierta || !cerrarAlTocarVelo || bloqueadaRef.current) return;
         cerrarRef.current();
       }
     }

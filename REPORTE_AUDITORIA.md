@@ -618,4 +618,4 @@ Regla general: cada archivo tiene un dueño. Si un archivo es compartido, el due
 
 | Qué | Cuándo | Resultado |
 | --- | --- | --- |
-| | | |
+| Despliegue 1: reglas de Firestore (commit 3d35745; respaldo en respaldos_despliegue/2026-11-15_2310) | 2026-11-16 14:13 UTC | Bien. Publicadas iguales al repo. Antes: 146/146 y 71/71 pruebas. Después, en producción: consulta pública ?lote=20261031-A-E1 abre sin errores; ingreso, elección de función y lista de lotes como operador cargan sin errores de permisos. |

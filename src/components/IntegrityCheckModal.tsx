@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Bloque } from './Esqueleto';
 import { usePresencia } from '../lib/presencia';
+import { useVentana } from '../lib/ventana';
 import { X, ShieldCheck, ShieldAlert, CheckCircle, Hash, RefreshCw } from 'lucide-react';
 import { Lote } from '../types';
 import { verificarIntegridadLote, ResultadoVerificacion, AnalisisCadena, revisarLote, RevisionLote } from '../services/hashService';
@@ -54,19 +55,22 @@ export const IntegrityCheckModal: React.FC<IntegrityCheckModalProps> = ({
   }, [isOpen, lote]);
 
   const presencia = usePresencia(isOpen);
+  const ventana = useVentana(isOpen, onClose, { bloqueada: verificando });
   if (!presencia.montado) return null;
 
   return (
-    <div role="dialog" aria-modal="true" data-saliendo={presencia.saliendo || undefined} className="velo fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4">
+    <div {...ventana.propsVelo} role="dialog" aria-modal="true" aria-labelledby="titulo-integridad" data-saliendo={presencia.saliendo || undefined} className="velo fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4">
       <div className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-lg w-full overflow-hidden">
         {/* Cabecera */}
         <div className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <Hash className="w-5 h-5 text-sky-400" />
-            <h3 className="font-semibold text-base">Verificación Criptográfica de Integridad</h3>
+            <h3 id="titulo-integridad" className="font-semibold text-base">Verificación Criptográfica de Integridad</h3>
           </div>
           <button
+            type="button"
             onClick={onClose}
+            aria-label="Cerrar"
             className="text-slate-500 hover:text-white p-1 rounded-md transition-colors"
           >
             <X className="w-5 h-5" />

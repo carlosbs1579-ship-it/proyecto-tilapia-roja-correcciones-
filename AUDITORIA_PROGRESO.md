@@ -10,7 +10,7 @@ Inicio: 2026-11-15 (noche). Rama de trabajo: `correciones-claude`.
 | 1. Revisión con 5 agentes | Hecha |
 | 2. Reporte (REPORTE_AUDITORIA.md) | Hecho: 69 hallazgos (2 críticos, 9 altos, 22 medios, 30 bajos, 6 informativos) |
 | 3. Correcciones y despliegues | Hecha: 3 tandas, reglas y web desplegadas |
-| 4. Verificación final en producción | En curso |
+| 4. Verificación final en producción | Hecha: ver REPORTE_AUDITORIA.md sección 7 |
 
 ## Estado inicial (fase 0)
 
@@ -141,4 +141,7 @@ Otras comprobaciones:
 - `npm audit --omit=dev`: 4 altas, todas en `@grpc/grpc-js`, que solo se usa en Node y no llega al navegador (H63, ya conocido).
 - Capturas: carpeta `claude-chrome-screenshots-f3cVGY` en Temp.
 
-Pendiente: el revisor independiente, el borrado del lote de prueba y la actualización final del reporte.
+Hecho:
+- Revisor independiente: 6 problemas nuevos menores, 4 corregidos y desplegados (despliegues 3 y 4).
+- Lote de prueba y contador diario borrados; no queda nada PRUEBA en producción.
+- Reporte final actualizado.

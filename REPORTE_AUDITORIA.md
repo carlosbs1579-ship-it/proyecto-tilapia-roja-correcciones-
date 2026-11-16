@@ -392,7 +392,7 @@ Los 5 riesgos principales:
 - Archivos: `src/services/qrService.ts:11-26`.
 - Impacto: QR generados desde `localhost`, IP local o vista previa apuntan a orígenes que pueden desaparecer; respaldo `cultivos-lore.web.app` sin uso.
 - Arreglo: origen oficial por variable de entorno y quitar el respaldo `web.app`. **(decisión del usuario)**: fija el dominio que llevan los QR.
-- Estado: Parcial, desplegado: el código usa VITE_ORIGEN_PUBLICO si existe; falta definirla en Vercel con el dominio oficial
+- Estado: Corregido y desplegado: VITE_ORIGEN_PUBLICO=https://proyecto-tilapia-roja-correcciones.vercel.app en el entorno de producción de Vercel (2026-11-16, redespliegue oeg1x9hs2); todos los QR apuntan a producción
 
 #### H41. Ficha nutricional, rangos de agua y volumen del estanque usados por el certificado no están sellados
 - Severidad: baja · Área: INTEGRIDAD-APP · Origen: Agente1 B8, Agente3 S7 (parte impacto)

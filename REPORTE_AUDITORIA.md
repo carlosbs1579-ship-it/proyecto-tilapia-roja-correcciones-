@@ -278,7 +278,7 @@ Los 5 riesgos principales:
 - Archivos: `src/firebase/firebaseConfig.ts` (sin `initializeAppCheck`); `firebase-applet-config.json` (`recaptchaSiteKey` vacío).
 - Impacto: con la API key pública se usa la REST desde fuera: recorrer lotes (H20), crear cuentas en masa, llenar perfiles pendientes (H46).
 - Arreglo: App Check con reCAPTCHA Enterprise (primero métricas, luego obligatorio en Firestore); protección contra enumeración de correos en Auth; evaluar si el registro libre hace falta **(decisión del usuario)**. Ver sección 5.
-- Estado: Pendiente de tu revisión en la consola (App Check, enumeración de correos, registro libre)
+- Estado: App Check descartado por ahora (el usuario no quiere activar facturación en Google Cloud); riesgo bajo porque las reglas ya protegen las escrituras y la API key se restringe por dominio. Enumeración de correos y dominios autorizados: pasos entregados al usuario
 
 #### H25. La anotación acepta texto en un dato numérico
 - Severidad: media · Área: INTEGRIDAD-APP · Origen: Agente4 4

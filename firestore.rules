@@ -1445,8 +1445,9 @@ service cloud.firestore {
         && f.datos.matches('^data:image/jpeg;base64,[A-Za-z0-9+/=]+$')
         && hashValido(f.hash)
         && f.expiraEn is timestamp
-        && f.expiraEn > request.time + duration.value(13, 'd')
-        && f.expiraEn < request.time + duration.value(17, 'd');
+        // Margen amplio: expiraEn lo calcula el reloj del teléfono, que puede estar desfasado
+        && f.expiraEn > request.time + duration.value(5, 'd')
+        && f.expiraEn < request.time + duration.value(25, 'd');
     }
 
     match /fotosEntrega/{fotoId} {
@@ -1699,7 +1700,7 @@ service cloud.firestore {
         && request.auth.uid == userId
         && soloCambia(['displayName', 'actualizadoEn'])
         && request.resource.data.get('displayName', '') is string
-        && request.resource.data.get('displayName', '').size() <= 80;
+        && request.resource.data.get('displayName', '').size() <= 120;
 
       // Un administrador crea perfiles de otros usuarios (si aún no existían)...
       // Solo el Administrador Maestro otorga el rol de administrador.

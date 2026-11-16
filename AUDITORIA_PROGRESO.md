@@ -9,8 +9,8 @@ Inicio: 2026-11-15 (noche). Rama de trabajo: `correciones-claude`.
 | 0. Reconocimiento | Hecha |
 | 1. Revisión con 5 agentes | Hecha |
 | 2. Reporte (REPORTE_AUDITORIA.md) | Hecho: 69 hallazgos (2 críticos, 9 altos, 22 medios, 30 bajos, 6 informativos) |
-| 3. Correcciones y despliegues | En curso: tanda 1 |
-| 4. Verificación final en producción | Pendiente |
+| 3. Correcciones y despliegues | Hecha: 3 tandas, reglas y web desplegadas |
+| 4. Verificación final en producción | En curso |
 
 ## Estado inicial (fase 0)
 
@@ -77,7 +77,8 @@ Puertos asignados para que no choquen:
 ## Despliegues
 
 - 2026-11-16 14:13 UTC: reglas de Firestore (commit 3d35745). Bien: lectura pública, ingreso y lista de lotes sin errores.
-- Antes de publicar se revisó en modo lectura producción: 1 solo lote real (20261031-A-E1, cerrado y coherente).
+- 2026-11-16: web a main (PR #24, bb792c4), Vercel 5f3h9ikqe. Bien. Revertir: vercel rollback a hpc7j252w.
+- Antes de publicar las reglas se revisó en modo lectura producción: 1 solo lote real (20261031-A-E1, cerrado y coherente).
 
 ## Fase 3: plan de tandas
 
@@ -116,3 +117,28 @@ Pendientes para las tandas siguientes:
 - **Bug de useVentana:** al abrir el detalle, el cuerpo aparece desplazado y la rueda del mouse dentro de la ventana la cierra. Revisarlo en la tanda 3.
 - **Reglas:** confirmar que `enlaceLoteValido` acepte el `pdfUrl` con el origen de producción y de preview.
 - **Vercel:** `VITE_ORIGEN_PUBLICO`, decisión del usuario.
+
+## Fase 4: verificación en producción (2026-11-16)
+
+Lote de prueba: `20261116-A-E1`, con proveedor `PRUEBA-auditoria` y `esPrueba: true`. Se creó con la app (sesión del usuario ya abierta), con una fase de Mortalidad de 50 y luego el cierre. Los ataques se hicieron con `tests/integridad/produccion-prueba.mjs` (credenciales de administración; se niega a tocar lotes que no sean de prueba). El respaldo está en `tests/integridad/.respaldo-20261116-A-E1.json`.
+
+Resultados en producción:
+
+| Prueba | Resultado |
+| --- | --- |
+| Tope de mortalidad (5000 en un lote de 1000) | Bloqueado con mensaje claro |
+| Crear lote, registrar fase y cerrar con las reglas nuevas | Funciona |
+| Línea base con QR con sello | "Cadena verificada al abrir. El sello impreso en el código QR coincide." |
+| 7: cabecera (estanque E2, supervivencia 99.9) | Detectado y avisado |
+| 4: dato de una fase (cantidad 50 a 5) | Detectado y avisado |
+| 8: borrar la última fase (sin sello en el QR) | Detectado y avisado |
+| QR con sello distinto (equivale a reescribir todo) | Detectado y avisado |
+| Restaurar | Vuelve a "verificada" |
+| `?lote=%25` | "El código del lote no es válido" |
+| Panel del repartidor | Carga sin errores |
+
+Otras comprobaciones:
+- `npm audit --omit=dev`: 4 altas, todas en `@grpc/grpc-js`, que solo se usa en Node y no llega al navegador (H63, ya conocido).
+- Capturas: carpeta `claude-chrome-screenshots-f3cVGY` en Temp.
+
+Pendiente: el revisor independiente, el borrado del lote de prueba y la actualización final del reporte.

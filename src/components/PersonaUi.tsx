@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { MoreHorizontal } from 'lucide-react';
 import { varMenu } from '../lib/motion';
+import { correoDeFirma, firmaEsCorreo, quienRegistro } from '../services/usuariosService';
 
 /**
  * Interruptor accesible (role="switch"): el círculo se desliza en 200 ms y el fondo cambia suave.
@@ -155,5 +156,34 @@ export const MenuTresPuntos: React.FC<{
       </AnimatePresence>
       </div>
     </div>
+  );
+};
+
+/**
+ * Firma de un registro de lote o anotación en las pantallas internas (H20): el nombre visible y,
+ * debajo, el correo de la cuenta. En los registros nuevos la firma guardada es el uid y el correo se
+ * resuelve en usuarios/{uid} (solo con sesión); si no hay permiso para leerlo, se muestra solo el nombre.
+ */
+export const FirmaRegistro: React.FC<{ registro: { registradoPor?: string; registradoPorNombre?: string }; className?: string }> = ({
+  registro,
+  className = ''
+}) => {
+  const firma = registro.registradoPor;
+  const [correo, setCorreo] = useState<string | null>(firmaEsCorreo(firma) ? firma || null : null);
+  useEffect(() => {
+    let vigente = true;
+    correoDeFirma(firma).then((c) => {
+      if (vigente) setCorreo(c);
+    });
+    return () => {
+      vigente = false;
+    };
+  }, [firma]);
+  const nombre = registro.registradoPorNombre || correo || quienRegistro(registro);
+  return (
+    <span className={className}>
+      <span className="firma">{nombre}</span>
+      {correo && correo !== nombre && <span className="block text-xs text-slate-500 [overflow-wrap:anywhere]">{correo}</span>}
+    </span>
   );
 };

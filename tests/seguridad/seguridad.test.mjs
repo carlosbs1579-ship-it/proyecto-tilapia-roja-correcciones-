@@ -8,7 +8,7 @@ import { readFileSync } from 'node:fs';
 import { after, before, beforeEach, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { initializeTestEnvironment, assertFails, assertSucceeds } from '@firebase/rules-unit-testing';
-import { collection, deleteDoc, doc, getDoc, getDocs, setDoc, updateDoc, writeBatch } from 'firebase/firestore';
+import { collection, deleteDoc, doc, getDoc, getDocs, serverTimestamp, setDoc, Timestamp, updateDoc, writeBatch } from 'firebase/firestore';
 
 const MAESTRO = 'carlosbs1579@gmail.com';
 const SIN = {
@@ -114,15 +114,26 @@ describe('Sin sesión no se escribe nada', () => {
 });
 
 describe('Lectura pública: qué expone', () => {
-  test('HUECO: un anónimo lee el lote completo, con correos y uid del personal', async () => {
+  // H20: los registros anteriores conservan el correo dentro del hash (quitarlo rompería la cadena);
+  // los nuevos se firman con el uid y el nombre visible, y el correo queda en usuarios/{uid}
+  test('HUECO (H20, solo registros anteriores): un anónimo lee el lote anterior con correos y uid del personal', async () => {
     const s = await assertSucceeds(getDoc(doc(anonimo(), 'lotes', LOTE.codigo)));
     assert.equal(s.data().creadoPor, 'operador@prueba.co');
     assert.equal(s.data().creadoPorUid, 'operador');
     assert.equal(s.data().eventos[0].registradoPor, 'operador@prueba.co');
   });
-  test('HUECO: un anónimo lee las anotaciones con correo y uid de quien propone', async () => {
+  test('HUECO (H20, solo registros anteriores): un anónimo lee las anotaciones anteriores con correo y uid de quien propone', async () => {
     const s = await assertSucceeds(getDoc(doc(anonimo(), 'anotacionesLote', LOTE.codigo)));
     assert.equal(s.data().registros[0].registradoPor, 'operador@prueba.co');
+  });
+  test('CERRADO (H20, registros nuevos): una fase firmada con el uid no deja el correo en lo público; nadie firma con el uid de otro', async () => {
+    const ev = (por) => ({ indice: 1, tipo: 'Alimentación', hashAnterior: H0, hash: '1'.repeat(64), registradoPor: por, registradoPorNombre: 'Ana Operadora', datos: {} });
+    await assertFails(updateDoc(doc(como('operador'), 'lotes', LOTE.codigo), { eventos: [...LOTE.eventos, ev('subadmin')], actualizadoEn: 'x' }));
+    await assertSucceeds(updateDoc(doc(como('operador'), 'lotes', LOTE.codigo), { eventos: [...LOTE.eventos, ev('operador')], actualizadoEn: 'x' }));
+    const s = await assertSucceeds(getDoc(doc(anonimo(), 'lotes', LOTE.codigo)));
+    assert.ok(!JSON.stringify(s.data().eventos[1]).includes('@'));
+    // El correo no se lee sin sesión
+    await assertFails(getDoc(doc(anonimo(), 'usuarios', 'operador')));
   });
   test('Con el token, un anónimo lee nombre y dirección del cliente, repartidor y novedades', async () => {
     const s = await assertSucceeds(getDoc(doc(anonimo(), 'comprobantes', 'c'.repeat(24))));
@@ -478,6 +489,15 @@ describe('Fase 3: escrituras legítimas de la app (lotes)', () => {
     await assertFails(cerrar(resumenApp(hx(2), { mortalidadAcumulada: 10, pecesVivos: 990, supervivencia: 99, biomasaInicialKg: 50 })));
     await assertFails(cerrar({ ...resumenApp(hx(2), { mortalidadAcumulada: 10, pecesVivos: 990, supervivencia: 99 }), inventado: 1 }));
     await assertSucceeds(cerrar(resumenApp(hx(2), { mortalidadAcumulada: 10, pecesVivos: 990, supervivencia: 99 })));
+  });
+
+  test('H20/H19: corregir la siembra con la firma uid y la hora del servidor (versión nueva de la app)', async () => {
+    const l = loteApp(COD, 2);
+    await sembrar(l);
+    const cambio = correccionApp(l, { estanque: 'E2', cantidadSembrada: 1200 }, { estanque: 'E1 → E2', cantidadSembrada: '1000 → 1200' },
+      { pecesVivos: 1200 }, 'operador', 'Ana Operadora');
+    await assertFails(updateDoc(doc(como('operador'), 'lotes', COD), { ...cambio, 'registradoEnServidor.2': Timestamp.fromDate(new Date('2026-01-01')) }));
+    await assertSucceeds(updateDoc(doc(como('operador'), 'lotes', COD), { ...cambio, 'registradoEnServidor.2': serverTimestamp() }));
   });
 
   test('H44: historiales largos (400 fases) no agotan el límite de expresiones', async () => {

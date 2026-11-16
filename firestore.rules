@@ -122,13 +122,29 @@ service cloud.firestore {
         && !h.matches('^0{18}[0-9a-f]{14}0{18}[0-9a-f]{14}$');
     }
 
+    // Firma de un registro nuevo (H20): el uid de quien tiene la sesión (versión nueva de la app, que
+    // no guarda el correo en lo que se lee sin sesión) o su correo (registros de la versión anterior)
+    function firmaPropia(v) {
+      return v is string && (v == request.auth.uid || v.lower() == correoSesion());
+    }
+
+    // Hora del servidor (H19) del registro n en el mapa registradoEnServidor (fuera del hash; Firestore
+    // no admite la hora del servidor dentro de una lista): la de esta operación, sin tocar las anteriores.
+    // Si el documento todavía no tiene el mapa (versión anterior de la app) puede seguir sin él; una vez
+    // que lo tiene, cada registro nuevo debe dejar su hora.
+    function horaServidorValida(a, d, n) {
+      return (!('registradoEnServidor' in a) && !('registradoEnServidor' in d))
+        || (d.registradoEnServidor[string(n)] == request.time
+            && d.registradoEnServidor.diff(a.get('registradoEnServidor', {})).affectedKeys().hasOnly([string(n)]));
+    }
+
     // p: perfil de quien escribe (leído una sola vez)
     function eventoNuevoValido(e, antes, p) {
       return e.indice == antes.size()
         && e.tipo != 'Siembra'
         && e.hashAnterior == (antes.size() == 0 ? '0000000000000000000000000000000000000000000000000000000000000000' : antes[antes.size() - 1].hash)
         && hashValido(e.hash)
-        && e.registradoPor is string && e.registradoPor.lower() == correoSesion()
+        && firmaPropia(e.registradoPor)
         && (!('registradoPorNombre' in e) || e.registradoPorNombre == p.get('displayName', ''));
     }
 
@@ -158,7 +174,7 @@ service cloud.firestore {
       let d = esCorr ? ev.datos : {};
       return esCorr
         ? (d.keys().hasOnly(['ambito', 'cantidadSembrada', 'estanque', 'pesoInicialPromedioG', 'proveedorAlevinos', 'observacionesIniciales'])
-            && cambios.hasOnly(d.keys().concat(['eventos', 'resumen', 'actualizadoEn']))
+            && cambios.hasOnly(d.keys().concat(['eventos', 'resumen', 'actualizadoEn', 'registradoEnServidor']))
             && textoSiembra(d, 'estanque', a.get('estanque', ''), n.get('estanque', ''))
             && textoSiembra(d, 'proveedorAlevinos', a.get('proveedorAlevinos', ''), n.get('proveedorAlevinos', ''))
             && textoSiembra(d, 'observacionesIniciales', a.get('observacionesIniciales', ''), n.get('observacionesIniciales', ''))
@@ -217,7 +233,7 @@ service cloud.firestore {
     function loteActivoCoherente(a, n, ev, esCorr) {
       let cambios = n.diff(a).affectedKeys();
       return cambios.hasOnly(['eventos', 'resumen', 'actualizadoEn', 'cantidadSembrada', 'estanque', 'pesoInicialPromedioG',
-                              'proveedorAlevinos', 'observacionesIniciales'])
+                              'proveedorAlevinos', 'observacionesIniciales', 'registradoEnServidor'])
         && (ev != null || cambios.hasOnly(['actualizadoEn']))
         && siembraCoherente(a, n, cambios, ev, esCorr)
         && cosechaCoherente(a, n, ev)
@@ -288,7 +304,7 @@ service cloud.firestore {
       return ['codigo', 'consecutivo', 'estanque', 'producto', 'modalidad', 'origen', 'fechaSiembra', 'cantidadSembrada',
               'pesoInicialPromedioG', 'proveedorAlevinos', 'estado', 'fechaCierre', 'eventos', 'resumen', 'pdfPath', 'pdfUrl',
               'versionPdf', 'pdfActualizadoEn', 'granjaId', 'creadoPor', 'creadoPorUid', 'creadoEn', 'actualizadoEn',
-              'observacionesIniciales'];
+              'observacionesIniciales', 'registradoEnServidor'];
     }
 
     // El lote queda a nombre de quien lo crea, con el código del documento, y su evento 0 (la
@@ -306,10 +322,11 @@ service cloud.firestore {
         && e.indice == 0
         && e.hashAnterior == '0000000000000000000000000000000000000000000000000000000000000000'
         && hashValido(e.hash)
-        && e.registradoPor is string && e.registradoPor.lower() == correoSesion()
+        && firmaPropia(e.registradoPor)
         && nombrePropio(e)
         && n.creadoPorUid == request.auth.uid
-        && n.creadoPor is string && n.creadoPor.lower() == correoSesion()
+        && firmaPropia(n.creadoPor)
+        && horaServidorValida({}, n, 0)
         && e.get('fechaEvento', null) == n.fechaSiembra
         && e.get('datos', {}).get('cantidad', null) == n.cantidadSembrada
         && e.get('datos', {}).get('pesoPromedioInicialG', null) == n.pesoInicialPromedioG
@@ -362,7 +379,7 @@ service cloud.firestore {
               ? ((maestro || escribeLote(p, esCorr))
                   && (ev == null
                         ? despues == antes
-                        : (despues[0:antes.size()] == antes && eventoNuevoValido(ev, antes, p)))
+                        : (despues[0:antes.size()] == antes && eventoNuevoValido(ev, antes, p) && horaServidorValida(a, n, antes.size())))
                   && loteActivoCoherente(a, n, ev, esCorr))
               : (request.resource.data.estado == 'cerrado'
                   && (maestro || permisoEn(p, 'cerrarLotes'))
@@ -415,7 +432,7 @@ service cloud.firestore {
         && nombrePropio(r)
         && r.indice == n
         && r.registradoPorUid == request.auth.uid
-        && r.registradoPor is string && r.registradoPor.lower() == correoSesion()
+        && firmaPropia(r.registradoPor)
         && r.hashAnterior == hashPrevio
         && hashValido(r.hash)
         && r.tipo in ['Propuesta', 'Aprobación', 'Rechazo'];
@@ -460,7 +477,8 @@ service cloud.firestore {
       allow get: if true;
       allow list: if esAdminGranja() || tieneRol('operator');
       allow create: if isSignedIn()
-        && request.resource.data.keys().hasOnly(['codigoLote', 'granjaId', 'hashAnclaje', 'registros', 'resueltas'])
+        && request.resource.data.keys().hasOnly(['codigoLote', 'granjaId', 'hashAnclaje', 'registros', 'resueltas', 'registradoEnServidor'])
+        && horaServidorValida({}, request.resource.data, 0)
         && request.resource.data.codigoLote == codigo
         && get(rutaLote(codigo)).data.estado == 'cerrado'
         && request.resource.data.granjaId == get(rutaLote(codigo)).data.get('granjaId', 'cultivos-lore')
@@ -472,7 +490,8 @@ service cloud.firestore {
         && request.resource.data.registros[0].tipo == 'Propuesta'
         && propuestaValida(request.resource.data.registros[0], get(rutaLote(codigo)).data);
       allow update: if isSignedIn()
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['registros', 'resueltas'])
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['registros', 'resueltas', 'registradoEnServidor'])
+        && horaServidorValida(resource.data, request.resource.data, resource.data.registros.size())
         && loteDeMiGranja(get(rutaLote(codigo)).data)
         // Si el sello del lote cambió, la cadena de anotaciones ya no corresponde: no se agrega nada
         && resource.data.hashAnclaje == get(rutaLote(codigo)).data.eventos[get(rutaLote(codigo)).data.eventos.size() - 1].hash

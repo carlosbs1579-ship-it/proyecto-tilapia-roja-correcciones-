@@ -29,7 +29,7 @@ export interface RegistroAnotacion {
   tipo: TipoRegistroAnotacion;
   fecha: string;
   datos: Record<string, any>; // Propuesta: fase, dato, valorRegistrado, valorCorrecto, motivo · Resolución: propuestaIndice, respuesta
-  registradoPor: string;
+  registradoPor: string; // uid (registros nuevos, H20) o correo (registros anteriores); entra en el hash
   registradoPorUid: string;
   registradoPorNombre?: string;
   hashAnterior: string;
@@ -41,6 +41,7 @@ export interface AnotacionesLote {
   hashAnclaje: string; // sello de cierre del lote (hash de su última fase)
   registros: RegistroAnotacion[];
   resueltas: Record<string, 'aprobada' | 'rechazada'>; // clave: índice de la propuesta
+  registradoEnServidor?: Record<string, MarcaServidor>; // hora del servidor de cada registro nuevo (H19), fuera del hash
 }
 
 export interface EventoLote {
@@ -50,7 +51,7 @@ export interface EventoLote {
   fechaEvento: string; // YYYY-MM-DD
   descripcion: string;
   datos: Record<string, any>;
-  registradoPor: string; // email del usuario
+  registradoPor: string; // uid de quien registró (eventos nuevos, H20) o su correo (eventos anteriores); entra en el hash
   registradoPorNombre?: string; // nombre visible de quien registró (eventos nuevos; entra en el hash)
   huellas?: Record<string, string>; // rastro por dato (SHA-256 de cada dato) para saber cuál se alteró
   registradoEn: string; // ISO string generado por cliente
@@ -100,11 +101,12 @@ export interface Lote {
   versionPdf: number;
   pdfActualizadoEn?: string;
   granjaId?: string; // Granja a la que pertenece el lote (los lotes antiguos pueden no tenerla)
-  creadoPor: string;
+  creadoPor: string; // uid (lotes nuevos, H20) o correo (lotes anteriores)
   creadoPorUid?: string | null; // UID de Firebase Auth de quien creó el lote
   creadoEn: string;
   actualizadoEn: string;
   observacionesIniciales?: string;
+  registradoEnServidor?: Record<string, MarcaServidor>; // hora del servidor de cada fase nueva (H19), fuera del hash
 }
 
 // ---------- Entregas a clientes (posteriores al sellado del lote) ----------

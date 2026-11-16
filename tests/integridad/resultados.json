@@ -1,13 +1,13 @@
 {
-  "fecha": "2026-11-16T20:59:45.031Z",
+  "fecha": "2026-11-16T21:39:20.032Z",
   "lote": "20260801-A-E1",
   "lote2": "20260801-A-E2",
   "contexto": {
-    "ordenId": "PED-20261116-HWLPP",
-    "fotoId": "foto-a4c45978-b63d-4215-a569-54db7179a138",
-    "comprobanteId": "cmpf1f67e4576944d7a1efd5039373d8c7ce532f109",
-    "token": "c0478c020d2418874800d44399873fdad78e8faa0",
-    "selloQr": "cea8361ff32732b9"
+    "ordenId": "PED-20261116-KYGVK",
+    "fotoId": "foto-2d0f0a84-a194-4a48-9b1d-5822b169401e",
+    "comprobanteId": "cmpac7d078495793ab6c1e66900dbd9cbc2d148c3fd",
+    "token": "cd636f7c962c21dcc6c45c388ceb6de7ff38af869",
+    "selloQr": "b1fb9669989d284a"
   },
   "ataques": [
     {
@@ -413,7 +413,7 @@
       "resultado": "detectado y avisado",
       "senales": {
         "automaticas": [
-          "Solo QR con sello impreso: El sello impreso en el código QR (cea8361ff32732b9) no coincide con el sello actual del lote: el registro cambió después de imprimir la etiqueta.",
+          "Solo QR con sello impreso: El sello impreso en el código QR (b1fb9669989d284a) no coincide con el sello actual del lote: el registro cambió después de imprimir la etiqueta.",
           "QR entrega: Comprobante N.º 1: El lote 20260801-A-E1 cambió después de emitir este comprobante: su sello actual no continúa el que quedó registrado. | Comprobante N.º 1: Las anotaciones del lote 20260801-A-E1 cambiaron después de emitir este comprobante: se borraron o se recalcularon.",
           "Panel interno de la orden, comprobante N.º 1: El lote 20260801-A-E1 cambió después de emitir este comprobante: su sello actual no continúa el que quedó registrado. Las anotaciones del lote 20260801-A-E1 cambiaron después de emitir este comprobante: se borraron o se recalcularon."
         ],
@@ -503,7 +503,7 @@
           "QR lote, sección anotaciones: El sello del lote cambió después de anotar: las anotaciones ya no corresponden a este registro sellado."
         ],
         "manuales": [
-          "Botón \"Verificar integridad\" / IntegrityCheckModal: El sello de cierre registrado (cea8361ff327…) no coincide con el último hash de la cadena (19d04a2013a6…): se borró o se cambió una fase."
+          "Botón \"Verificar integridad\" / IntegrityCheckModal: El sello de cierre registrado (b1fb9669989d…) no coincide con el último hash de la cadena (0723f84328ba…): se borró o se cambió una fase."
         ],
         "datos": {
           "qrAntiguoSinSello": "avisado",
@@ -633,7 +633,7 @@
       "resultado": "detectado y avisado",
       "senales": {
         "automaticas": [
-          "Solo QR con sello impreso: El sello impreso en el código QR (cea8361ff32732b9) no coincide con el sello actual del lote: el registro cambió después de imprimir la etiqueta.",
+          "Solo QR con sello impreso: El sello impreso en el código QR (b1fb9669989d284a) no coincide con el sello actual del lote: el registro cambió después de imprimir la etiqueta.",
           "QR entrega: Comprobante N.º 1: El lote 20260801-A-E1 cambió después de emitir este comprobante: su sello actual no continúa el que quedó registrado. | Comprobante N.º 1: Las anotaciones del lote 20260801-A-E1 cambiaron después de emitir este comprobante: se borraron o se recalcularon.",
           "Panel interno de la orden, comprobante N.º 1: El lote 20260801-A-E1 cambió después de emitir este comprobante: su sello actual no continúa el que quedó registrado. Las anotaciones del lote 20260801-A-E1 cambiaron después de emitir este comprobante: se borraron o se recalcularon."
         ],
@@ -1442,7 +1442,7 @@
       "resultado": "detectado y avisado",
       "senales": {
         "automaticas": [
-          "Solo QR con sello impreso: El sello impreso en el código QR (cea8361ff32732b9) no coincide con el sello actual del lote: el registro cambió después de imprimir la etiqueta.",
+          "Solo QR con sello impreso: El sello impreso en el código QR (b1fb9669989d284a) no coincide con el sello actual del lote: el registro cambió después de imprimir la etiqueta.",
           "QR entrega: Comprobante N.º 1: El lote 20260801-A-E1 cambió después de emitir este comprobante: su sello actual no continúa el que quedó registrado. | Comprobante N.º 1: Las anotaciones del lote 20260801-A-E1 cambiaron después de emitir este comprobante: se borraron o se recalcularon.",
           "Panel interno de la orden, comprobante N.º 1: El lote 20260801-A-E1 cambió después de emitir este comprobante: su sello actual no continúa el que quedó registrado. Las anotaciones del lote 20260801-A-E1 cambiaron después de emitir este comprobante: se borraron o se recalcularon."
         ],
@@ -1486,7 +1486,7 @@
       "resultado": "detectado y avisado",
       "senales": {
         "automaticas": [
-          "Solo QR con sello impreso: El sello impreso en el código QR (cea8361ff32732b9) no coincide con el sello actual del lote: el registro cambió después de imprimir la etiqueta.",
+          "Solo QR con sello impreso: El sello impreso en el código QR (b1fb9669989d284a) no coincide con el sello actual del lote: el registro cambió después de imprimir la etiqueta.",
           "Panel interno de la orden, historial: Posible alteración detectada en el evento N.º 5 (Comprobante emitido): su contenido no corresponde a su huella."
         ],
         "manuales": [],
@@ -1763,7 +1763,7 @@
     },
     {
       "param": "?entrega=(token real)",
-      "resultado": "muestra la entrega PED-20261116-HWLPP"
+      "resultado": "muestra la entrega PED-20261116-KYGVK"
     }
   ]
 }

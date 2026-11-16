@@ -14,7 +14,9 @@ import {
   doc,
   getDoc,
   getDocs,
+  serverTimestamp,
   setDoc,
+  Timestamp,
   updateDoc,
   writeBatch
 } from 'firebase/firestore';
@@ -602,5 +604,124 @@ describe('Anotaciones posteriores al cierre de un lote', () => {
     await assertFails(deleteDoc(doc(como('maestro'), 'anotacionesLote', 'L-SELLADO')));
     const lote = (await (async () => { let x; await env.withSecurityRulesDisabled(async (ctx) => { x = (await getDoc(doc(ctx.firestore(), 'lotes', 'L-SELLADO'))).data(); }); return x; })());
     assert.deepEqual(lote, SELLADO);
+  });
+});
+
+// ===== Segunda ronda (H20, H19, H45) en lotes y anotaciones: la versión nueva de la app firma los
+// registros con el uid (no guarda el correo en lo que se lee sin sesión) y deja la hora del servidor
+// de cada registro en registradoEnServidor[indice], fuera del hash. La versión anterior (correo y
+// sin hora del servidor) sigue pasando mientras el documento no tenga horas del servidor.
+describe('Firma con uid (H20) y hora del servidor (H19) en lotes y anotaciones', () => {
+  const lote = (db) => doc(db, 'lotes', 'L-ACTIVO');
+  const leer = async (col, id) => {
+    let d;
+    await env.withSecurityRulesDisabled(async (ctx) => { d = (await getDoc(doc(ctx.firestore(), col, id))).data(); });
+    return d;
+  };
+  const evUid = (uid, indice, hashAnterior, extra = {}) =>
+    ({ indice, tipo: 'Alimentación', hashAnterior, hash: String(indice + 1).repeat(64).slice(0, 64), registradoPor: uid, ...extra });
+
+  test('crear un lote con la firma uid y la hora del servidor de la siembra', async () => {
+    const db = como('operador');
+    const e0 = (extra) => ({ eventos: [{ ...loteNuevo('operador', 'L-UID').eventos[0], registradoPor: 'operador', registradoPorNombre: 'operador', ...extra }] });
+    const base = { creadoPor: 'operador', registradoEnServidor: { '0': serverTimestamp() } };
+    await assertFails(crearLoteComoApp(db, 'operador', 'L-UID', { ...base, creadoPor: 'subadmin', ...e0() }));
+    await assertFails(crearLoteComoApp(db, 'operador', 'L-UID', { ...base, ...e0({ registradoPor: 'subadmin' }) }));
+    await assertFails(crearLoteComoApp(db, 'operador', 'L-UID', { ...base, ...e0({ registradoPorNombre: 'Gerente General' }) }));
+    await assertFails(crearLoteComoApp(db, 'operador', 'L-UID', { ...base, registradoEnServidor: { '0': Timestamp.fromDate(new Date('2026-01-01')) }, ...e0() }));
+    await assertFails(crearLoteComoApp(db, 'operador', 'L-UID', { ...base, registradoEnServidor: { '0': serverTimestamp(), '1': serverTimestamp() }, ...e0() }));
+    await assertSucceeds(crearLoteComoApp(db, 'operador', 'L-UID', { ...base, ...e0() }));
+    const d = await leer('lotes', 'L-UID');
+    assert.equal(d.creadoPor, 'operador');
+    assert.ok(!JSON.stringify(d.eventos).includes('@'));
+  });
+
+  test('la versión anterior de la app (correo, sin hora del servidor) sigue creando lotes', async () => {
+    await assertSucceeds(crearLoteComoApp(como('operador'), 'operador', 'L-ANTERIOR'));
+  });
+
+  test('registrar una fase con la firma uid y su hora del servidor', async () => {
+    const db = como('operador');
+    const con = (ev, horas) => updateDoc(lote(db), { eventos: [...LOTE_ACTIVO.eventos, ev], ...horas });
+    const hora = { 'registradoEnServidor.1': serverTimestamp() };
+    await assertFails(con(evUid('subadmin', 1, 'h0'), hora));
+    await assertFails(con(evUid('operador', 1, 'h0', { registradoPorNombre: 'Gerente General' }), hora));
+    await assertFails(con(evUid('operador', 1, 'h0'), { 'registradoEnServidor.1': Timestamp.fromDate(new Date('2026-01-01')) }));
+    await assertFails(con(evUid('operador', 1, 'h0'), { 'registradoEnServidor.0': serverTimestamp() }));
+    await assertFails(con(evUid('operador', 1, 'h0'), { 'registradoEnServidor.1': serverTimestamp(), 'registradoEnServidor.0': serverTimestamp() }));
+    await assertSucceeds(con(evUid('operador', 1, 'h0', { registradoPorNombre: 'operador' }), hora));
+    const d = await leer('lotes', 'L-ACTIVO');
+    assert.ok(d.registradoEnServidor['1'] instanceof Timestamp);
+    // Una vez que el lote tiene horas del servidor, cada fase nueva debe dejar la suya y no se tocan las anteriores
+    const ev2 = evUid('operador', 2, d.eventos[1].hash);
+    await assertFails(updateDoc(lote(db), { eventos: [...d.eventos, ev2] }));
+    await assertFails(updateDoc(lote(db), { eventos: [...d.eventos, ev2], 'registradoEnServidor.1': serverTimestamp(), 'registradoEnServidor.2': serverTimestamp() }));
+    await assertFails(updateDoc(lote(db), { 'registradoEnServidor.1': serverTimestamp(), actualizadoEn: 'y' }));
+    await assertSucceeds(updateDoc(lote(db), { eventos: [...d.eventos, ev2], 'registradoEnServidor.2': serverTimestamp() }));
+  });
+
+  test('la versión anterior de la app (correo, sin hora del servidor) sigue registrando fases en lotes sin horas', async () => {
+    await assertSucceeds(updateDoc(lote(como('operador')), { eventos: [...LOTE_ACTIVO.eventos, eventoNuevo('operador')] }));
+  });
+
+  test('el cierre no toca las horas del servidor de las fases', async () => {
+    await env.withSecurityRulesDisabled((ctx) => updateDoc(doc(ctx.firestore(), 'lotes', 'L-ACTIVO'), { registradoEnServidor: { '0': Timestamp.now() } }));
+    const cerrar = (extra) => updateDoc(lote(como('operador')), { estado: 'cerrado', fechaCierre: '2026-11-10', ...extra });
+    await assertFails(cerrar({ 'registradoEnServidor.0': serverTimestamp() }));
+    await assertFails(cerrar({ 'registradoEnServidor.1': serverTimestamp() }));
+    await assertSucceeds(cerrar({}));
+  });
+
+  describe('anotaciones', () => {
+    const SELLADO = { ...LOTE_ACTIVO, codigo: 'L-SELLADO', estado: 'cerrado', eventos: [{ indice: 0, tipo: 'Siembra', hash: 'h0' }, { indice: 1, tipo: 'Cosecha', hash: 'h1', datos: { biomasaCosechadaKg: 912 } }] };
+    const propuesta = { fase: 1, dato: 'biomasaCosechadaKg', valorRegistrado: '912', valorCorrecto: '950', motivo: 'Error al digitar la biomasa en la báscula' };
+    const reg = (uid, indice, tipo, datos, hashAnterior, extra = {}) => ({
+      id: `r${indice}`, indice, tipo, fecha: 'x', datos, hashAnterior, hash: String(indice + 1).repeat(64).slice(0, 64),
+      registradoPor: uid, registradoPorUid: uid, ...extra
+    });
+    const ref = (uid) => doc(como(uid), 'anotacionesLote', 'L-SELLADO');
+    const proponer = (uid, extraReg = {}, extraDoc = { registradoEnServidor: { '0': serverTimestamp() } }) =>
+      setDoc(ref(uid), { codigoLote: 'L-SELLADO', granjaId: 'cultivos-lore', hashAnclaje: 'h1', resueltas: {}, registros: [reg(uid, 0, 'Propuesta', propuesta, 'h1', extraReg)], ...extraDoc });
+    const aprobar = async (uid, extraReg = {}, horas = { 'registradoEnServidor.1': serverTimestamp() }) => {
+      const d = await leer('anotacionesLote', 'L-SELLADO');
+      return updateDoc(ref(uid), {
+        registros: [...d.registros, reg(uid, 1, 'Aprobación', { propuestaIndice: 0, respuesta: '' }, d.registros[0].hash, extraReg)],
+        resueltas: { '0': 'aprobada' }, ...horas
+      });
+    };
+
+    beforeEach(async () => {
+      await env.withSecurityRulesDisabled(async (ctx) => {
+        const db = ctx.firestore();
+        await setDoc(doc(db, 'lotes', 'L-SELLADO'), SELLADO);
+        await updateDoc(doc(db, 'usuarios', 'operador'), { 'permisos.proponerAnotaciones': true });
+        await updateDoc(doc(db, 'usuarios', 'mixto'), { 'permisos.aprobarAnotaciones': true });
+      });
+    });
+
+    test('proponer y aprobar con la firma uid y la hora del servidor de cada registro', async () => {
+      await assertFails(proponer('operador', { registradoPor: 'subadmin' }));
+      await assertFails(proponer('operador', {}, { registradoEnServidor: { '0': Timestamp.fromDate(new Date('2026-01-01')) } }));
+      await assertFails(proponer('operador', {}, { registradoEnServidor: { '1': serverTimestamp() } }));
+      await assertSucceeds(proponer('operador'));
+      await assertFails(aprobar('mixto', {}, {}));
+      await assertFails(aprobar('mixto', {}, { 'registradoEnServidor.1': Timestamp.fromDate(new Date('2026-01-01')) }));
+      await assertFails(aprobar('mixto', {}, { 'registradoEnServidor.1': serverTimestamp(), 'registradoEnServidor.0': serverTimestamp() }));
+      await assertFails(aprobar('mixto', { registradoPor: 'operador' }));
+      await assertSucceeds(aprobar('mixto'));
+      const d = await leer('anotacionesLote', 'L-SELLADO');
+      assert.ok(!JSON.stringify(d.registros).includes('@'));
+      assert.deepEqual(Object.keys(d.registradoEnServidor).sort(), ['0', '1']);
+    });
+
+    test('la versión anterior de la app (correo, sin hora del servidor) sigue proponiendo y aprobando', async () => {
+      await assertSucceeds(proponer('operador', { registradoPor: 'operador@prueba.co' }, {}));
+      await assertSucceeds(aprobar('mixto', { registradoPor: 'mixto@prueba.co' }, {}));
+    });
+
+    test('una cadena antigua (correo) admite registros nuevos con uid y hora del servidor', async () => {
+      await assertSucceeds(proponer('operador', { registradoPor: 'operador@prueba.co' }, {}));
+      await assertSucceeds(aprobar('mixto'));
+    });
   });
 });

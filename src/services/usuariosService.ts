@@ -633,13 +633,45 @@ export function nombreRegistro(): { registradoPorNombre?: string } {
   return nombreSesionActual ? { registradoPorNombre: nombreSesionActual } : {};
 }
 
+// Firma de un registro (H20): los registros nuevos de lotes y anotaciones guardan el uid de quien
+// registra (no su correo, porque se leen sin sesión); los anteriores guardan el correo
+export const firmaEsCorreo = (firma: string | undefined): boolean => Boolean(firma && firma.includes('@'));
+
+// Correos ya resueltos a partir del uid (solo en las pantallas internas, con sesión)
+const correosPorUid = new Map<string, string | null>();
+
 /**
- * Quién registró un evento: el nombre si se guardó; si no (registros anteriores), el correo, oculto
- * en lo público (QR y PDF) y completo en las pantallas internas
+ * Correo de quien firmó un registro, para las pantallas internas: si la firma ya es un correo
+ * (registros anteriores) es ese; si es un uid, se lee usuarios/{uid}, que solo se puede leer con
+ * sesión (la propia cuenta o un administrador de la granja). Sin permiso devuelve null.
+ */
+export async function correoDeFirma(firma: string | undefined): Promise<string | null> {
+  if (!firma) return null;
+  if (firmaEsCorreo(firma)) return firma;
+  if (correosPorUid.has(firma)) return correosPorUid.get(firma) ?? null;
+  try {
+    const snap = await getDoc(doc(db, 'usuarios', firma));
+    const correo = snap.exists() ? String(snap.data()?.email || '') || null : null;
+    correosPorUid.set(firma, correo);
+    return correo;
+  } catch {
+    correosPorUid.set(firma, null);
+    return null;
+  }
+}
+
+/**
+ * Quién registró un evento: el nombre si se guardó. Si no lo tiene: en los registros anteriores el
+ * correo, oculto en lo público (QR y PDF) y completo en las pantallas internas; en los nuevos (firma
+ * con uid) un texto genérico en lo público y el correo resuelto en lo interno, si ya se conoce.
  */
 export function quienRegistro(ev: { registradoPor?: string; registradoPorNombre?: string }, publico = false): string {
   if (ev.registradoPorNombre) return ev.registradoPorNombre;
   if (!ev.registradoPor) return 'Sin dato';
+  if (!firmaEsCorreo(ev.registradoPor)) {
+    if (publico) return 'Personal de la granja';
+    return correosPorUid.get(ev.registradoPor) || 'Cuenta sin nombre visible';
+  }
   if (!publico) return ev.registradoPor;
   const [usuario, dominio] = ev.registradoPor.split('@');
   return dominio ? `${usuario.slice(0, 2)}•••@${dominio}` : usuario.slice(0, 2) + '•••';

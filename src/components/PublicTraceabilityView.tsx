@@ -5,7 +5,7 @@ import { LogoLore } from './LogoLore';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase/firebaseConfig';
 import { Lote, ConfiguracionGeneral } from '../types';
-import { verificarIntegridadLote, analizarCadenaLote, DiagnosticoFase, nombreDato, revisarLote, RevisionLote } from '../services/hashService';
+import { verificarIntegridadLote, analizarCadenaLote, DiagnosticoFase, horaServidorRegistro, nombreDato, revisarLote, RevisionLote } from '../services/hashService';
 import { anotacionesDe, verificarAnotaciones, VerificacionAnotaciones } from '../services/anotacionesService';
 import { AvisoIntegridad, IndicadorVerificado } from './AvisoIntegridad';
 import { AnotacionesLote } from '../types';
@@ -631,6 +631,15 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
                       </span>
                       <span className="font-mono text-xs whitespace-nowrap" title={ev.hash}>Huella {ev.hash.substring(0, 12)}…</span>
                     </div>
+                    {(() => {
+                      const h = horaServidorRegistro(lote.registradoEnServidor, ev.indice, ev.registradoEn);
+                      return h.servidor ? (
+                        <p className={`mt-1 text-xs ${h.desfase ? 'text-amber-800' : 'text-slate-500'}`}>
+                          Registrado en el servidor: {formatearFechaColombia(h.servidor.toISOString())}
+                          {h.desfase && ' · la hora declarada por el equipo difiere en más de 10 minutos'}
+                        </p>
+                      ) : null;
+                    })()}
                   </div>
                 </div>
               ))}
@@ -679,6 +688,16 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
                       <span><span className="rotulo text-slate-500 mr-2">Aprobó</span><span className="firma">{a.resolucion ? quienRegistro(a.resolucion, true) : 'Sin dato'}</span></span>
                       <span className="text-xs text-slate-500 tabular-nums">{formatearFechaColombia(a.resolucion?.fecha || a.propuesta.fecha)}</span>
                     </p>
+                    {(() => {
+                      const r = a.resolucion || a.propuesta;
+                      const h = horaServidorRegistro(datosAnotaciones?.registradoEnServidor, r.indice, r.fecha);
+                      return h.servidor ? (
+                        <p className={`text-xs ${h.desfase ? 'text-amber-800' : 'text-slate-500'}`}>
+                          Registrado en el servidor: {formatearFechaColombia(h.servidor.toISOString())}
+                          {h.desfase && ' · la hora declarada por el equipo difiere en más de 10 minutos'}
+                        </p>
+                      ) : null;
+                    })()}
                   </li>
                 );
               })}

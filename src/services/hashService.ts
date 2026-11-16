@@ -72,6 +72,27 @@ export function generarJsonCanonico(payload: PayloadHashEvento): string {
   return JSON.stringify(payloadOrdenado);
 }
 
+// Diferencia máxima entre la hora declarada por el equipo y la del servidor antes de avisar (H19)
+const TOLERANCIA_HORA_REGISTRO_MS = 10 * 60 * 1000;
+
+/**
+ * Hora del servidor de una fase del lote o de un registro de anotación (H19), guardada fuera del hash
+ * en registradoEnServidor[indice], y si la hora declarada por el equipo (registradoEn o fecha)
+ * difiere en más de 10 minutos. Los registros anteriores a este cambio no la tienen (servidor null).
+ */
+export function horaServidorRegistro(
+  mapa: Record<string, unknown> | undefined,
+  indice: number,
+  declarada: string | undefined
+): { servidor: Date | null; desfase: boolean } {
+  const marca = mapa?.[String(indice)] as { toDate?: () => Date; seconds?: number } | undefined;
+  const servidor =
+    marca && typeof marca.toDate === 'function' ? marca.toDate() : marca && typeof marca.seconds === 'number' ? new Date(marca.seconds * 1000) : null;
+  if (!servidor || Number.isNaN(servidor.getTime())) return { servidor: null, desfase: false };
+  const d = declarada ? Date.parse(declarada) : NaN;
+  return { servidor, desfase: Number.isFinite(d) && Math.abs(d - servidor.getTime()) > TOLERANCIA_HORA_REGISTRO_MS };
+}
+
 /**
  * SHA-256 en hexadecimal (cálculo central en src/lib/integridad.ts). Sin crypto.subtle lanza un
  * error claro en vez de usar un hash no criptográfico: nada se guarda con una huella débil.

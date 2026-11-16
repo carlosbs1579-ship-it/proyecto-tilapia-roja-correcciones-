@@ -4,6 +4,7 @@ import {
   onSnapshot,
   query,
   runTransaction,
+  serverTimestamp,
   where
 } from 'firebase/firestore';
 import { auth, db } from '../firebase/firebaseConfig';
@@ -54,6 +55,16 @@ export function mensajeErrorFirestore(accion: string, err: any): Error {
   return new Error(err?.message || `No fue posible ${accion}.`);
 }
 
+/**
+ * Firma de los registros nuevos (H20): el uid de quien tiene la sesión, no su correo, porque los lotes
+ * se leen sin sesión (QR). El nombre visible va aparte (registradoPorNombre) y el correo se consulta
+ * en usuarios/{uid}, que solo se lee con sesión. Los registros anteriores conservan el correo con el
+ * que se sellaron: su hash no cambia. Sin uid (no debería pasar con sesión) se usa el correo.
+ */
+function firmaRegistro(userEmail: string): string {
+  return auth.currentUser?.uid || userEmail;
+}
+
 function generarIdEvento(): string {
   return typeof crypto.randomUUID === 'function'
     ? crypto.randomUUID()
@@ -96,6 +107,7 @@ export async function crearNuevoLote(params: ParamsNuevoLote): Promise<Lote> {
   const globalCounterRef = doc(db, 'contadores', 'lotes_global');
   const diarioCounterRef = doc(db, 'contadores', `diario_${fechaCompacta}_${estanqueLimpio}`);
   const creadoPorUid = auth.currentUser?.uid || null;
+  const firma = firmaRegistro(userEmail);
 
   const transaccion = runTransaction(db, async (transaction) => {
     const globalSnap = await transaction.get(globalCounterRef);
@@ -130,7 +142,7 @@ export async function crearNuevoLote(params: ParamsNuevoLote): Promise<Lote> {
       fechaEvento: fechaSiembra,
       descripcion: descripcionSiembra,
       datos: datosSiembra,
-      registradoPor: userEmail,
+      registradoPor: firma,
         ...nombreRegistro(),
       registradoEn: fechaIsoAhora,
       hashAnterior: HASH_GENESIS
@@ -143,7 +155,7 @@ export async function crearNuevoLote(params: ParamsNuevoLote): Promise<Lote> {
       fechaEvento: fechaSiembra,
       descripcion: descripcionSiembra,
       datos: datosSiembra,
-      registradoPor: userEmail,
+      registradoPor: firma,
         ...nombreRegistro(),
       registradoEn: fechaIsoAhora,
       hashAnterior: HASH_GENESIS,
@@ -183,7 +195,7 @@ export async function crearNuevoLote(params: ParamsNuevoLote): Promise<Lote> {
       versionPdf: 1,
       pdfActualizadoEn: fechaIsoAhora,
       granjaId,
-      creadoPor: userEmail,
+      creadoPor: firma,
       creadoPorUid,
       creadoEn: fechaIsoAhora,
       actualizadoEn: fechaIsoAhora,
@@ -192,7 +204,8 @@ export async function crearNuevoLote(params: ParamsNuevoLote): Promise<Lote> {
 
     transaction.set(globalCounterRef, { valor: nuevoConsecutivoGlobal, actualizadoEn: fechaIsoAhora }, { merge: true });
     transaction.set(diarioCounterRef, { valor: nuevoConsecutivoDiario, actualizadoEn: fechaIsoAhora }, { merge: true });
-    transaction.set(loteDocRef, loteData);
+    // Hora del servidor de cada fase (H19), fuera del hash: registradoEnServidor[indice]
+    transaction.set(loteDocRef, { ...loteData, registradoEnServidor: { '0': serverTimestamp() } });
 
     return loteData;
   });
@@ -278,6 +291,7 @@ export interface ParamsAgregarEvento {
 export async function registrarEventoEnLote(params: ParamsAgregarEvento): Promise<Lote> {
   const { codigoLote, tipo, fechaEvento, descripcion, datos, userEmail, config } = params;
   const loteRef = doc(db, 'lotes', codigoLote);
+  const firma = firmaRegistro(userEmail);
 
   let loteActualizado: Lote;
   try {
@@ -341,7 +355,7 @@ export async function registrarEventoEnLote(params: ParamsAgregarEvento): Promis
         fechaEvento,
         descripcion: descripcion || '',
         datos: datos || {},
-        registradoPor: userEmail,
+        registradoPor: firma,
         ...nombreRegistro(),
         registradoEn: fechaIsoAhora,
         hashAnterior
@@ -354,7 +368,7 @@ export async function registrarEventoEnLote(params: ParamsAgregarEvento): Promis
         fechaEvento,
         descripcion: descripcion || '',
         datos: datos || {},
-        registradoPor: userEmail,
+        registradoPor: firma,
         ...nombreRegistro(),
         registradoEn: fechaIsoAhora,
         hashAnterior,
@@ -379,7 +393,7 @@ export async function registrarEventoEnLote(params: ParamsAgregarEvento): Promis
         actualizadoEn: fechaIsoAhora
       };
 
-      transaction.update(loteRef, patch);
+      transaction.update(loteRef, { ...patch, [`registradoEnServidor.${nuevoIndice}`]: serverTimestamp() });
 
       return {
         ...lote,
@@ -422,6 +436,7 @@ export async function modificarDatosSiembraOPiscina(params: ParamsModificarSiemb
     config
   } = params;
   const loteRef = doc(db, 'lotes', codigoLote);
+  const firma = firmaRegistro(userEmail);
 
   let loteModificado: Lote;
   try {
@@ -491,7 +506,7 @@ export async function modificarDatosSiembraOPiscina(params: ParamsModificarSiemb
         fechaEvento,
         descripcion,
         datos,
-        registradoPor: userEmail,
+        registradoPor: firma,
         ...nombreRegistro(),
         registradoEn: fechaIsoAhora,
         hashAnterior
@@ -506,7 +521,7 @@ export async function modificarDatosSiembraOPiscina(params: ParamsModificarSiemb
           descripcion,
           datos,
           huellas: await huellasFase({ fechaEvento, descripcion, datos }),
-          registradoPor: userEmail,
+          registradoPor: firma,
         ...nombreRegistro(),
           registradoEn: fechaIsoAhora,
           hashAnterior,
@@ -537,7 +552,7 @@ export async function modificarDatosSiembraOPiscina(params: ParamsModificarSiemb
         actualizadoEn: fechaIsoAhora
       };
 
-      transaction.update(loteRef, patch);
+      transaction.update(loteRef, { ...patch, [`registradoEnServidor.${indice}`]: serverTimestamp() });
 
       return {
         ...lote,

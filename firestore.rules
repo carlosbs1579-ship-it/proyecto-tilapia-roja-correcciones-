@@ -550,17 +550,15 @@ service cloud.firestore {
     }
 
     // Permiso que exige cada acción del operador sobre una orden
+    // (Condicionales en vez de un mapa literal: cada literal cuenta para el límite de expresiones)
     function permisoDeEvento(tipo) {
-      return {
-        'Reprogramación de saldo': 'decidirSaldos',
-        'Cierre con saldo liberado': 'decidirSaldos',
-        'Corrección de entrega': 'decidirSaldos',
-        'Comprobante emitido': 'gestionarComprobantes',
-        'Comprobante anulado': 'gestionarComprobantes',
-        'Atención de novedad': 'atenderNovedades',
-        'Ajuste rechazado': 'atenderNovedades',
-        'Ajuste aplicado': 'atenderNovedades'
-      }.get(tipo, 'gestionarPedidos');
+      return tipo in ['Ajuste aplicado', 'Ajuste rechazado', 'Atención de novedad']
+        ? 'atenderNovedades'
+        : tipo in ['Comprobante emitido', 'Comprobante anulado']
+          ? 'gestionarComprobantes'
+          : tipo in ['Reprogramación de saldo', 'Cierre con saldo liberado', 'Corrección de entrega']
+            ? 'decidirSaldos'
+            : 'gestionarPedidos';
     }
 
     function granjaPermitida(granja) {
@@ -645,9 +643,10 @@ service cloud.firestore {
       let cantAntes = oa.procedencias.get(codigo, {'cantidad': 0}).cantidad;
       let cantDespues = od.procedencias.get(codigo, {'cantidad': 0}).cantidad;
       let lote = get(rutaLote(codigo)).data;
+      // Con la orden en un estado con reserva, su distribución solo cambia con un "Ajuste aplicado",
+      // cuya regla ya exige que no haya entregas y que el estado no cambie (no se repite aquí para no
+      // gastar expresiones por cada lote)
       return oa.estado in estadosConReserva()
-        && od.estado == oa.estado
-        && oa.cantidadEntregada == 0
         && od.unidad == nuevo.unidad
         && od.granjaId == nuevo.granjaId
         && !igualCantidad(cantAntes, cantDespues)
@@ -716,21 +715,25 @@ service cloud.firestore {
       let nuevo = request.resource.data;
       let tipo = nuevo.get('tipoMovimiento', '');
       let cambios = nuevo.diff(antes).affectedKeys();
+      // Despacho por tipo con condicionales: cada lote gasta pocas expresiones (la operación completa
+      // tiene un límite de 1000 entre todos los documentos)
       return nuevo.movidoEn == request.time
-        && ((tipo == 'entrega'
-              && cambios.hasOnly(['reservado', 'entregado', 'ultimaOrden', 'movidoEn', 'tipoMovimiento'])
-              && entregaValida(codigo, antes, nuevo))
-            || (tipo == 'correccion'
-              && cambios.hasOnly(['reservado', 'entregado', 'ultimaOrden', 'movidoEn', 'tipoMovimiento'])
-              && correccionInventarioValida(codigo, antes, nuevo))
-            || (!(tipo in ['entrega', 'correccion'])
-              && cambios.hasOnly(['reservado', 'ultimaOrden', 'movidoEn', 'tipoMovimiento'])
-              && isSignedIn()
-              && ((tipo == 'reserva' && reservaValida(codigo, antes.reservado, nuevo))
-                  || (tipo == 'liberacion' && liberacionValida(codigo, antes, nuevo))
-                  || (tipo == 'ajuste' && ajusteValido(codigo, antes, nuevo))
-                  // Sin tipo (versión anterior de la app): reserva o liberación, como en la fase 2
-                  || (tipo == '' && (reservaValida(codigo, antes.reservado, nuevo) || liberacionValida(codigo, antes, nuevo))))));
+        && (tipo == 'entrega'
+              ? cambios.hasOnly(['reservado', 'entregado', 'ultimaOrden', 'movidoEn', 'tipoMovimiento'])
+                && entregaValida(codigo, antes, nuevo)
+              : tipo == 'correccion'
+                ? cambios.hasOnly(['reservado', 'entregado', 'ultimaOrden', 'movidoEn', 'tipoMovimiento'])
+                  && correccionInventarioValida(codigo, antes, nuevo)
+                : cambios.hasOnly(['reservado', 'ultimaOrden', 'movidoEn', 'tipoMovimiento'])
+                  && isSignedIn()
+                  && (tipo == 'ajuste'
+                        ? ajusteValido(codigo, antes, nuevo)
+                        : tipo == 'reserva'
+                          ? reservaValida(codigo, antes.reservado, nuevo)
+                          : tipo == 'liberacion'
+                            ? liberacionValida(codigo, antes, nuevo)
+                            // Sin tipo (versión anterior de la app): reserva o liberación, como en la fase 2
+                            : tipo == '' && (reservaValida(codigo, antes.reservado, nuevo) || liberacionValida(codigo, antes, nuevo))));
     }
 
     match /inventarioLotes/{codigo} {
@@ -779,7 +782,7 @@ service cloud.firestore {
               'repartidorNombre', 'creadoEn', 'actualizadoEn', 'fechaProgramada', 'unidad', 'cantidadSolicitada',
               'procedencias', 'cantidadAutorizada', 'cantidadEntregada', 'estado', 'observaciones', 'historial',
               'clienteDireccion', 'clienteContacto', 'entregadoPorLote', 'cantidadLiberada', 'rutaIniciadaEn',
-              'llegadaEn', 'ajustes', 'atencionNovedades', 'tokenConsulta'];
+              'llegadaEn', 'ajustes', 'atencionNovedades', 'tokenConsulta', 'registradoEnServidor'];
     }
 
     function camposOrdenRequeridos() {
@@ -827,13 +830,13 @@ service cloud.firestore {
     }
 
     // El inventario del lote se movió en esta misma operación a nombre de esta orden: queda con la
-    // hora de esta operación y antes tenía otra (o no existía). La cantidad del movimiento la valida
-    // la regla de inventarioLotes.
+    // hora de esta operación. Basta con eso: la regla de inventarioLotes exige movidoEn == request.time
+    // en cada escritura, así que un valor guardado antes siempre es una hora pasada. La cantidad del
+    // movimiento la valida la regla de inventarioLotes.
     function movidoAqui(id, codigo) {
       let despues = getAfter(rutaInventario(codigo)).data;
       return despues.movidoEn == request.time
-        && despues.ultimaOrden == id
-        && (!exists(rutaInventario(codigo)) || get(rutaInventario(codigo)).data.movidoEn != request.time);
+        && despues.ultimaOrden == id;
     }
 
     function loteMovido(id, claves, i) {
@@ -888,6 +891,33 @@ service cloud.firestore {
         && evento.registradoPorUid == request.auth.uid;
     }
 
+    // Cadena del historial (H14). Los eventos de la versión nueva de la app traen hash (SHA-256 del
+    // JSON canónico del evento sin "hash") y hashAnterior. Las reglas no calculan SHA-256: comprueban
+    // la forma y el enlace. hashAnterior es el hash del evento previo; si el previo no tiene cadena
+    // (orden registrada antes de la cadena) es el ancla del historial previo, que verifica la app; en
+    // el primer evento de una orden nueva son 64 ceros. Un evento sin cadena (versión anterior de la
+    // app) solo se acepta mientras el último evento tampoco la tenga: la cadena no se interrumpe.
+    // Las órdenes están cerca del límite de 1000 expresiones: el camino sin cadena cuesta muy poco.
+    function enlaceEventoValido(evento, previos, n) {
+      return n == 0
+        ? evento.hashAnterior == '0000000000000000000000000000000000000000000000000000000000000000'
+        : (('hash' in previos[n - 1]) ? evento.hashAnterior == previos[n - 1].hash : hashValido(evento.hashAnterior));
+    }
+
+    // Evento encadenado (versión nueva): hash con forma válida, enlace, y su hora del servidor (H19)
+    // en registradoEnServidor[n] igual a la hora de esta operación, sin tocar las horas anteriores
+    function eventoEncadenadoValido(antes, despues, evento, n) {
+      let horas = despues.registradoEnServidor;
+      return hashValido(evento.hash)
+        && enlaceEventoValido(evento, antes.historial, n)
+        && horas[string(n)] == request.time
+        && horas.diff(antes.get('registradoEnServidor', {})).affectedKeys().hasOnly([string(n)]);
+    }
+
+    // Evento sin cadena (versión anterior de la app): solo mientras la orden no tenga ningún evento
+    // encadenado (todo evento encadenado deja su hora en registradoEnServidor). No puede tocar
+    // registradoEnServidor porque las listas de cambios permitidos no lo incluyen.
+
     // Cambios de estado manuales del operador. Iniciar la ruta, llegar y entregar son acciones del
     // repartidor; la entrega parcial se resuelve reprogramando el saldo o liberándolo.
     function transicionPermitida(de, a) {
@@ -917,6 +947,12 @@ service cloud.firestore {
         && gestionaPedidosEn(o.granjaId)
         && o.historial[0].tipo == 'Creación'
         && eventoOrdenValido(o.historial[0], 0)
+        && (('hash' in o.historial[0])
+              ? hashValido(o.historial[0].hash)
+                && o.historial[0].hashAnterior == '0000000000000000000000000000000000000000000000000000000000000000'
+                && o.registradoEnServidor.keys().hasOnly(['0'])
+                && o.registradoEnServidor['0'] == request.time
+              : !('registradoEnServidor' in o))
         && datosOrdenValidos(o)
         && ((o.estado == 'borrador'
               && o.cantidadAutorizada == 0
@@ -1018,11 +1054,9 @@ service cloud.firestore {
         && a.solicitadoPorUid != request.auth.uid
         && b.resueltoPorUid == request.auth.uid
         && b.resueltoPor.lower() == correoSesion()
-        && b.propuesta == a.propuesta
-        && b.original == a.original
-        && b.motivo == a.motivo
-        && b.solicitadoPorUid == a.solicitadoPorUid
-        && b.solicitadoEn == a.solicitadoEn
+        // Lo solicitado (propuesta, distribución original, motivo, quién y cuándo) no cambia: solo se
+        // agregan los datos de la resolución (una sola comparación, más barata que campo por campo)
+        && b.diff(a).affectedKeys().hasOnly(['estado', 'resueltoPor', 'resueltoPorUid', 'resueltoEn', 'respuesta'])
         && soloCambiaAjuste(antes, despues, id);
     }
 
@@ -1080,15 +1114,26 @@ service cloud.firestore {
       let n = antes.historial.size();
       let evento = despues.historial[n];
       let tipo = evento.tipo;
-      let cambios = despues.diff(antes).affectedKeys();
-      return tipo in ['Modificación', 'Cambio de repartidor', 'Asignación y reserva', 'Cambio de estado', 'Cancelación',
-                      'Reprogramación de saldo', 'Cierre con saldo liberado', 'Ajuste rechazado', 'Ajuste aplicado',
-                      'Atención de novedad', 'Comprobante emitido', 'Comprobante anulado', 'Corrección de entrega']
+      // La hora del servidor de un evento encadenado se valida aparte (eventoEncadenadoValido)
+      let encadenado = 'hash' in evento;
+      let todos = despues.diff(antes).affectedKeys();
+      let cambios = encadenado ? todos.difference(['registradoEnServidor'].toSet()) : todos;
+      // Corte rápido: los eventos del repartidor (función courier) van por su propia regla. El tipo de
+      // evento lo limita la lista de casos de abajo (cada caso exige el suyo). Las listas literales
+      // cuentan para el límite de 1000 expresiones por operación, por eso no se repite aquí la lista
+      // completa de tipos.
+      return evento.get('funcion', '') != 'courier'
         && despues.historial.size() == n + 1
         && eventoOrdenValido(evento, n)
+        && (encadenado ? eventoEncadenadoValido(antes, despues, evento, n) : !('registradoEnServidor' in antes))
         && despues.historial[0:n] == antes.historial
         && permisoPedidosEn(antes.granjaId, permisoDeEvento(tipo))
-        && ((tipo in ['Modificación', 'Cambio de repartidor', 'Asignación y reserva'] && antes.estado == 'borrador'
+        // Los casos que más expresiones gastan van primero: el ajuste aplicado (hasta 6 lotes) y la
+        // emisión del comprobante (tres documentos en la misma operación)
+        && ((tipo == 'Ajuste aplicado'
+              && ajusteAplicadoValido(id, antes, despues, cambios, evento.datos.ajusteId))
+            || (tipo == 'Comprobante emitido' && emisionComprobanteValida(id, antes, despues, cambios, evento))
+            || (tipo in ['Modificación', 'Cambio de repartidor', 'Asignación y reserva'] && antes.estado == 'borrador'
               && borradorValido(id, antes, despues, cambios))
             || (tipo in ['Cambio de estado', 'Cambio de repartidor'] && antes.estado != 'borrador'
               && transicionValida(antes, despues, cambios))
@@ -1098,10 +1143,7 @@ service cloud.firestore {
             || (tipo == 'Ajuste rechazado'
               && cambios.hasOnly(['ajustes', 'actualizadoEn', 'historial'])
               && resolucionValida(antes, despues, evento.datos.ajusteId, 'rechazada'))
-            || (tipo == 'Ajuste aplicado'
-              && ajusteAplicadoValido(id, antes, despues, cambios, evento.datos.ajusteId))
             || (tipo == 'Atención de novedad' && atencionNovedadValida(antes, despues, cambios, evento))
-            || (tipo == 'Comprobante emitido' && emisionComprobanteValida(id, antes, despues, cambios, evento))
             || (tipo == 'Comprobante anulado' && registroAnulacionValido(id, cambios, evento))
             || (tipo == 'Corrección de entrega' && correccionEntregaValida(id, antes, despues, cambios, evento)));
     }
@@ -1151,9 +1193,12 @@ service cloud.firestore {
       return c.id == id
         && id.size() >= 20
         && c.keys().hasOnly(['id', 'version', 'tipoBloque', 'ordenId', 'granjaId', 'tokenConsulta', 'emitidoEn', 'emitidoPorUid',
-                             'empresa', 'anulaA', 'versionAnulada', 'motivo', 'eventoEntregaId', 'hashAnterior', 'hashComprobante'])
+                             'empresa', 'anulaA', 'versionAnulada', 'motivo', 'eventoEntregaId', 'hashAnterior', 'hashComprobante',
+                             'registradoEnServidor'])
         && c.tipoBloque == 'anulacion'
-        && permisoPedidosEn(c.granjaId, 'gestionarComprobantes')
+        && (!('registradoEnServidor' in c) || c.registradoEnServidor == request.time)
+        // El permiso de comprobantes lo exige la regla de la orden para el evento "Comprobante
+        // anulado", que se escribe en esta misma operación con este bloque (ver la última línea)
         && c.emitidoPorUid == request.auth.uid
         && a.get('tipoBloque', 'entrega') == 'entrega'
         && a.ordenId == c.ordenId
@@ -1178,9 +1223,12 @@ service cloud.firestore {
 
     function procedenciaComprobante(c, o, claves, i) {
       return claves.size() <= i
-        || (c.procedencias[claves[i]].autorizada == o.procedencias[claves[i]].cantidad
-            && c.procedencias[claves[i]].estanque == o.procedencias[claves[i]].estanque
-            && c.procedencias[claves[i]].entregada == o.get('entregadoPorLote', {}).get(claves[i], 0));
+        || procedenciaIgual(c.procedencias[claves[i]], o.procedencias[claves[i]], o.get('entregadoPorLote', {}).get(claves[i], 0));
+    }
+
+    // Cada lado se lee una sola vez (cada acceso cuenta para el límite de expresiones)
+    function procedenciaIgual(pc, po, entregada) {
+      return pc.autorizada == po.cantidad && pc.estanque == po.estanque && pc.entregada == entregada;
     }
 
     function textoOVacio(v) {
@@ -1216,6 +1264,53 @@ service cloud.firestore {
         && u.get('fotoHash', '') == entrega.get('datos', {}).get('foto', {}).get('hash', '');
     }
 
+    // Cliente del comprobante: en los anteriores, nombre y dirección de la orden; en los nuevos (H42),
+    // nombre y SHA-256 de la dirección (el comprobante es público; la app compara el hash con la orden)
+    function clienteComprobanteValido(cl, o, nuevo) {
+      return cl.nombre == o.clienteNombre
+        && (nuevo
+              ? cl.keys().hasOnly(['nombre', 'direccionHash']) && hashValido(cl.direccionHash)
+              : cl.keys().hasOnly(['nombre', 'direccion']) && cl.direccion == textoOVacio(o.get('clienteDireccion', '')));
+    }
+
+    // Novedades: lista completa en los anteriores; en los nuevos, solo cantidad y SHA-256 de la lista
+    function novedadesComprobanteValidas(c, n, nuevo) {
+      return nuevo
+        ? !('novedades' in c)
+          && c.resumenNovedades.keys().hasOnly(['cantidad', 'hash'])
+          && c.resumenNovedades.cantidad is int
+          && c.resumenNovedades.cantidad >= 0
+          && c.resumenNovedades.cantidad <= n
+          && hashValido(c.resumenNovedades.hash)
+        : !('resumenNovedades' in c) && c.novedades is list && c.novedades.size() <= n;
+    }
+
+    // Sello de cada lote de procedencia (H18): igual al resumen.hashFinal del lote en este momento
+    function selloLoteValido(sellos, claves, i) {
+      return claves.size() <= i
+        || sellos[claves[i]] == get(rutaLote(claves[i])).data.get('resumen', {}).get('hashFinal', '');
+    }
+
+    function sellosLotesValidos(sellos, claves) {
+      return sellos.keys().hasOnly(claves) && sellos.keys().hasAll(claves)
+        && selloLoteValido(sellos, claves, 0)
+        && selloLoteValido(sellos, claves, 1)
+        && selloLoteValido(sellos, claves, 2);
+    }
+
+    // Campos del comprobante nuevo (H18, H19, H42): hora del servidor de esta operación, sellos de los
+    // lotes, anotaciones opcionales. Los comprobantes anteriores no traen ninguno.
+    function formatoComprobanteValido(c, claves, nuevo) {
+      return nuevo
+        ? c.registradoEnServidor == request.time
+          && sellosLotesValidos(c.sellosLotes, claves)
+          // Anotaciones de cada lote al emitir: solo sus claves (lotes de la orden). Su contenido entra
+          // en el hash del comprobante y la app lo compara con las anotaciones actuales; validar aquí
+          // su forma (unas 25 expresiones por lote) agota el límite de 1000 en una orden de 3 lotes.
+          && (!('anotacionesLotes' in c) || c.anotacionesLotes.keys().hasOnly(claves))
+        : !('sellosLotes' in c) && !('anotacionesLotes' in c);
+    }
+
     // Un comprobante definitivo refleja exactamente lo confirmado en la orden en el servidor: estado
     // de entrega, cantidades y lo entregado por lote, cliente, repartidor y fechas, y corresponde a
     // un evento "Entrega" real. La orden registra en esta misma operación el evento "Comprobante
@@ -1227,17 +1322,16 @@ service cloud.firestore {
       let claves = o.procedencias.keys();
       let versiones = getAfter(rutaConsulta(c.tokenConsulta)).data.versiones;
       let n = o.historial.size();
+      let nuevo = 'registradoEnServidor' in c;
       return c.id == id
         && o.id == c.ordenId
         && o.historial[n - 1].tipo == 'Comprobante emitido'
         && o.historial[n - 1].datos.comprobanteId == id
-        && c.cliente.keys().hasOnly(['nombre', 'direccion'])
-        && c.cliente.nombre == o.clienteNombre
-        && c.cliente.direccion == textoOVacio(o.get('clienteDireccion', ''))
+        && clienteComprobanteValido(c.cliente, o, nuevo)
         && c.repartidor == textoOVacio(o.get('repartidorNombre', ''))
         && fechasComprobanteValidas(c.fechas, o, entrega)
         && c.entregas is list && c.entregas.size() <= n
-        && c.novedades is list && c.novedades.size() <= n
+        && novedadesComprobanteValidas(c, n, nuevo)
         && c.ajustes is list && c.ajustes.size() <= n
         && c.eventosUsados is list && c.eventosUsados.size() <= n
         && entregaListadaValida(c.entregas, entrega)
@@ -1246,8 +1340,10 @@ service cloud.firestore {
                              'estadoEntrega', 'cliente', 'repartidor', 'fechas', 'unidad', 'cantidadSolicitada',
                              'cantidadAutorizada', 'cantidadEntregada', 'cantidadLiberada', 'cantidadPendiente', 'procedencias',
                              'entregas', 'novedades', 'ajustes', 'eventoEntregaId', 'eventoEntregaIndice', 'eventosUsados',
-                             'hashEventos', 'hashAnterior', 'hashComprobante'])
-        && permisoPedidosEn(o.granjaId, 'gestionarComprobantes')
+                             'hashEventos', 'hashAnterior', 'hashComprobante', 'resumenNovedades', 'sellosLotes',
+                             'anotacionesLotes', 'registradoEnServidor'])
+        // El permiso de comprobantes lo exige la regla de la orden para el evento "Comprobante
+        // emitido" de este comprobante, que solo puede escribirse en esta misma operación
         && c.granjaId == o.granjaId
         && c.emitidoPorUid == request.auth.uid
         && c.tokenConsulta == o.tokenConsulta
@@ -1270,7 +1366,8 @@ service cloud.firestore {
         && c.version == versiones.size()
         && hashValido(c.hashComprobante)
         && hashValido(c.hashEventos)
-        && c.hashAnterior == hashBloqueAnterior(c.tokenConsulta);
+        && c.hashAnterior == hashBloqueAnterior(c.tokenConsulta)
+        && formatoComprobanteValido(c, claves, nuevo);
     }
 
     // Índice público: cada emisión agrega una sola versión (una por entrega confirmada) y no cambia
@@ -1283,16 +1380,17 @@ service cloud.firestore {
         && n.token == token
         && token.size() >= 20
         && (resource == null || (resource.data.ordenId == n.ordenId && resource.data.granjaId == n.granjaId))
-        && permisoPedidosEn(n.granjaId, 'gestionarComprobantes')
-        && d.addedKeys().hasOnly([c.eventoEntregaId])
+        // El bloque nuevo es de quien escribe el índice: su regla (comprobante o anulación) exige el
+        // permiso de comprobantes, y un bloque ya registrado no se puede volver a agregar
+        && c.emitidoPorUid == request.auth.uid
+        // Solo se agrega la versión del bloque nuevo (no cambia ni borra las anteriores)
+        && d.affectedKeys() == [c.eventoEntregaId].toSet()
         && d.addedKeys().size() == 1
-        && d.changedKeys().size() == 0
-        && d.removedKeys().size() == 0
         && c.tokenConsulta == token
         && c.ordenId == n.ordenId
-        && c.granjaId == n.granjaId
-        && n.versiones[c.eventoEntregaId].comprobanteId == n.ultimaVersion
-        && getAfter(rutaOrden(n.ordenId)).data.tokenConsulta == token;
+        && c.granjaId == n.granjaId;
+      // La regla del bloque (comprobante o anulación) ya exige que la versión agregada apunte a él y
+      // que el código de consulta sea el de la orden: no se repite aquí (límite de expresiones)
     }
 
     match /comprobantes/{comprobanteId} {
@@ -1468,13 +1566,16 @@ service cloud.firestore {
       let n = antes.historial.size();
       let evento = despues.historial[n];
       let tipo = evento.tipo;
-      let cambios = despues.diff(antes).affectedKeys();
+      let encadenado = 'hash' in evento;
+      let todos = despues.diff(antes).affectedKeys();
+      let cambios = encadenado ? todos.difference(['registradoEnServidor'].toSet()) : todos;
       return antes.repartidorUid == request.auth.uid
         && despues.historial.size() == n + 1
         && tipo in ['Inicio de ruta', 'Llegada', 'Novedad', 'Entrega', 'Solicitud de ajuste', 'Cancelación de solicitud']
         && evento.funcion == 'courier'
         && evento.eventoId is string
         && eventoOrdenValido(evento, n)
+        && (encadenado ? eventoEncadenadoValido(antes, despues, evento, n) : !('registradoEnServidor' in antes))
         && despues.historial[0:n] == antes.historial
         && tieneRol('courier')
         && (

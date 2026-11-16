@@ -716,6 +716,8 @@ function mostrarBlob(ventana: Window | null, blob: Blob, nombre: string) {
 type ContenidoComprobante = Omit<ComprobanteEntrega, 'hashEventos' | 'hashComprobante'> &
   Partial<Pick<ComprobanteEntrega, 'hashEventos' | 'hashComprobante'>>;
 
+const cantidadNovedades = (c: ContenidoComprobante) => c.resumenNovedades?.cantidad ?? (c.novedades || []).length;
+
 const cantidadTexto = (n: number, unidad: string) => `${(Number(n) || 0).toLocaleString('es-CO')} ${unidad}`;
 
 export async function generarComprobantePdfBlob(
@@ -810,7 +812,8 @@ export async function generarComprobantePdfBlob(
     bodyStyles: { fontSize: 8.5, cellPadding: 2.5 },
     head: [['Cliente', 'Logística']],
     body: [[
-      `${c.cliente.nombre}\n${c.cliente.direccion || 'Dirección no registrada'}`,
+      // El comprobante es un documento público: la dirección del cliente no se imprime (queda en la orden)
+      c.cliente.nombre,
       [
         `Repartidor: ${c.repartidor || 'Sin dato'}`,
         `Programada: ${c.fechas.programada || 'sin fecha'}`,
@@ -879,7 +882,10 @@ export async function generarComprobantePdfBlob(
         (cambios.length ? cambios.join('; ') : 'Sin cambios de cantidad') + (motivo ? `. Motivo: ${motivo}` : '')
       ];
     }),
-    ...c.novedades.map((n) => [`Novedad ${formatearFechaColombia(n.fecha)}`, n.descripcion])
+    // Las novedades son internas: solo se informa cuántas hubo (el detalle queda en la orden)
+    ...(cantidadNovedades(c) > 0
+      ? [['Novedades', `${cantidadNovedades(c)} novedad(es) registrada(s) durante la entrega. El detalle es interno de Cultivos Loré.`]]
+      : [])
   ];
   if (observaciones.length) {
     y = tituloSeccion(doc, 'Observaciones', y);
@@ -910,6 +916,10 @@ export async function generarComprobantePdfBlob(
       textoPdf(
         `Hash del bloque: ${c.hashComprobante} · Hash del bloque anterior: ${c.hashAnterior || 'no registrado (emitido antes del encadenamiento)'} · ` +
           `Hash de los eventos de entrega: ${c.hashEventos}. ` +
+          (c.sellosLotes && Object.keys(c.sellosLotes).length
+            ? `Sello de cada lote al emitir: ${Object.entries(c.sellosLotes).map(([l, h]) => `${l} ${h ? h.slice(0, 16) + '…' : 'sin sello'}`).join(', ')}. `
+            : '') +
+          (c.registradoEnServidor?.toDate ? `Hora del servidor al emitir: ${formatearFechaColombia(c.registradoEnServidor.toDate().toISOString())}. ` : '') +
           'Cada comprobante es un bloque sellado con SHA-256 que contiene el hash del bloque anterior de la misma orden; ' +
           'alterar cualquier dato cambia su hash y rompe la cadena. Cadena de bloques privada de la plataforma. ' +
           'Escanee el código QR para consultar la entrega y verificar la cadena. La trazabilidad de cada lote se consulta con el QR del lote.'

@@ -1,13 +1,13 @@
 {
-  "fecha": "2026-11-16T14:20:34.965Z",
+  "fecha": "2026-11-16T20:59:45.031Z",
   "lote": "20260801-A-E1",
   "lote2": "20260801-A-E2",
   "contexto": {
-    "ordenId": "PED-20261116-854C9",
-    "fotoId": "foto-563e14cd-4caf-457b-a53e-88637bb87e83",
-    "comprobanteId": "cmpd87410f029a0cc7ff1b067952d17bdd3bda15024",
-    "token": "ce03d570c4cafca19f8133fae1b3585abe6643a22",
-    "selloQr": "a465185e06040d82"
+    "ordenId": "PED-20261116-HWLPP",
+    "fotoId": "foto-a4c45978-b63d-4215-a569-54db7179a138",
+    "comprobanteId": "cmpf1f67e4576944d7a1efd5039373d8c7ce532f109",
+    "token": "c0478c020d2418874800d44399873fdad78e8faa0",
+    "selloQr": "cea8361ff32732b9"
   },
   "ataques": [
     {
@@ -49,7 +49,8 @@
             "vigente": "N.º 1",
             "versionesIndice": 1,
             "bloquesLeidos": 1
-          }
+          },
+          "historialOrden": "verificado"
         }
       }
     },
@@ -92,7 +93,8 @@
             "vigente": "N.º 1",
             "versionesIndice": 1,
             "bloquesLeidos": 1
-          }
+          },
+          "historialOrden": "verificado"
         }
       }
     },
@@ -135,7 +137,8 @@
             "vigente": "N.º 1",
             "versionesIndice": 1,
             "bloquesLeidos": 1
-          }
+          },
+          "historialOrden": "verificado"
         }
       }
     },
@@ -146,7 +149,8 @@
       "senales": {
         "automaticas": [
           "Fotos de la orden: Posible alteración detectada: el comprobante emitido registra otra foto.",
-          "Panel interno de la orden, comprobante N.º 1: Verificación fallida: los eventos de la orden no coinciden con los usados; las entregas o sus fotos no coinciden con la orden."
+          "Panel interno de la orden, comprobante N.º 1: Verificación fallida: los eventos de la orden no coinciden con los usados; las entregas o sus fotos no coinciden con la orden.",
+          "Panel interno de la orden, historial: Posible alteración detectada en el evento N.º 4 (Entrega): su contenido no corresponde a su huella."
         ],
         "manuales": [],
         "datos": {
@@ -177,7 +181,8 @@
             "vigente": "N.º 1",
             "versionesIndice": 1,
             "bloquesLeidos": 1
-          }
+          },
+          "historialOrden": "alterado"
         }
       }
     },
@@ -220,7 +225,8 @@
             "vigente": "N.º 1",
             "versionesIndice": 1,
             "bloquesLeidos": 1
-          }
+          },
+          "historialOrden": "verificado"
         }
       }
     },
@@ -263,7 +269,8 @@
             "vigente": "N.º 1",
             "versionesIndice": 1,
             "bloquesLeidos": 1
-          }
+          },
+          "historialOrden": "verificado"
         }
       }
     },
@@ -274,7 +281,9 @@
       "senales": {
         "automaticas": [
           "QR lote y detalle: Alimento acumulado (kg): el dato guardado (120) no corresponde a las fases registradas (80). | FCA: el dato guardado (0.26) no corresponde a las fases registradas (0.17). | El sello del lote cambió después de registrar sus anotaciones: el registro sellado fue modificado.",
-          "QR lote, sección anotaciones: El sello del lote cambió después de anotar: las anotaciones ya no corresponden a este registro sellado."
+          "QR lote, sección anotaciones: El sello del lote cambió después de anotar: las anotaciones ya no corresponden a este registro sellado.",
+          "QR entrega: Comprobante N.º 1: El lote 20260801-A-E1 cambió después de emitir este comprobante: su sello actual no continúa el que quedó registrado.",
+          "Panel interno de la orden, comprobante N.º 1: El lote 20260801-A-E1 cambió después de emitir este comprobante: su sello actual no continúa el que quedó registrado."
         ],
         "manuales": [],
         "datos": {
@@ -302,10 +311,11 @@
           "entregaPublica": {
             "cantidadEntregada": 50,
             "cliente": "PRUEBA-Restaurante Integridad",
-            "vigente": "N.º 1",
+            "vigente": "ninguno (la cadena tiene problemas)",
             "versionesIndice": 1,
             "bloquesLeidos": 1
-          }
+          },
+          "historialOrden": "verificado"
         }
       }
     },
@@ -315,7 +325,9 @@
       "resultado": "detectado y avisado",
       "senales": {
         "automaticas": [
-          "QR lote y detalle: Alimento acumulado (kg): el dato guardado (120) no corresponde a las fases registradas (80). | FCA: el dato guardado (0.26) no corresponde a las fases registradas (0.17)."
+          "QR lote y detalle: Alimento acumulado (kg): el dato guardado (120) no corresponde a las fases registradas (80). | FCA: el dato guardado (0.26) no corresponde a las fases registradas (0.17).",
+          "QR entrega: Comprobante N.º 1: El lote 20260801-A-E1 cambió después de emitir este comprobante: su sello actual no continúa el que quedó registrado. | Comprobante N.º 1: Las anotaciones del lote 20260801-A-E1 cambiaron después de emitir este comprobante: se borraron o se recalcularon.",
+          "Panel interno de la orden, comprobante N.º 1: El lote 20260801-A-E1 cambió después de emitir este comprobante: su sello actual no continúa el que quedó registrado. Las anotaciones del lote 20260801-A-E1 cambiaron después de emitir este comprobante: se borraron o se recalcularon."
         ],
         "manuales": [],
         "datos": {
@@ -343,10 +355,11 @@
           "entregaPublica": {
             "cantidadEntregada": 50,
             "cliente": "PRUEBA-Restaurante Integridad",
-            "vigente": "N.º 1",
+            "vigente": "ninguno (la cadena tiene problemas)",
             "versionesIndice": 1,
             "bloquesLeidos": 1
-          }
+          },
+          "historialOrden": "verificado"
         }
       }
     },
@@ -356,7 +369,9 @@
       "resultado": "detectado y avisado",
       "senales": {
         "automaticas": [
-          "QR lote y detalle: Alimento acumulado (kg): el dato guardado (120) no corresponde a las fases registradas (80). | FCA: el dato guardado (0.26) no corresponde a las fases registradas (0.17)."
+          "QR lote y detalle: Alimento acumulado (kg): el dato guardado (120) no corresponde a las fases registradas (80). | FCA: el dato guardado (0.26) no corresponde a las fases registradas (0.17).",
+          "QR entrega: Comprobante N.º 1: El lote 20260801-A-E1 cambió después de emitir este comprobante: su sello actual no continúa el que quedó registrado. | Comprobante N.º 1: Las anotaciones del lote 20260801-A-E1 cambiaron después de emitir este comprobante: se borraron o se recalcularon.",
+          "Panel interno de la orden, comprobante N.º 1: El lote 20260801-A-E1 cambió después de emitir este comprobante: su sello actual no continúa el que quedó registrado. Las anotaciones del lote 20260801-A-E1 cambiaron después de emitir este comprobante: se borraron o se recalcularon."
         ],
         "manuales": [],
         "datos": {
@@ -384,10 +399,11 @@
           "entregaPublica": {
             "cantidadEntregada": 50,
             "cliente": "PRUEBA-Restaurante Integridad",
-            "vigente": "N.º 1",
+            "vigente": "ninguno (la cadena tiene problemas)",
             "versionesIndice": 1,
             "bloquesLeidos": 1
-          }
+          },
+          "historialOrden": "verificado"
         }
       }
     },
@@ -397,7 +413,9 @@
       "resultado": "detectado y avisado",
       "senales": {
         "automaticas": [
-          "Solo QR con sello impreso: El sello impreso en el código QR (a465185e06040d82) no coincide con el sello actual del lote: el registro cambió después de imprimir la etiqueta."
+          "Solo QR con sello impreso: El sello impreso en el código QR (cea8361ff32732b9) no coincide con el sello actual del lote: el registro cambió después de imprimir la etiqueta.",
+          "QR entrega: Comprobante N.º 1: El lote 20260801-A-E1 cambió después de emitir este comprobante: su sello actual no continúa el que quedó registrado. | Comprobante N.º 1: Las anotaciones del lote 20260801-A-E1 cambiaron después de emitir este comprobante: se borraron o se recalcularon.",
+          "Panel interno de la orden, comprobante N.º 1: El lote 20260801-A-E1 cambió después de emitir este comprobante: su sello actual no continúa el que quedó registrado. Las anotaciones del lote 20260801-A-E1 cambiaron después de emitir este comprobante: se borraron o se recalcularon."
         ],
         "manuales": [],
         "datos": {
@@ -425,10 +443,11 @@
           "entregaPublica": {
             "cantidadEntregada": 50,
             "cliente": "PRUEBA-Restaurante Integridad",
-            "vigente": "N.º 1",
+            "vigente": "ninguno (la cadena tiene problemas)",
             "versionesIndice": 1,
             "bloquesLeidos": 1
-          }
+          },
+          "historialOrden": "verificado"
         }
       }
     },
@@ -469,7 +488,8 @@
             "vigente": "N.º 1",
             "versionesIndice": 1,
             "bloquesLeidos": 1
-          }
+          },
+          "historialOrden": "verificado"
         }
       }
     },
@@ -483,7 +503,7 @@
           "QR lote, sección anotaciones: El sello del lote cambió después de anotar: las anotaciones ya no corresponden a este registro sellado."
         ],
         "manuales": [
-          "Botón \"Verificar integridad\" / IntegrityCheckModal: El sello de cierre registrado (a465185e0604…) no coincide con el último hash de la cadena (b00b97df7842…): se borró o se cambió una fase."
+          "Botón \"Verificar integridad\" / IntegrityCheckModal: El sello de cierre registrado (cea8361ff327…) no coincide con el último hash de la cadena (19d04a2013a6…): se borró o se cambió una fase."
         ],
         "datos": {
           "qrAntiguoSinSello": "avisado",
@@ -513,7 +533,8 @@
             "vigente": "N.º 1",
             "versionesIndice": 1,
             "bloquesLeidos": 1
-          }
+          },
+          "historialOrden": "verificado"
         }
       }
     },
@@ -524,7 +545,9 @@
       "senales": {
         "automaticas": [
           "QR lote y detalle: Peces cosechados: el dato guardado (900) no corresponde a las fases registradas (0). | Peces vivos: el dato guardado (80) no corresponde a las fases registradas (980). | Peso promedio (g): el dato guardado (480) no corresponde a las fases registradas (350). | Biomasa estimada (kg): el dato guardado (38.4) no corresponde a las fases registradas (343). | Biomasa cosechada (kg): el dato guardado (432) no corresponde a las fases registradas (0). | FCA: el dato guardado (0.26) no corresponde a las fases registradas (0.36). | Ganancia diaria (g): el dato guardado (4.44) no corresponde a las fases registradas (3.22). | El sello del lote cambió después de registrar sus anotaciones: el registro sellado fue modificado.",
-          "QR lote, sección anotaciones: El sello del lote cambió después de anotar: las anotaciones ya no corresponden a este registro sellado."
+          "QR lote, sección anotaciones: El sello del lote cambió después de anotar: las anotaciones ya no corresponden a este registro sellado.",
+          "QR entrega: Comprobante N.º 1: El lote 20260801-A-E1 cambió después de emitir este comprobante: su sello actual no continúa el que quedó registrado.",
+          "Panel interno de la orden, comprobante N.º 1: El lote 20260801-A-E1 cambió después de emitir este comprobante: su sello actual no continúa el que quedó registrado."
         ],
         "manuales": [],
         "datos": {
@@ -552,10 +575,11 @@
           "entregaPublica": {
             "cantidadEntregada": 50,
             "cliente": "PRUEBA-Restaurante Integridad",
-            "vigente": "N.º 1",
+            "vigente": "ninguno (la cadena tiene problemas)",
             "versionesIndice": 1,
             "bloquesLeidos": 1
-          }
+          },
+          "historialOrden": "verificado"
         }
       }
     },
@@ -565,7 +589,9 @@
       "resultado": "detectado y avisado",
       "senales": {
         "automaticas": [
-          "QR lote y detalle: Peces cosechados: el dato guardado (900) no corresponde a las fases registradas (0). | Peces vivos: el dato guardado (80) no corresponde a las fases registradas (980). | Peso promedio (g): el dato guardado (480) no corresponde a las fases registradas (350). | Biomasa estimada (kg): el dato guardado (38.4) no corresponde a las fases registradas (343). | Biomasa cosechada (kg): el dato guardado (432) no corresponde a las fases registradas (0). | FCA: el dato guardado (0.26) no corresponde a las fases registradas (0.36). | Ganancia diaria (g): el dato guardado (4.44) no corresponde a las fases registradas (3.22)."
+          "QR lote y detalle: Peces cosechados: el dato guardado (900) no corresponde a las fases registradas (0). | Peces vivos: el dato guardado (80) no corresponde a las fases registradas (980). | Peso promedio (g): el dato guardado (480) no corresponde a las fases registradas (350). | Biomasa estimada (kg): el dato guardado (38.4) no corresponde a las fases registradas (343). | Biomasa cosechada (kg): el dato guardado (432) no corresponde a las fases registradas (0). | FCA: el dato guardado (0.26) no corresponde a las fases registradas (0.36). | Ganancia diaria (g): el dato guardado (4.44) no corresponde a las fases registradas (3.22).",
+          "QR entrega: Comprobante N.º 1: El lote 20260801-A-E1 cambió después de emitir este comprobante: su sello actual no continúa el que quedó registrado. | Comprobante N.º 1: Las anotaciones del lote 20260801-A-E1 cambiaron después de emitir este comprobante: se borraron o se recalcularon.",
+          "Panel interno de la orden, comprobante N.º 1: El lote 20260801-A-E1 cambió después de emitir este comprobante: su sello actual no continúa el que quedó registrado. Las anotaciones del lote 20260801-A-E1 cambiaron después de emitir este comprobante: se borraron o se recalcularon."
         ],
         "manuales": [],
         "datos": {
@@ -593,10 +619,11 @@
           "entregaPublica": {
             "cantidadEntregada": 50,
             "cliente": "PRUEBA-Restaurante Integridad",
-            "vigente": "N.º 1",
+            "vigente": "ninguno (la cadena tiene problemas)",
             "versionesIndice": 1,
             "bloquesLeidos": 1
-          }
+          },
+          "historialOrden": "verificado"
         }
       }
     },
@@ -606,7 +633,9 @@
       "resultado": "detectado y avisado",
       "senales": {
         "automaticas": [
-          "Solo QR con sello impreso: El sello impreso en el código QR (a465185e06040d82) no coincide con el sello actual del lote: el registro cambió después de imprimir la etiqueta."
+          "Solo QR con sello impreso: El sello impreso en el código QR (cea8361ff32732b9) no coincide con el sello actual del lote: el registro cambió después de imprimir la etiqueta.",
+          "QR entrega: Comprobante N.º 1: El lote 20260801-A-E1 cambió después de emitir este comprobante: su sello actual no continúa el que quedó registrado. | Comprobante N.º 1: Las anotaciones del lote 20260801-A-E1 cambiaron después de emitir este comprobante: se borraron o se recalcularon.",
+          "Panel interno de la orden, comprobante N.º 1: El lote 20260801-A-E1 cambió después de emitir este comprobante: su sello actual no continúa el que quedó registrado. Las anotaciones del lote 20260801-A-E1 cambiaron después de emitir este comprobante: se borraron o se recalcularon."
         ],
         "manuales": [],
         "datos": {
@@ -634,10 +663,11 @@
           "entregaPublica": {
             "cantidadEntregada": 50,
             "cliente": "PRUEBA-Restaurante Integridad",
-            "vigente": "N.º 1",
+            "vigente": "ninguno (la cadena tiene problemas)",
             "versionesIndice": 1,
             "bloquesLeidos": 1
-          }
+          },
+          "historialOrden": "verificado"
         }
       }
     },
@@ -679,7 +709,8 @@
             "vigente": "ninguno (la cadena tiene problemas)",
             "versionesIndice": 1,
             "bloquesLeidos": 1
-          }
+          },
+          "historialOrden": "verificado"
         }
       }
     },
@@ -721,7 +752,8 @@
             "vigente": "ninguno (la cadena tiene problemas)",
             "versionesIndice": 1,
             "bloquesLeidos": 1
-          }
+          },
+          "historialOrden": "verificado"
         }
       }
     },
@@ -762,7 +794,8 @@
             "vigente": "N.º 1",
             "versionesIndice": 1,
             "bloquesLeidos": 1
-          }
+          },
+          "historialOrden": "verificado"
         }
       }
     },
@@ -803,7 +836,8 @@
             "vigente": "ninguno (la cadena tiene problemas)",
             "versionesIndice": 1,
             "bloquesLeidos": 1
-          }
+          },
+          "historialOrden": "verificado"
         }
       }
     },
@@ -839,7 +873,8 @@
             "hashEvento": "d1da3e6695f6",
             "estado": "verificada"
           },
-          "entregaPublica": null
+          "entregaPublica": null,
+          "historialOrden": "verificado"
         }
       }
     },
@@ -878,7 +913,8 @@
             "vigente": "N.º 1",
             "versionesIndice": 1,
             "bloquesLeidos": 1
-          }
+          },
+          "historialOrden": "verificado"
         }
       }
     },
@@ -889,7 +925,9 @@
       "senales": {
         "automaticas": [
           "QR lote y detalle: El lote está sellado pero no tiene fases registradas: su historial fue vaciado. | El lote está sellado pero su sello de cierre está vacío. | El sello del lote cambió después de registrar sus anotaciones: el registro sellado fue modificado.",
-          "QR lote, sección anotaciones: El sello del lote cambió después de anotar: las anotaciones ya no corresponden a este registro sellado."
+          "QR lote, sección anotaciones: El sello del lote cambió después de anotar: las anotaciones ya no corresponden a este registro sellado.",
+          "QR entrega: Comprobante N.º 1: El lote 20260801-A-E1 cambió después de emitir este comprobante: su sello actual no continúa el que quedó registrado.",
+          "Panel interno de la orden, comprobante N.º 1: El lote 20260801-A-E1 cambió después de emitir este comprobante: su sello actual no continúa el que quedó registrado."
         ],
         "manuales": [
           "Botón \"Verificar integridad\" / IntegrityCheckModal: El lote está sellado pero no tiene fases registradas: su historial fue vaciado. El lote está sellado pero su sello de cierre está vacío."
@@ -918,10 +956,11 @@
           "entregaPublica": {
             "cantidadEntregada": 50,
             "cliente": "PRUEBA-Restaurante Integridad",
-            "vigente": "N.º 1",
+            "vigente": "ninguno (la cadena tiene problemas)",
             "versionesIndice": 1,
             "bloquesLeidos": 1
-          }
+          },
+          "historialOrden": "verificado"
         }
       }
     },
@@ -931,7 +970,9 @@
       "resultado": "detectado y avisado",
       "senales": {
         "automaticas": [
-          "QR lote y detalle: El lote está sellado pero su sello de cierre está vacío."
+          "QR lote y detalle: El lote está sellado pero su sello de cierre está vacío.",
+          "QR entrega: Comprobante N.º 1: El lote 20260801-A-E1 cambió después de emitir este comprobante: su sello actual no continúa el que quedó registrado.",
+          "Panel interno de la orden, comprobante N.º 1: El lote 20260801-A-E1 cambió después de emitir este comprobante: su sello actual no continúa el que quedó registrado."
         ],
         "manuales": [
           "Botón \"Verificar integridad\" / IntegrityCheckModal: El lote está sellado pero su sello de cierre está vacío."
@@ -961,10 +1002,11 @@
           "entregaPublica": {
             "cantidadEntregada": 50,
             "cliente": "PRUEBA-Restaurante Integridad",
-            "vigente": "N.º 1",
+            "vigente": "ninguno (la cadena tiene problemas)",
             "versionesIndice": 1,
             "bloquesLeidos": 1
-          }
+          },
+          "historialOrden": "verificado"
         }
       }
     },
@@ -1005,7 +1047,8 @@
             "vigente": "N.º 1",
             "versionesIndice": 1,
             "bloquesLeidos": 1
-          }
+          },
+          "historialOrden": "verificado"
         }
       }
     },
@@ -1015,7 +1058,9 @@
       "resultado": "detectado y avisado",
       "senales": {
         "automaticas": [
-          "QR lote, sección anotaciones: La anotación N.º 1 figura como aprobada, pero falta el registro de esa decisión: se borró."
+          "QR lote, sección anotaciones: La anotación N.º 1 figura como aprobada, pero falta el registro de esa decisión: se borró.",
+          "QR entrega: Comprobante N.º 1: Las anotaciones del lote 20260801-A-E1 cambiaron después de emitir este comprobante: se borraron o se recalcularon.",
+          "Panel interno de la orden, comprobante N.º 1: Las anotaciones del lote 20260801-A-E1 cambiaron después de emitir este comprobante: se borraron o se recalcularon."
         ],
         "manuales": [],
         "datos": {
@@ -1043,10 +1088,11 @@
           "entregaPublica": {
             "cantidadEntregada": 50,
             "cliente": "PRUEBA-Restaurante Integridad",
-            "vigente": "N.º 1",
+            "vigente": "ninguno (la cadena tiene problemas)",
             "versionesIndice": 1,
             "bloquesLeidos": 1
-          }
+          },
+          "historialOrden": "verificado"
         }
       }
     },
@@ -1087,7 +1133,8 @@
             "vigente": "N.º 1",
             "versionesIndice": 1,
             "bloquesLeidos": 1
-          }
+          },
+          "historialOrden": "verificado"
         }
       }
     },
@@ -1128,16 +1175,105 @@
             "vigente": "N.º 1",
             "versionesIndice": 1,
             "bloquesLeidos": 1
-          }
+          },
+          "historialOrden": "verificado"
         }
       }
     },
     {
       "id": "A2",
-      "nombre": "Alterar la anotación y recalcular la cadena de anotaciones",
-      "resultado": "NO DETECTADO",
+      "nombre": "Alterar la anotación y recalcular la cadena de anotaciones (después de emitir el comprobante)",
+      "resultado": "detectado y avisado",
       "senales": {
-        "automaticas": [],
+        "automaticas": [
+          "QR entrega: Comprobante N.º 1: Las anotaciones del lote 20260801-A-E1 cambiaron después de emitir este comprobante: se borraron o se recalcularon.",
+          "Panel interno de la orden, comprobante N.º 1: Las anotaciones del lote 20260801-A-E1 cambiaron después de emitir este comprobante: se borraron o se recalcularon."
+        ],
+        "manuales": [],
+        "datos": {
+          "qrAntiguoSinSello": "sin aviso",
+          "lote": {
+            "estanque": "E1",
+            "fechaSiembra": "2026-08-01",
+            "fechaCierre": "2026-11-16",
+            "producto": "Tilapia roja entera fresca",
+            "cantidadSembrada": 1000,
+            "supervivencia": 98,
+            "pesoPromedioActualG": 480,
+            "biomasaEstimadaKg": 38.4,
+            "fases": 6,
+            "alimentoFase2": 120,
+            "anotacionesValidas": 1,
+            "qrAntiguoSinSello": "sin aviso"
+          },
+          "foto": {
+            "mostrada": "data:image/jpeg;base64,/9j/4AAQSkZJRgABA…",
+            "hashDoc": "d1da3e6695f6",
+            "hashEvento": "d1da3e6695f6",
+            "estado": "verificada"
+          },
+          "entregaPublica": {
+            "cantidadEntregada": 50,
+            "cliente": "PRUEBA-Restaurante Integridad",
+            "vigente": "ninguno (la cadena tiene problemas)",
+            "versionesIndice": 1,
+            "bloquesLeidos": 1
+          },
+          "historialOrden": "verificado"
+        }
+      }
+    },
+    {
+      "id": "A2-d",
+      "nombre": "Borrar el documento de anotaciones del lote (después de emitir el comprobante)",
+      "resultado": "detectado y avisado",
+      "senales": {
+        "automaticas": [
+          "QR entrega: Comprobante N.º 1: Las anotaciones del lote 20260801-A-E1 cambiaron después de emitir este comprobante: se borraron o se recalcularon.",
+          "Panel interno de la orden, comprobante N.º 1: Las anotaciones del lote 20260801-A-E1 cambiaron después de emitir este comprobante: se borraron o se recalcularon."
+        ],
+        "manuales": [],
+        "datos": {
+          "qrAntiguoSinSello": "sin aviso",
+          "lote": {
+            "estanque": "E1",
+            "fechaSiembra": "2026-08-01",
+            "fechaCierre": "2026-11-16",
+            "producto": "Tilapia roja entera fresca",
+            "cantidadSembrada": 1000,
+            "supervivencia": 98,
+            "pesoPromedioActualG": 480,
+            "biomasaEstimadaKg": 38.4,
+            "fases": 6,
+            "alimentoFase2": 120,
+            "anotacionesValidas": 0,
+            "qrAntiguoSinSello": "sin aviso"
+          },
+          "foto": {
+            "mostrada": "data:image/jpeg;base64,/9j/4AAQSkZJRgABA…",
+            "hashDoc": "d1da3e6695f6",
+            "hashEvento": "d1da3e6695f6",
+            "estado": "verificada"
+          },
+          "entregaPublica": {
+            "cantidadEntregada": 50,
+            "cliente": "PRUEBA-Restaurante Integridad",
+            "vigente": "ninguno (la cadena tiene problemas)",
+            "versionesIndice": 1,
+            "bloquesLeidos": 1
+          },
+          "historialOrden": "verificado"
+        }
+      }
+    },
+    {
+      "id": "H14-a",
+      "nombre": "Orden encadenada: cambiar un evento del historial (cambio de repartidor en la creación) sin tocar hashes",
+      "resultado": "detectado y avisado",
+      "senales": {
+        "automaticas": [
+          "Panel interno de la orden, historial: Posible alteración detectada en el evento N.º 1 (Creación): su contenido no corresponde a su huella."
+        ],
         "manuales": [],
         "datos": {
           "qrAntiguoSinSello": "sin aviso",
@@ -1167,7 +1303,223 @@
             "vigente": "N.º 1",
             "versionesIndice": 1,
             "bloquesLeidos": 1
-          }
+          },
+          "historialOrden": "alterado"
+        }
+      }
+    },
+    {
+      "id": "H14-b",
+      "nombre": "Orden encadenada: cambiar el evento \"Llegada\" y recalcular su hash (no los siguientes)",
+      "resultado": "detectado y avisado",
+      "senales": {
+        "automaticas": [
+          "Panel interno de la orden, comprobante N.º 1: Verificación fallida: los eventos de la orden no coinciden con los usados.",
+          "Panel interno de la orden, historial: Posible alteración detectada en el evento N.º 4 (Entrega): no enlaza con el evento anterior."
+        ],
+        "manuales": [],
+        "datos": {
+          "qrAntiguoSinSello": "sin aviso",
+          "lote": {
+            "estanque": "E1",
+            "fechaSiembra": "2026-08-01",
+            "fechaCierre": "2026-11-16",
+            "producto": "Tilapia roja entera fresca",
+            "cantidadSembrada": 1000,
+            "supervivencia": 98,
+            "pesoPromedioActualG": 480,
+            "biomasaEstimadaKg": 38.4,
+            "fases": 6,
+            "alimentoFase2": 120,
+            "anotacionesValidas": 1,
+            "qrAntiguoSinSello": "sin aviso"
+          },
+          "foto": {
+            "mostrada": "data:image/jpeg;base64,/9j/4AAQSkZJRgABA…",
+            "hashDoc": "d1da3e6695f6",
+            "hashEvento": "d1da3e6695f6",
+            "estado": "verificada"
+          },
+          "entregaPublica": {
+            "cantidadEntregada": 50,
+            "cliente": "PRUEBA-Restaurante Integridad",
+            "vigente": "N.º 1",
+            "versionesIndice": 1,
+            "bloquesLeidos": 1
+          },
+          "historialOrden": "alterado"
+        }
+      }
+    },
+    {
+      "id": "H14-c",
+      "nombre": "Orden encadenada: quitar la huella (hash y hashAnterior) de todos los eventos",
+      "resultado": "detectado y avisado",
+      "senales": {
+        "automaticas": [
+          "Panel interno de la orden, comprobante N.º 1: Verificación fallida: los eventos de la orden no coinciden con los usados.",
+          "Panel interno de la orden, historial: Posible alteración detectada en el evento N.º 1 (Creación): se registró con cadena y ya no tiene su huella."
+        ],
+        "manuales": [],
+        "datos": {
+          "qrAntiguoSinSello": "sin aviso",
+          "lote": {
+            "estanque": "E1",
+            "fechaSiembra": "2026-08-01",
+            "fechaCierre": "2026-11-16",
+            "producto": "Tilapia roja entera fresca",
+            "cantidadSembrada": 1000,
+            "supervivencia": 98,
+            "pesoPromedioActualG": 480,
+            "biomasaEstimadaKg": 38.4,
+            "fases": 6,
+            "alimentoFase2": 120,
+            "anotacionesValidas": 1,
+            "qrAntiguoSinSello": "sin aviso"
+          },
+          "foto": {
+            "mostrada": "data:image/jpeg;base64,/9j/4AAQSkZJRgABA…",
+            "hashDoc": "d1da3e6695f6",
+            "hashEvento": "d1da3e6695f6",
+            "estado": "verificada"
+          },
+          "entregaPublica": {
+            "cantidadEntregada": 50,
+            "cliente": "PRUEBA-Restaurante Integridad",
+            "vigente": "N.º 1",
+            "versionesIndice": 1,
+            "bloquesLeidos": 1
+          },
+          "historialOrden": "alterado"
+        }
+      }
+    },
+    {
+      "id": "H14-d",
+      "nombre": "Orden encadenada: cambiar la creación y recalcular toda la cadena (sin tocar los eventos que documenta el comprobante)",
+      "resultado": "detectado y avisado",
+      "senales": {
+        "automaticas": [
+          "Panel interno de la orden, comprobante N.º 1: Verificación fallida: los eventos de la orden no coinciden con los usados."
+        ],
+        "manuales": [],
+        "datos": {
+          "qrAntiguoSinSello": "sin aviso",
+          "lote": {
+            "estanque": "E1",
+            "fechaSiembra": "2026-08-01",
+            "fechaCierre": "2026-11-16",
+            "producto": "Tilapia roja entera fresca",
+            "cantidadSembrada": 1000,
+            "supervivencia": 98,
+            "pesoPromedioActualG": 480,
+            "biomasaEstimadaKg": 38.4,
+            "fases": 6,
+            "alimentoFase2": 120,
+            "anotacionesValidas": 1,
+            "qrAntiguoSinSello": "sin aviso"
+          },
+          "foto": {
+            "mostrada": "data:image/jpeg;base64,/9j/4AAQSkZJRgABA…",
+            "hashDoc": "d1da3e6695f6",
+            "hashEvento": "d1da3e6695f6",
+            "estado": "verificada"
+          },
+          "entregaPublica": {
+            "cantidadEntregada": 50,
+            "cliente": "PRUEBA-Restaurante Integridad",
+            "vigente": "N.º 1",
+            "versionesIndice": 1,
+            "bloquesLeidos": 1
+          },
+          "historialOrden": "verificado"
+        }
+      }
+    },
+    {
+      "id": "H18-a",
+      "nombre": "Reescribir el lote (fase, cadena, resumen y sello) dejando el comprobante con el sello viejo",
+      "resultado": "detectado y avisado",
+      "senales": {
+        "automaticas": [
+          "Solo QR con sello impreso: El sello impreso en el código QR (cea8361ff32732b9) no coincide con el sello actual del lote: el registro cambió después de imprimir la etiqueta.",
+          "QR entrega: Comprobante N.º 1: El lote 20260801-A-E1 cambió después de emitir este comprobante: su sello actual no continúa el que quedó registrado. | Comprobante N.º 1: Las anotaciones del lote 20260801-A-E1 cambiaron después de emitir este comprobante: se borraron o se recalcularon.",
+          "Panel interno de la orden, comprobante N.º 1: El lote 20260801-A-E1 cambió después de emitir este comprobante: su sello actual no continúa el que quedó registrado. Las anotaciones del lote 20260801-A-E1 cambiaron después de emitir este comprobante: se borraron o se recalcularon."
+        ],
+        "manuales": [],
+        "datos": {
+          "qrAntiguoSinSello": "sin aviso",
+          "lote": {
+            "estanque": "E1",
+            "fechaSiembra": "2026-08-01",
+            "fechaCierre": "2026-11-16",
+            "producto": "Tilapia roja entera fresca",
+            "cantidadSembrada": 1000,
+            "supervivencia": 98,
+            "pesoPromedioActualG": 480,
+            "biomasaEstimadaKg": 38.4,
+            "fases": 6,
+            "alimentoFase2": 80,
+            "anotacionesValidas": 1,
+            "qrAntiguoSinSello": "sin aviso"
+          },
+          "foto": {
+            "mostrada": "data:image/jpeg;base64,/9j/4AAQSkZJRgABA…",
+            "hashDoc": "d1da3e6695f6",
+            "hashEvento": "d1da3e6695f6",
+            "estado": "verificada"
+          },
+          "entregaPublica": {
+            "cantidadEntregada": 50,
+            "cliente": "PRUEBA-Restaurante Integridad",
+            "vigente": "ninguno (la cadena tiene problemas)",
+            "versionesIndice": 1,
+            "bloquesLeidos": 1
+          },
+          "historialOrden": "verificado"
+        }
+      }
+    },
+    {
+      "id": "H18-b",
+      "nombre": "Igual que H18-a y además recalcular el comprobante con el sello nuevo (hash, índice y evento de la orden)",
+      "resultado": "detectado y avisado",
+      "senales": {
+        "automaticas": [
+          "Solo QR con sello impreso: El sello impreso en el código QR (cea8361ff32732b9) no coincide con el sello actual del lote: el registro cambió después de imprimir la etiqueta.",
+          "Panel interno de la orden, historial: Posible alteración detectada en el evento N.º 5 (Comprobante emitido): su contenido no corresponde a su huella."
+        ],
+        "manuales": [],
+        "datos": {
+          "qrAntiguoSinSello": "sin aviso",
+          "lote": {
+            "estanque": "E1",
+            "fechaSiembra": "2026-08-01",
+            "fechaCierre": "2026-11-16",
+            "producto": "Tilapia roja entera fresca",
+            "cantidadSembrada": 1000,
+            "supervivencia": 98,
+            "pesoPromedioActualG": 480,
+            "biomasaEstimadaKg": 38.4,
+            "fases": 6,
+            "alimentoFase2": 80,
+            "anotacionesValidas": 1,
+            "qrAntiguoSinSello": "sin aviso"
+          },
+          "foto": {
+            "mostrada": "data:image/jpeg;base64,/9j/4AAQSkZJRgABA…",
+            "hashDoc": "d1da3e6695f6",
+            "hashEvento": "d1da3e6695f6",
+            "estado": "verificada"
+          },
+          "entregaPublica": {
+            "cantidadEntregada": 50,
+            "cliente": "PRUEBA-Restaurante Integridad",
+            "vigente": "N.º 1",
+            "versionesIndice": 1,
+            "bloquesLeidos": 1
+          },
+          "historialOrden": "alterado"
         }
       }
     },
@@ -1209,7 +1561,8 @@
             "vigente": "ninguno (la cadena tiene problemas)",
             "versionesIndice": 2,
             "bloquesLeidos": 1
-          }
+          },
+          "historialOrden": "verificado"
         }
       },
       "antes": {
@@ -1410,7 +1763,7 @@
     },
     {
       "param": "?entrega=(token real)",
-      "resultado": "muestra la entrega PED-20261116-854C9"
+      "resultado": "muestra la entrega PED-20261116-HWLPP"
     }
   ]
 }

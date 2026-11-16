@@ -1,6 +1,7 @@
 // Pruebas de firestore.rules para órdenes de entrega, clientes e inventario de lotes.
 // Las escrituras imitan las de src/services/pedidosService.ts (orden + inventario en una sola operación).
 import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { after, before, beforeEach, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { initializeTestEnvironment, assertFails, assertSucceeds } from '@firebase/rules-unit-testing';
@@ -13,6 +14,7 @@ import {
   runTransaction,
   serverTimestamp,
   setDoc,
+  Timestamp,
   updateDoc,
   where,
   writeBatch
@@ -442,5 +444,59 @@ describe('Integridad de la producción', () => {
     assert.deepEqual(await leerSinReglas('lotes/LT-001'), antes);
     // Quien gestiona pedidos no puede escribir en un lote sellado
     await assertFails(updateDoc(doc(db, 'lotes', 'LT-001'), { 'resumen.pecesCosechados': 5000 }));
+  });
+});
+
+// Segunda ronda (H14, H19): la versión nueva de la app encadena cada evento del historial y guarda
+// la hora del servidor de cada evento en registradoEnServidor[indice]
+describe('Cadena del historial en borradores y cambios de estado', () => {
+  const ordenar = (v) =>
+    v === null || typeof v !== 'object' ? v : Array.isArray(v) ? v.map(ordenar) : Object.fromEntries(Object.keys(v).sort().map((k) => [k, ordenar(v[k])]));
+  const sha = (t) => createHash('sha256').update(JSON.stringify(ordenar(t)), 'utf8').digest('hex');
+  function encadenar(previos, ev) {
+    const ultimo = previos[previos.length - 1];
+    const con = { ...ev, hashAnterior: previos.length === 0 ? '0'.repeat(64) : ultimo.hash ? ultimo.hash : sha(previos) };
+    return { ...con, hash: sha(con) };
+  }
+
+  test('borrador encadenado: crear, modificar y confirmar con reserva', async () => {
+    const db = como('vendedor');
+    const b = orden('PED-CB', 'vendedor', { estado: 'borrador', cantidades: { 'LT-002': 200 }, repartidor: null });
+    b.historial = [encadenar([], b.historial[0])];
+    await assertSucceeds(setDoc(doc(db, 'ordenes', 'PED-CB'), { ...b, registradoEnServidor: { 0: serverTimestamp() } }));
+    const h1 = [...b.historial, encadenar(b.historial, evento('vendedor', 1, 'Modificación'))];
+    // Sin la hora del servidor, o con un enlace que no es el del evento anterior: rechazado
+    await assertFails(updateDoc(doc(db, 'ordenes', 'PED-CB'), { repartidorUid: 'repartidor2', repartidorNombre: 'r2', historial: h1 }));
+    await assertFails(updateDoc(doc(db, 'ordenes', 'PED-CB'), {
+      repartidorUid: 'repartidor2', repartidorNombre: 'r2', historial: [...b.historial, { ...h1[1], hashAnterior: 'a'.repeat(64) }],
+      'registradoEnServidor.1': serverTimestamp()
+    }));
+    await assertSucceeds(updateDoc(doc(db, 'ordenes', 'PED-CB'), {
+      repartidorUid: 'repartidor2', repartidorNombre: 'r2', historial: h1, 'registradoEnServidor.1': serverTimestamp()
+    }));
+    const h2 = [...h1, encadenar(h1, evento('vendedor', 2, 'Asignación y reserva'))];
+    const actual = await leerSinReglas('ordenes/PED-CB');
+    const confirmada = {
+      ...actual, estado: 'asignado', cantidadAutorizada: 200, historial: h2,
+      registradoEnServidor: { ...actual.registradoEnServidor, 2: serverTimestamp() }
+    };
+    await assertSucceeds(reservar(db, confirmada));
+    const o = await leerSinReglas('ordenes/PED-CB');
+    assert.deepEqual(Object.keys(o.registradoEnServidor).sort(), ['0', '1', '2']);
+  });
+
+  test('cambio de estado encadenado; no se reescriben las horas anteriores ni se agrega un evento sin cadena', async () => {
+    const db = como('vendedor');
+    const o = orden('PED-CE', 'vendedor', { cantidades: { 'LT-001': 10 } });
+    o.historial = [encadenar([], o.historial[0])];
+    await assertSucceeds(reservar(db, { ...o, registradoEnServidor: { 0: serverTimestamp() } }));
+    const h1 = [...o.historial, encadenar(o.historial, evento('vendedor', 1, 'Cambio de estado'))];
+    await assertFails(updateDoc(doc(db, 'ordenes', 'PED-CE'), {
+      estado: 'en_preparacion', historial: h1, 'registradoEnServidor.1': serverTimestamp(), 'registradoEnServidor.0': Timestamp.fromMillis(0)
+    }));
+    await assertFails(updateDoc(doc(db, 'ordenes', 'PED-CE'), {
+      estado: 'en_preparacion', historial: [...o.historial, evento('vendedor', 1, 'Cambio de estado')]
+    }));
+    await assertSucceeds(updateDoc(doc(db, 'ordenes', 'PED-CE'), { estado: 'en_preparacion', historial: h1, 'registradoEnServidor.1': serverTimestamp() }));
   });
 });

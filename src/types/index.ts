@@ -210,7 +210,9 @@ export interface ComprobanteEntrega {
   emitidoPorUid: string; // el correo del operador queda solo en el historial interno de la orden
   empresa: string;
   estadoEntrega: 'entregado' | 'entrega_parcial';
-  cliente: { nombre: string; direccion: string };
+  // Comprobantes anteriores: la dirección tal cual. Nuevos: solo el SHA-256 de la dirección (el
+  // comprobante es público); la dirección completa queda en la orden, que solo leen los operadores
+  cliente: { nombre: string; direccion?: string; direccionHash?: string };
   repartidor: string;
   fechas: { creacion: string; programada: string | null; salida: string | null; llegada: string | null; confirmacion: string; correccion?: string };
   unidad: UnidadMedida;
@@ -221,14 +223,26 @@ export interface ComprobanteEntrega {
   cantidadPendiente: number;
   procedencias: Record<string, ProcedenciaComprobante>; // clave: código de lote
   entregas: EntregaComprobante[]; // todas las entregas confirmadas hasta esta versión
-  novedades: { fecha: string; descripcion: string }[];
+  novedades?: { fecha: string; descripcion: string }[]; // solo en comprobantes anteriores
+  resumenNovedades?: { cantidad: number; hash: string }; // comprobantes nuevos: cantidad y SHA-256 de la lista
   ajustes: { fecha: string; anterior: Record<string, number>; nueva: Record<string, number>; motivo: string }[];
   eventoEntregaId: string; // entrega confirmada que originó esta versión
   eventoEntregaIndice: number;
   eventosUsados: string[]; // eventoId de los eventos de la orden usados
   hashEventos: string; // SHA-256 del JSON canónico de esos eventos
   hashAnterior?: string; // hash del bloque anterior (versión previa de la orden; 64 ceros en la primera)
+  // Comprobantes nuevos: sello (hashFinal) de cada lote de procedencia al emitir y, si el lote tiene
+  // anotaciones, cuántos registros tenía y el hash del último. Entran en el hash del comprobante.
+  sellosLotes?: Record<string, string>;
+  anotacionesLotes?: Record<string, { registros: number; ultimoHash: string }>;
   hashComprobante: string; // SHA-256 del JSON canónico de todo lo anterior
+  registradoEnServidor?: MarcaServidor; // hora del servidor al emitir (fuera del hash)
+}
+
+// Hora del servidor (Timestamp de Firestore) leída de un documento
+export interface MarcaServidor {
+  toDate(): Date;
+  toMillis(): number;
 }
 
 export interface VersionConsulta {
@@ -257,6 +271,7 @@ export interface BloqueAnulacion {
   eventoEntregaId: string; // "anulacion-{anulaA}" (clave única en el índice público)
   hashAnterior: string;
   hashComprobante: string;
+  registradoEnServidor?: MarcaServidor; // hora del servidor al anular (fuera del hash)
 }
 
 export interface ConsultaEntrega {
@@ -330,6 +345,10 @@ export interface EventoOrden {
   datos: Record<string, any>;
   eventoId?: string; // identificador único (evita duplicados al sincronizar)
   funcion?: RolFuncional; // función activa con la que se registró
+  // Cadena del historial (eventos nuevos): hash = SHA-256 del JSON canónico del evento sin "hash";
+  // hashAnterior = hash del evento previo o, si el previo no tiene cadena, el ancla del historial previo
+  hashAnterior?: string;
+  hash?: string;
 }
 
 export interface OrdenEntrega {
@@ -363,6 +382,9 @@ export interface OrdenEntrega {
   ajustes?: Record<string, AjusteDistribucion>;
   atencionNovedades?: Record<string, AtencionNovedad>; // clave: eventoId de la novedad
   tokenConsulta?: string; // código aleatorio del QR de consulta del cliente (desde el primer comprobante)
+  // Hora del servidor de cada evento nuevo, por índice del historial ("0", "1", ...). Va fuera del
+  // historial porque Firestore no admite la hora del servidor dentro de una lista.
+  registradoEnServidor?: Record<string, MarcaServidor>;
 }
 
 export interface Cliente {

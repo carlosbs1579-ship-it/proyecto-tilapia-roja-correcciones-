@@ -11,7 +11,7 @@ import {
 } from 'firebase/firestore';
 import { auth, db } from '../firebase/firebaseConfig';
 import { AjusteDistribucion, EventoOrden, OrdenEntrega, TipoEventoOrden } from '../types';
-import { ESTADOS_CON_RESERVA, ETIQUETA_ESTADO_ORDEN, generarId, redondear, saldoLote } from './pedidosService';
+import { ESTADOS_CON_RESERVA, ETIQUETA_ESTADO_ORDEN, agregarEvento, generarId, redondear, saldoLote } from './pedidosService';
 import { DIAS_RETENCION_FOTOS, FotoPreparada } from './fotosService';
 import { nombreRegistro } from './usuariosService';
 
@@ -441,7 +441,7 @@ async function aplicarAccion(uid: string, accion: AccionReparto): Promise<'aplic
       }
     }
 
-    tx.update(ordenRef, { ...cambios, actualizadoEn: ahora, historial: [...orden.historial, evento] });
+    tx.update(ordenRef, { ...cambios, actualizadoEn: ahora, ...(await agregarEvento(orden.historial, evento)) });
     return 'aplicada' as const;
   });
 }

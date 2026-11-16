@@ -9,6 +9,8 @@ import {
   emitirComprobanteDefinitivo,
   entregasConComprobante,
   escucharComprobantesOrden,
+  horaServidorBloque,
+  revisarSellosLotes,
   verificarCadena,
   problemasParaEmitir,
   ultimaEntrega,
@@ -42,6 +44,8 @@ export const DocumentacionEntrega: React.FC<{
   const [motivoAnulacion, setMotivoAnulacion] = useState('');
   const [errorLectura, setErrorLectura] = useState('');
   const [verificacion, setVerificacion] = useState<Record<string, { ok: boolean; mensaje: string; noVerificable?: boolean }>>({});
+  // Sello de los lotes y anotaciones registrados en cada comprobante nuevo, comparados con los actuales
+  const [sellos, setSellos] = useState<Record<string, { avisos: string[]; notas: string[] }>>({});
   const [qr, setQr] = useState('');
   const [copiado, setCopiado] = useState(false);
 
@@ -82,6 +86,10 @@ export const DocumentacionEntrega: React.FC<{
   const verificar = async (c: ComprobanteEntrega) => {
     const r = await verificarComprobante(c, { orden: o });
     setVerificacion((v) => ({ ...v, [c.id]: { ok: r.ok, mensaje: r.mensaje, noVerificable: r.noVerificable } }));
+    if (c.sellosLotes) {
+      const rs = await revisarSellosLotes(c).catch(() => null);
+      if (rs) setSellos((v) => ({ ...v, [c.id]: rs }));
+    }
   };
 
   // Verificación automática de cada comprobante al abrir la orden: hash propio, eventos usados,
@@ -90,17 +98,25 @@ export const DocumentacionEntrega: React.FC<{
     let activo = true;
     (async () => {
       const r: Record<string, { ok: boolean; mensaje: string; noVerificable?: boolean }> = {};
+      const rs: Record<string, { avisos: string[]; notas: string[] }> = {};
       for (const b of bloques) {
         const v = await verificarComprobante(b, esAnulacion(b) ? {} : { orden: o });
         r[b.id] = { ok: v.ok, mensaje: v.mensaje, noVerificable: v.noVerificable };
+        if (!esAnulacion(b) && b.sellosLotes) rs[b.id] = await revisarSellosLotes(b).catch(() => ({ avisos: [], notas: ['No se pudieron leer los lotes para comparar sus sellos.'] }));
       }
-      if (activo) setVerificacion(r);
+      if (activo) {
+        setVerificacion(r);
+        setSellos(rs);
+      }
     })().catch(() => {});
     return () => {
       activo = false;
     };
   }, [bloques, o]);
-  const alteracionDe = (id: string) => (verificacion[id] && !verificacion[id].ok && !verificacion[id].noVerificable ? verificacion[id].mensaje : '');
+  const alteracionDe = (id: string) =>
+    [verificacion[id] && !verificacion[id].ok && !verificacion[id].noVerificable ? verificacion[id].mensaje : '', ...(sellos[id]?.avisos || [])]
+      .filter(Boolean)
+      .join(' ');
 
   const copiar = async () => {
     try {
@@ -267,6 +283,33 @@ export const DocumentacionEntrega: React.FC<{
                   {verificacion[c.id].mensaje}
                 </span>
               )}
+              {(sellos[c.id]?.avisos || []).map((a) => (
+                <span key={a} className="flex items-start text-red-600 font-semibold">
+                  <ShieldAlert className="w-3 h-3 mr-1 mt-0.5 shrink-0" aria-hidden="true" />
+                  {a}
+                </span>
+              ))}
+              {(sellos[c.id]?.notas || []).map((n) => (
+                <span key={n} className="block text-slate-600">{n}</span>
+              ))}
+              {c.sellosLotes && sellos[c.id] && sellos[c.id].avisos.length === 0 && !sellos[c.id].notas.some((n) => n.startsWith('No se')) && (
+                <span className="block text-slate-600">Sello de los lotes registrado al emitir: coincide con la cadena actual de cada lote.</span>
+              )}
+              {c.cliente.direccionHash !== undefined && (
+                <span className="block text-slate-600">
+                  Dirección del cliente (de la orden, no se publica): <strong>{o.clienteDireccion || 'sin registrar'}</strong>
+                  {verificacion[c.id]?.ok && ' · coincide con la huella guardada en el comprobante'}
+                </span>
+              )}
+              {(() => {
+                const h = horaServidorBloque(c);
+                return h.servidor ? (
+                  <span className={`block ${h.desfase ? 'text-amber-800' : 'text-slate-500'}`}>
+                    Hora del servidor al emitir: {formatearFechaColombia(h.servidor.toISOString())}
+                    {h.desfase && ' · la hora declarada por el equipo difiere en más de 10 minutos'}
+                  </span>
+                ) : null;
+              })()}
             </li>
             ))(b)
           )}

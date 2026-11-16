@@ -5,7 +5,9 @@ import './shim';
 import { readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
-import { verificarComprobante } from '../../src/services/comprobantesService';
+import { revisarConsultaEntrega, verificarComprobante } from '../../src/services/comprobantesService';
+import { verificarHistorialOrden } from '../../src/services/pedidosService';
+import type { OrdenEntrega } from '../../src/types';
 
 const cfg = JSON.parse(readFileSync(join(homedir(), '.config', 'configstore', 'firebase-tools.json'), 'utf8'));
 const tok = await (await fetch('https://oauth2.googleapis.com/token', {
@@ -23,9 +25,22 @@ const dec = (v: any): any => v == null ? undefined : 'stringValue' in v ? v.stri
 const leer = async (c: string) => ((await (await fetch(B + c + '?pageSize=300', { headers: H })).json()).documents || [])
   .map((d: any) => Object.fromEntries(Object.entries(d.fields || {}).map(([k, v]) => [k, dec(v)])));
 
-const ordenes = new Map((await leer('ordenes')).map((o: any) => [o.id, o]));
-for (const c of await leer('comprobantes')) {
+const ordenes = new Map<string, OrdenEntrega>((await leer('ordenes')).map((o: any) => [o.id, o] as [string, OrdenEntrega]));
+const comprobantes = await leer('comprobantes');
+console.log('--- Comprobantes (panel interno, con la orden)');
+for (const c of comprobantes) {
   const r = await verificarComprobante(c, { orden: ordenes.get(c.ordenId) });
   console.log(`${c.id} | orden ${c.ordenId} | ${c.tipoBloque || 'comprobante'} | ok=${r.ok} | ${r.mensaje}`);
+}
+console.log('--- Historial de las órdenes (cadena H14)');
+for (const o of ordenes.values()) {
+  const r = await verificarHistorialOrden(o.historial, o.registradoEnServidor);
+  console.log(`${o.id} | ${o.historial.length} eventos | ${r.estado} | ${r.mensaje}`);
+}
+console.log('--- Consulta pública (?entrega=), con el índice y sus bloques');
+for (const q of await leer('consultasEntrega')) {
+  const bloques = comprobantes.filter((c: any) => Object.values(q.versiones || {}).some((v: any) => v.comprobanteId === c.id));
+  const rev = await revisarConsultaEntrega(q, bloques, []);
+  console.log(`${String(q.token).slice(0, 8)}… | orden ${q.ordenId} | ${bloques.length} bloque(s) | avisos=${rev.avisos.length} | vigente=${rev.vigenteId ? 'sí' : 'no'}${rev.avisos.length ? ' | ' + rev.avisos.join(' / ') : ''}${rev.notas.length ? ' | notas: ' + rev.notas.join(' / ') : ''}`);
 }
 process.exit(0);

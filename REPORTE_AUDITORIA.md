@@ -1,6 +1,7 @@
 | Despliegue 2: web a producción (PR #24, merge bb792c4; Vercel 5f3h9ikqe; versión anterior para revertir: hpc7j252w) | 2026-11-16 | Bien. Las cabeceras de seguridad están presentes. La consulta pública del lote real dice "Cadena verificada al abrir", sin falsas alarmas. El panel de operador, el detalle del lote (carga diferida), el desplazamiento con rueda y el cierre con Escape funcionan sin errores en consola. |
 | Despliegue 3: reglas de Firestore (commit fd6c220): vencimiento de foto con margen para relojes desfasados, nombre visible hasta 120 | 2026-11-16 14:52 UTC | Bien. Publicadas iguales al repo; 146/146 y 71/71 antes; consulta pública sin errores después. |
 | Despliegue 4: web (PR #25, merge 8df82f4; Vercel f7k78vu2a; anterior 5f3h9ikqe): estanque con guion, guardar solo estanques, CSV | 2026-11-16 | Bien. Lote real "Cadena verificada"; lote de prueba con sello del QR "verificada"; panel de operador sin errores. |
+| Despliegue 5: CSP completa en vercel.json (PR #26, merge d6cf67d; Vercel jp99odnvo; anterior f7k78vu2a) | 2026-11-16 | Bien. Probada antes en la vista previa: consulta pública, PDF, ingreso y ventana de Google sin violaciones. En producción, con sesión: panel, detalle del lote (carga diferida) y QR sin violaciones de CSP. |
 # Reporte de auditoría: integridad, seguridad y regresiones
 
 Fecha: 2026-11-16. Rama `correciones-claude`. Une los reportes de `auditoria/agente1-integridad.md`, `agente2-alteraciones.md`, `agente3-seguridad.md`, `agente4-funcional.md`, `agente5-regresiones.md` y `tests/integridad/resultados.md`. Ningún archivo de la app se modificó durante la auditoría.
@@ -266,7 +267,7 @@ Los 5 riesgos principales:
 - Reproducción: `curl -I` a la vista previa: solo `Strict-Transport-Security`.
 - Impacto: clickjacking de la sesión de administrador; sin segunda barrera ante una inyección.
 - Arreglo: `vercel.json` con `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy: camera=(self), geolocation=()` y la CSP propuesta por el Agente 3 (con `frame-ancestors 'none'`), primero como `Content-Security-Policy-Report-Only` en la vista previa.
-- Estado: Parcial, desplegado: cabeceras frame-ancestors, X-Frame-Options, nosniff, Referrer-Policy y Permissions-Policy. Una CSP que limite scripts queda pendiente (riesgo de romper el ingreso)
+- Estado: Corregido y desplegado: CSP completa (scripts propios y de Google, conexiones a Firebase y Google, sin objetos ni marcos ajenos) más X-Frame-Options, nosniff, Referrer-Policy y Permissions-Policy
 
 #### H24. Sin App Check y configuración de Auth por revisar
 - Severidad: media · Área: CONFIG-EXTERNA · Origen: Agente3 S14

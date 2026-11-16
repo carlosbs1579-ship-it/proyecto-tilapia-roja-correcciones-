@@ -2,6 +2,7 @@
 // solicitudes de ajuste) y las decisiones del operador (ajustes, saldo de entregas parciales).
 // Las escrituras imitan las de src/services/repartoService.ts y pedidosService.ts.
 import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { after, before, beforeEach, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { initializeTestEnvironment, assertFails, assertSucceeds } from '@firebase/rules-unit-testing';
@@ -83,6 +84,26 @@ const evento = (uid, indice, tipo, extra = {}) => ({
 const eventoRep = (uid, indice, tipo, extra = {}) =>
   evento(uid, indice, tipo, { eventoId: `ev-${++contador}`, funcion: 'courier', ...extra });
 
+// Cadena del historial como la arma pedidosService (H14) y hora del servidor de cada evento (H19).
+// Con CADENA en false las escrituras imitan la versión anterior de la app (sin cadena ni hora).
+let CADENA = false;
+const ordenar = (v) =>
+  v === null || typeof v !== 'object' ? v : Array.isArray(v) ? v.map(ordenar) : Object.fromEntries(Object.keys(v).sort().map((k) => [k, ordenar(v[k])]));
+const canon = (v) => JSON.stringify(ordenar(v));
+const sha = (t) => createHash('sha256').update(t, 'utf8').digest('hex');
+const CEROS = '0'.repeat(64);
+function encadenar(previos, ev) {
+  const { hash, ...resto } = ev;
+  const ultimo = previos[previos.length - 1];
+  const con = { ...resto, hashAnterior: previos.length === 0 ? CEROS : ultimo.hash ? ultimo.hash : sha(canon(previos)) };
+  return { ...con, hash: sha(canon(con)) };
+}
+// Cambios de la orden para agregar un evento (encadenado y con su hora del servidor si CADENA)
+function agregar(o, ev) {
+  if (!CADENA) return { historial: [...o.historial, ev] };
+  return { historial: [...o.historial, encadenar(o.historial, ev)], [`registradoEnServidor.${o.historial.length}`]: serverTimestamp() };
+}
+
 async function leer(ruta) {
   let d = null;
   await env.withSecurityRulesDisabled(async (ctx) => {
@@ -104,6 +125,10 @@ async function crearAsignada(id, cantidades, repartidor = 'repartidor') {
     procedencias, cantidadAutorizada: total, cantidadEntregada: 0, estado: 'asignado', observaciones: '',
     historial: [evento('vendedor', 0, 'Creación')]
   };
+  if (CADENA) {
+    o.historial = [encadenar([], o.historial[0])];
+    o.registradoEnServidor = { 0: serverTimestamp() };
+  }
   const batch = writeBatch(db);
   for (const [c, n] of Object.entries(cantidades)) {
     const inv = await leer(`inventarioLotes/${c}`);
@@ -121,7 +146,7 @@ async function crearAsignada(id, cantidades, repartidor = 'repartidor') {
 async function accion(uid, id, cambios, tipo, extraEvento = {}, esRepartidor = true) {
   const o = await leer(`ordenes/${id}`);
   const ev = esRepartidor ? eventoRep(uid, o.historial.length, tipo, extraEvento) : evento(uid, o.historial.length, tipo, extraEvento);
-  return updateDoc(doc(como(uid), 'ordenes', id), { ...cambios, actualizadoEn: 'y', historial: [...o.historial, ev] });
+  return updateDoc(doc(como(uid), 'ordenes', id), { ...cambios, actualizadoEn: 'y', ...agregar(o, ev) });
 }
 
 const iniciarRuta = (uid, id) => accion(uid, id, { estado: 'en_ruta', rutaIniciadaEn: new Date().toISOString(), llegadaEn: null }, 'Inicio de ruta');
@@ -162,7 +187,7 @@ async function entregar(uid, id, entregas, { estado, moverInventario = true, del
   batch.update(doc(db, 'ordenes', id), {
     estado: estado ?? (total === o.cantidadAutorizada ? 'entregado' : 'entrega_parcial'),
     entregadoPorLote: nuevo, cantidadEntregada: total, actualizadoEn: 'y',
-    historial: [...o.historial, { ...eventoRep(uid, o.historial.length, 'Entrega', { datos: datosEvento }), eventoId }]
+    ...agregar(o, { ...eventoRep(uid, o.historial.length, 'Entrega', { datos: datosEvento }), eventoId })
   });
   return batch.commit();
 }
@@ -200,7 +225,7 @@ async function aprobar(uid, idOrden, idAjuste, { mover = true, alterar } = {}) {
     cantidadAutorizada: Object.values(a.propuesta).reduce((s, n) => s + n, 0),
     [`ajustes.${idAjuste}`]: { ...a, estado: 'aplicada', resueltoPor: PERFILES[uid].email, resueltoPorUid: uid, resueltoEn: 'z', respuesta: 'ok' },
     actualizadoEn: 'y',
-    historial: [...o.historial, evento(uid, o.historial.length, 'Ajuste aplicado', { datos: { ajusteId: idAjuste } })]
+    ...agregar(o, evento(uid, o.historial.length, 'Ajuste aplicado', { datos: { ajusteId: idAjuste } }))
   });
   return batch.commit();
 }
@@ -226,7 +251,7 @@ async function liberarSaldo(uid, idOrden, { estado, tipo, cantidadLiberada }) {
   }
   batch.update(doc(db, 'ordenes', idOrden), {
     estado, ...(cantidadLiberada !== undefined ? { cantidadLiberada } : {}), actualizadoEn: 'y',
-    historial: [...o.historial, evento(uid, o.historial.length, tipo)]
+    ...agregar(o, evento(uid, o.historial.length, tipo))
   });
   return batch.commit();
 }
@@ -591,6 +616,15 @@ describe('Comprobantes de entrega (fase 5)', () => {
       eventoId: e.eventoId || '', fecha: e.fecha, cantidades: e.datos?.entregas || {}, faltante: 0, observacion: e.descripcion || '',
       ...(e.datos?.foto?.hash ? { fotoHash: e.datos.foto.hash } : {})
     }));
+    // Formato nuevo (H18, H19, H42): sello de cada lote, hora del servidor, dirección y novedades solo como hash
+    const formatoNuevo = CADENA
+      ? {
+          cliente: { nombre: o.clienteNombre, direccionHash: sha(o.clienteDireccion || '') },
+          resumenNovedades: { cantidad: 0, hash: sha('[]') },
+          sellosLotes: Object.fromEntries(await Promise.all(Object.keys(o.procedencias).map(async (c) => [c, (await leer(`lotes/${c}`))?.resumen?.hashFinal || '']))),
+          registradoEnServidor: serverTimestamp()
+        }
+      : {};
     const comprobante = {
       id, version: versionForzada ?? Object.keys(versiones).length, ordenId, granjaId: GRANJA, tokenConsulta: token, emitidoEn: 'x',
       emitidoPorUid: uid, empresa: 'Cultivos Loré', estadoEntrega: o.estado, cliente: { nombre: o.clienteNombre, direccion: o.clienteDireccion || '' },
@@ -600,8 +634,11 @@ describe('Comprobantes de entrega (fase 5)', () => {
       cantidadPendiente: o.cantidadAutorizada - o.cantidadEntregada - (o.cantidadLiberada || 0),
       procedencias, entregas, novedades: [], ajustes: [], eventoEntregaId: entrega.eventoId, eventoEntregaIndice: idx,
       eventosUsados: [entrega.eventoId], hashEventos: H64, hashComprobante: idComp ? H64 : (id.slice(-1) + 'e'.repeat(63)).slice(0, 64),
-      hashAnterior: hashAnterior ?? (previo ? previo.hashComprobante : '0'.repeat(64)), ...alterar
+      hashAnterior: hashAnterior ?? (previo ? previo.hashComprobante : '0'.repeat(64)), ...formatoNuevo
     };
+    if (CADENA) delete comprobante.novedades;
+    Object.assign(comprobante, alterar);
+    for (const [k, v] of Object.entries(alterar)) if (v === undefined) delete comprobante[k];
     const db = como(uid);
     const batch = writeBatch(db);
     batch.set(doc(db, 'comprobantes', id), comprobante);
@@ -609,12 +646,9 @@ describe('Comprobantes de entrega (fase 5)', () => {
     batch.update(doc(db, 'ordenes', ordenId), {
       tokenConsulta: token,
       actualizadoEn: 'y',
-      historial: [
-        ...o.historial,
-        evento(uid, o.historial.length, 'Comprobante emitido', {
-          datos: { comprobanteId: id, eventoEntregaId: entrega.eventoId, version: comprobante.version, estadoEntrega: comprobante.estadoEntrega, hashComprobante: comprobante.hashComprobante, ...alterarEvento }
-        })
-      ]
+      ...agregar(o, evento(uid, o.historial.length, 'Comprobante emitido', {
+        datos: { comprobanteId: id, eventoEntregaId: entrega.eventoId, version: comprobante.version, estadoEntrega: comprobante.estadoEntrega, hashComprobante: comprobante.hashComprobante, ...alterarEvento }
+      }))
     });
     await batch.commit();
     return id;
@@ -748,7 +782,8 @@ describe('Comprobantes de entrega (fase 5)', () => {
     const bloque = {
       id, version, tipoBloque: 'anulacion', ordenId: comp.ordenId, granjaId: GRANJA, tokenConsulta: token, emitidoEn: 'x',
       emitidoPorUid: uid, empresa: 'Cultivos Loré', anulaA: compId, versionAnulada: comp.version, motivo, eventoEntregaId: clave,
-      hashAnterior: hashAnterior ?? previo.hashComprobante, hashComprobante: 'a' + String(nAnu).padStart(63, '0'), ...alterar
+      hashAnterior: hashAnterior ?? previo.hashComprobante, hashComprobante: 'a' + String(nAnu).padStart(63, '0'),
+      ...(CADENA ? { registradoEnServidor: serverTimestamp() } : {}), ...alterar
     };
     const o = await leer(`ordenes/${comp.ordenId}`);
     const db = como(uid);
@@ -762,7 +797,7 @@ describe('Comprobantes de entrega (fase 5)', () => {
     if (!sinEvento) {
       batch.update(doc(db, 'ordenes', comp.ordenId), {
         actualizadoEn: 'z',
-        historial: [...o.historial, evento(uid, o.historial.length, 'Comprobante anulado', { datos: { bloqueId: id, anulaA: compId, versionAnulada: comp.version } })]
+        ...agregar(o, evento(uid, o.historial.length, 'Comprobante anulado', { datos: { bloqueId: id, anulaA: compId, versionAnulada: comp.version } }))
       });
     }
     await batch.commit();
@@ -822,7 +857,7 @@ describe('Comprobantes de entrega (fase 5)', () => {
     batch.update(doc(db, 'ordenes', id), {
       entregadoPorLote: nuevo, cantidadEntregada: total,
       estado: estado ?? (total === o.cantidadAutorizada ? 'entregado' : 'entrega_parcial'), actualizadoEn: 'c',
-      historial: [...o.historial, evento(uid, o.historial.length, 'Corrección de entrega', { descripcion: motivo, datos: { anterior, nuevo }, eventoId: `ev-corr-${id}-${o.historial.length}` })]
+      ...agregar(o, evento(uid, o.historial.length, 'Corrección de entrega', { descripcion: motivo, datos: { anterior, nuevo }, eventoId: `ev-corr-${id}-${o.historial.length}` }))
     });
     return batch.commit();
   }
@@ -911,6 +946,206 @@ describe('Comprobantes de entrega (fase 5)', () => {
     await entregaParcial('PED-C6');
     await emitir('vendedor', 'PED-C6');
     assert.deepEqual(await leer('lotes/LT-001'), antes);
+  });
+
+  // ===== Segunda ronda: cadena del historial (H14), hora del servidor (H19), sello de los lotes en
+  // el comprobante (H18) y comprobante público sin dirección ni novedades (H42). Las escrituras
+  // imitan la versión nueva de la app (CADENA = true).
+  describe('Versión nueva: cadena del historial, hora del servidor y sellos de los lotes', () => {
+    before(() => { CADENA = true; });
+    after(() => { CADENA = false; });
+    const SELLO = (c) => sha(`sello-${c}`);
+    async function sellar(...codigos) {
+      await env.withSecurityRulesDisabled(async (ctx) => {
+        for (const c of codigos) await updateDoc(doc(ctx.firestore(), 'lotes', c), { 'resumen.hashFinal': SELLO(c) });
+      });
+    }
+    // Agrega un evento a mano con cambios sobre el evento encadenado o sobre las horas
+    async function eventoManual(uid, id, tipo, { cambios = {}, evento: alterarEv = {}, horas, sinHora, esRepartidor = true, extra = {} } = {}) {
+      const o = await leer(`ordenes/${id}`);
+      const base = esRepartidor ? eventoRep(uid, o.historial.length, tipo, extra) : evento(uid, o.historial.length, tipo, extra);
+      const ev = { ...encadenar(o.historial, base), ...alterarEv };
+      for (const [k, v] of Object.entries(alterarEv)) if (v === undefined) delete ev[k];
+      const datos = { ...cambios, actualizadoEn: 'y', historial: [...o.historial, ev] };
+      if (horas) Object.assign(datos, horas);
+      else if (!sinHora) datos[`registradoEnServidor.${o.historial.length}`] = serverTimestamp();
+      return updateDoc(doc(como(uid), 'ordenes', id), datos);
+    }
+    const novedad = { descripcion: 'Cliente no disponible', datos: {} };
+
+    test('H14/H19: orden nueva encadenada desde la creación, con la hora del servidor de cada evento', async () => {
+      await assertSucceeds(crearAsignada('PED-N1', { 'LT-001': 100 }));
+      await assertSucceeds(iniciarRuta('repartidor', 'PED-N1'));
+      await assertSucceeds(llegar('repartidor', 'PED-N1'));
+      await assertSucceeds(accion('repartidor', 'PED-N1', {}, 'Novedad', novedad));
+      const o = await leer('ordenes/PED-N1');
+      assert.equal(o.historial[0].hashAnterior, CEROS);
+      for (let i = 1; i < o.historial.length; i++) assert.equal(o.historial[i].hashAnterior, o.historial[i - 1].hash);
+      assert.deepEqual(Object.keys(o.registradoEnServidor).sort(), ['0', '1', '2', '3']);
+      assert.ok(o.registradoEnServidor['3'].toMillis() > 0);
+    });
+
+    test('H14: la creación encadenada debe partir de 64 ceros, con hash válido y su hora del servidor', async () => {
+      const db = como('vendedor');
+      const base = () => ({
+        id: 'PED-N2', granjaId: GRANJA, clienteId: 'CLI1', clienteNombre: 'Restaurante', clienteDireccion: 'Calle 1', clienteContacto: '300',
+        creadoPor: PERFILES.vendedor.email, creadoPorUid: 'vendedor', repartidorUid: null, repartidorNombre: null, creadoEn: 'x', actualizadoEn: 'x',
+        fechaProgramada: null, unidad: 'peces', cantidadSolicitada: 10, procedencias: {}, cantidadAutorizada: 0, cantidadEntregada: 0,
+        estado: 'borrador', observaciones: ''
+      });
+      const ev = encadenar([], evento('vendedor', 0, 'Creación'));
+      await assertFails(setDoc(doc(db, 'ordenes', 'PED-N2'), { ...base(), historial: [{ ...ev, hashAnterior: 'f'.repeat(64) }], registradoEnServidor: { 0: serverTimestamp() } }));
+      await assertFails(setDoc(doc(db, 'ordenes', 'PED-N2'), { ...base(), historial: [{ ...ev, hash: 'NO-HEX' }], registradoEnServidor: { 0: serverTimestamp() } }));
+      await assertFails(setDoc(doc(db, 'ordenes', 'PED-N2'), { ...base(), historial: [ev] }));
+      await assertFails(setDoc(doc(db, 'ordenes', 'PED-N2'), { ...base(), historial: [ev], registradoEnServidor: { 0: Timestamp.fromMillis(Date.now() - 86400000) } }));
+      await assertFails(setDoc(doc(db, 'ordenes', 'PED-N2'), { ...base(), historial: [evento('vendedor', 0, 'Creación')], registradoEnServidor: { 0: serverTimestamp() } }));
+      await assertSucceeds(setDoc(doc(db, 'ordenes', 'PED-N2'), { ...base(), historial: [ev], registradoEnServidor: { 0: serverTimestamp() } }));
+    });
+
+    test('H14: un evento nuevo debe enlazar con el anterior y tener un hash con forma válida', async () => {
+      await crearAsignada('PED-N3', { 'LT-001': 100 });
+      await assertFails(eventoManual('repartidor', 'PED-N3', 'Novedad', { extra: novedad, evento: { hashAnterior: 'f'.repeat(64) } }));
+      await assertFails(eventoManual('repartidor', 'PED-N3', 'Novedad', { extra: novedad, evento: { hash: 'G'.repeat(64) } }));
+      await assertFails(eventoManual('repartidor', 'PED-N3', 'Novedad', { extra: novedad, evento: { hash: '0'.repeat(18) + 'a'.repeat(14) + '0'.repeat(18) + 'b'.repeat(14) } }));
+      await assertSucceeds(eventoManual('repartidor', 'PED-N3', 'Novedad', { extra: novedad }));
+    });
+
+    test('H14: una vez encadenada, la orden no acepta eventos sin cadena (la cadena no se interrumpe)', async () => {
+      await crearAsignada('PED-N4', { 'LT-001': 100 });
+      CADENA = false;
+      try {
+        await assertFails(accion('repartidor', 'PED-N4', {}, 'Novedad', novedad));
+      } finally {
+        CADENA = true;
+      }
+      await assertFails(eventoManual('repartidor', 'PED-N4', 'Novedad', { extra: novedad, evento: { hash: undefined, hashAnterior: undefined }, sinHora: true }));
+    });
+
+    test('H19: la hora del servidor del evento es obligatoria, de esta operación, y no cambia las anteriores', async () => {
+      await crearAsignada('PED-N5', { 'LT-001': 100 });
+      await assertFails(eventoManual('repartidor', 'PED-N5', 'Novedad', { extra: novedad, sinHora: true }));
+      await assertFails(eventoManual('repartidor', 'PED-N5', 'Novedad', { extra: novedad, horas: { 'registradoEnServidor.1': Timestamp.fromMillis(Date.now() - 3600000) } }));
+      await assertFails(eventoManual('repartidor', 'PED-N5', 'Novedad', { extra: novedad, horas: { 'registradoEnServidor.2': serverTimestamp() } }));
+      await assertFails(eventoManual('repartidor', 'PED-N5', 'Novedad', {
+        extra: novedad, horas: { 'registradoEnServidor.1': serverTimestamp(), 'registradoEnServidor.0': serverTimestamp() }
+      }));
+      await assertSucceeds(eventoManual('repartidor', 'PED-N5', 'Novedad', { extra: novedad }));
+    });
+
+    test('compatibilidad: una orden anterior (sin cadena) recibe eventos sin cadena y luego se encadena con su ancla', async () => {
+      CADENA = false;
+      try {
+        await crearAsignada('PED-N6', { 'LT-001': 100 });
+        await assertSucceeds(accion('repartidor', 'PED-N6', {}, 'Novedad', novedad)); // versión anterior de la app
+      } finally {
+        CADENA = true;
+      }
+      // Primer evento encadenado: el ancla es el hash del historial previo (las reglas exigen su forma)
+      await assertFails(eventoManual('repartidor', 'PED-N6', 'Novedad', { extra: novedad, evento: { hashAnterior: 'xyz' } }));
+      await assertSucceeds(iniciarRuta('repartidor', 'PED-N6'));
+      const o = await leer('ordenes/PED-N6');
+      assert.equal(o.historial[2].hashAnterior, sha(canon(o.historial.slice(0, 2))));
+      assert.deepEqual(Object.keys(o.registradoEnServidor), ['2']);
+      await assertSucceeds(llegar('repartidor', 'PED-N6'));
+    });
+
+    test('casos pesados encadenados: ajuste de 3 lotes, entrega y liberación de 3 lotes, cancelación de 3 lotes', async () => {
+      await crearAsignada('PED-NW1', { 'LT-001': 300, 'LT-002': 300, 'LT-003': 100 });
+      await solicitar('repartidor', 'PED-NW1', 'AJ1', { 'LT-001': 200, 'LT-002': 350, 'LT-004': 150 });
+      await assertSucceeds(aprobar('vendedor', 'PED-NW1', 'AJ1'));
+      await crearAsignada('PED-NW2', { 'LT-001': 300, 'LT-002': 300, 'LT-003': 100 });
+      await iniciarRuta('repartidor', 'PED-NW2');
+      await llegar('repartidor', 'PED-NW2');
+      await assertSucceeds(entregar('repartidor', 'PED-NW2', { 'LT-001': 250, 'LT-002': 250, 'LT-003': 50 }));
+      await assertSucceeds(liberarSaldo('vendedor', 'PED-NW2', { estado: 'entregado', tipo: 'Cierre con saldo liberado', cantidadLiberada: 150 }));
+      await crearAsignada('PED-NW3', { 'LT-001': 300, 'LT-002': 300, 'LT-003': 100 });
+      await assertSucceeds(liberarSaldo('vendedor', 'PED-NW3', { estado: 'cancelado', tipo: 'Cancelación' }));
+    });
+
+    test('H18/H42/H19: comprobante nuevo con el sello de cada lote, sin dirección ni novedades y con la hora del servidor', async () => {
+      await sellar('LT-001', 'LT-002');
+      await entregaParcial('PED-NC1');
+      const id = await emitir('vendedor', 'PED-NC1');
+      const c = await leer(`comprobantes/${id}`);
+      assert.deepEqual(c.sellosLotes, { 'LT-001': SELLO('LT-001'), 'LT-002': SELLO('LT-002') });
+      assert.equal(c.cliente.direccion, undefined);
+      assert.equal(c.cliente.direccionHash, sha('Calle 1'));
+      assert.equal(c.novedades, undefined);
+      assert.ok(c.registradoEnServidor.toMillis() > 0);
+      const o = await leer('ordenes/PED-NC1');
+      assert.equal(o.historial[o.historial.length - 1].hashAnterior, o.historial[o.historial.length - 2].hash);
+      // Anulación encadenada con su hora del servidor
+      await assertFails(anular('vendedor', id, { alterar: { registradoEnServidor: Timestamp.fromMillis(Date.now() - 3600000) } }));
+      await assertSucceeds(anular('vendedor', id));
+    });
+
+    test('H18: el sello del lote debe ser el actual (no uno viejo) y estar el de cada lote de procedencia', async () => {
+      await sellar('LT-001', 'LT-002');
+      await entregaParcial('PED-NC2');
+      await assertFails(emitir('vendedor', 'PED-NC2', { alterar: { sellosLotes: { 'LT-001': SELLO('LT-001'), 'LT-002': 'e'.repeat(64) } } }));
+      await assertFails(emitir('vendedor', 'PED-NC2', { alterar: { sellosLotes: { 'LT-001': SELLO('LT-001') } } }));
+      await assertFails(emitir('vendedor', 'PED-NC2', { alterar: { sellosLotes: { 'LT-001': SELLO('LT-001'), 'LT-002': SELLO('LT-002'), 'LT-003': '' } } }));
+      await assertFails(emitir('vendedor', 'PED-NC2', { alterar: { sellosLotes: undefined } }));
+      await assertSucceeds(emitir('vendedor', 'PED-NC2'));
+    });
+
+    test('H18: con el lote cambiado después, un comprobante con el sello viejo se rechaza', async () => {
+      await sellar('LT-001', 'LT-002');
+      await entregaParcial('PED-NC3');
+      const viejo = { 'LT-001': SELLO('LT-001'), 'LT-002': SELLO('LT-002') };
+      await env.withSecurityRulesDisabled((ctx) => updateDoc(doc(ctx.firestore(), 'lotes', 'LT-002'), { 'resumen.hashFinal': 'd'.repeat(64) }));
+      await assertFails(emitir('vendedor', 'PED-NC3', { alterar: { sellosLotes: viejo } }));
+      await assertSucceeds(emitir('vendedor', 'PED-NC3'));
+    });
+
+    test('H42/H19: forma del comprobante nuevo (dirección como hash, resumen de novedades, hora del servidor, anotaciones)', async () => {
+      await sellar('LT-001', 'LT-002');
+      await entregaParcial('PED-NC4');
+      await assertFails(emitir('vendedor', 'PED-NC4', { alterar: { cliente: { nombre: 'Restaurante', direccionHash: sha('Calle 1'), direccion: 'Calle 1' } } }));
+      await assertFails(emitir('vendedor', 'PED-NC4', { alterar: { cliente: { nombre: 'Restaurante', direccion: 'Calle 1' } } }));
+      await assertFails(emitir('vendedor', 'PED-NC4', { alterar: { cliente: { nombre: 'Otro', direccionHash: sha('Calle 1') } } }));
+      await assertFails(emitir('vendedor', 'PED-NC4', { alterar: { cliente: { nombre: 'Restaurante', direccionHash: 'Calle 1' } } }));
+      await assertFails(emitir('vendedor', 'PED-NC4', { alterar: { novedades: [] } }));
+      await assertFails(emitir('vendedor', 'PED-NC4', { alterar: { resumenNovedades: { cantidad: 500, hash: sha('[]') } } }));
+      await assertFails(emitir('vendedor', 'PED-NC4', { alterar: { resumenNovedades: { cantidad: 0, hash: 'x' } } }));
+      await assertFails(emitir('vendedor', 'PED-NC4', { alterar: { registradoEnServidor: Timestamp.fromMillis(Date.now() - 3600000) } }));
+      await assertFails(emitir('vendedor', 'PED-NC4', { alterar: { anotacionesLotes: { 'LT-009': { registros: 1, ultimoHash: 'a'.repeat(64) } } } }));
+      await assertSucceeds(emitir('vendedor', 'PED-NC4', { alterar: { anotacionesLotes: { 'LT-001': { registros: 2, ultimoHash: 'a'.repeat(64) } } } }));
+    });
+
+    test('compatibilidad: el comprobante con el formato anterior se sigue aceptando, pero sin mezclar campos nuevos', async () => {
+      await sellar('LT-001', 'LT-002');
+      await entregaParcial('PED-NC5');
+      const anterior = { cliente: { nombre: 'Restaurante', direccion: 'Calle 1' }, novedades: [], resumenNovedades: undefined, registradoEnServidor: undefined };
+      await assertFails(emitir('vendedor', 'PED-NC5', { alterar: { ...anterior, sellosLotes: { 'LT-001': SELLO('LT-001'), 'LT-002': SELLO('LT-002') } } }));
+      await assertFails(emitir('vendedor', 'PED-NC5', { alterar: { ...anterior, sellosLotes: undefined, resumenNovedades: { cantidad: 0, hash: sha('[]') } } }));
+      await assertSucceeds(emitir('vendedor', 'PED-NC5', { alterar: { ...anterior, sellosLotes: undefined } }));
+    });
+
+    test('comprobante de 3 lotes con historial largo encadenado: no agota el límite de expresiones', async () => {
+      await sellar('LT-001', 'LT-002', 'LT-003');
+      await crearAsignada('PED-NC6', { 'LT-001': 300, 'LT-002': 200, 'LT-003': 100 });
+      await iniciarRuta('repartidor', 'PED-NC6');
+      await llegar('repartidor', 'PED-NC6');
+      await entregar('repartidor', 'PED-NC6', { 'LT-001': 250, 'LT-002': 200, 'LT-003': 50 });
+      const o = await leer('ordenes/PED-NC6');
+      let historial = o.historial;
+      for (let i = 0; i < 150; i++) {
+        historial = [...historial, encadenar(historial, { ...evento('repartidor', historial.length, 'Novedad', { descripcion: `Novedad ${i}`, datos: {} }), eventoId: `nov-${i}`, funcion: 'courier' })];
+      }
+      await env.withSecurityRulesDisabled((ctx) => updateDoc(doc(ctx.firestore(), 'ordenes', 'PED-NC6'), { historial }));
+      const anotacionesLotes = Object.fromEntries(['LT-001', 'LT-002', 'LT-003'].map((c) => [c, { registros: 3, ultimoHash: sha(c) }]));
+      const v1 = await emitir('vendedor', 'PED-NC6', { indice: o.historial.length - 1, alterar: { anotacionesLotes } });
+      await assertSucceeds(anular('vendedor', v1));
+    });
+
+    test('corrección de entrega encadenada', async () => {
+      await crearAsignada('PED-NC7', { 'LT-001': 100 });
+      await iniciarRuta('repartidor', 'PED-NC7');
+      await llegar('repartidor', 'PED-NC7');
+      await entregar('repartidor', 'PED-NC7', { 'LT-001': 100 });
+      await assertSucceeds(corregir('vendedor', 'PED-NC7', { 'LT-001': 90 }));
+    });
   });
 });
 

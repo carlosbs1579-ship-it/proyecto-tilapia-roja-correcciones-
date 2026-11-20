@@ -20,6 +20,7 @@ import { descargarComprobantePdf, verComprobantePdf } from '../services/pdfServi
 import { construirUrlConsultaEntrega, generarQrDataUrl } from '../services/qrService';
 import { formatearFechaColombia } from '../utils/constants';
 import { num } from './entregasUi';
+import { SelloTiempoBloque } from './SelloTiempo';
 
 type Ejecutar = (accion: () => Promise<void>, exito: string) => Promise<void>;
 
@@ -197,6 +198,7 @@ export const DocumentacionEntrega: React.FC<{
                     {verificacion[b.id].mensaje}
                   </span>
                 )}
+                <SelloTiempoBloque bloque={b} mantener={{ puedeCrear: puedeEmitir, verificado: Boolean(verificacion[b.id]?.ok) }} />
               </li>
             ) : ((c: ComprobanteEntrega) => (
             <li key={c.id} className="p-2 space-y-1">
@@ -310,6 +312,7 @@ export const DocumentacionEntrega: React.FC<{
                   </span>
                 ) : null;
               })()}
+              <SelloTiempoBloque bloque={c} mantener={{ puedeCrear: puedeEmitir, verificado: Boolean(verificacion[c.id]?.ok) }} />
             </li>
             ))(b)
           )}

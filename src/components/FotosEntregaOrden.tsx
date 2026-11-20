@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { quienRegistro } from '../services/usuariosService';
-import { Camera, ShieldAlert, ShieldCheck } from 'lucide-react';
+import { AlertTriangle, Camera, ShieldAlert, ShieldCheck } from 'lucide-react';
+import { revisarFechaExif } from '../lib/exif';
 import { BloqueAnulacion, ComprobanteEntrega, OrdenEntrega } from '../types';
 import { DIAS_RETENCION_FOTOS, FotoEntrega, RevisionFoto, escucharFotosOrden, revisarFoto } from '../services/fotosService';
 import { escucharComprobantesOrden, esAnulacion } from '../services/comprobantesService';
@@ -107,6 +108,23 @@ export const FotosEntregaOrden: React.FC<{ orden: OrdenEntrega }> = ({ orden: o 
                   Disponible hasta {formatearFechaColombia(foto.expiraEn.toDate().toISOString())} (se borra sola a los {DIAS_RETENCION_FOTOS} días).
                 </span>
               )}
+              {foto &&
+                (() => {
+                  // Fecha de la cámara (EXIF del archivo original) frente a la hora de la entrega (H38)
+                  const f = revisarFechaExif(foto.tomadaEnExif, e.fecha);
+                  if (f.estado === 'sin_fecha') return <span className="block text-slate-500">Sin fecha de cámara (captura de pantalla, foto editada o tomada antes de esta función).</span>;
+                  const fecha = formatearFechaColombia(new Date(f.ms!).toISOString());
+                  return f.estado === 'coincide' ? (
+                    <span className="block text-slate-500">Fecha de cámara: {fecha}.</span>
+                  ) : (
+                    <span className="flex items-start text-amber-800 font-semibold" role="status">
+                      <AlertTriangle className="w-3.5 h-3.5 mr-1 mt-0.5 shrink-0" aria-hidden="true" />
+                      {f.antes
+                        ? `La foto parece tomada el día ${fecha}, antes de la entrega (más de 24 horas de diferencia).`
+                        : `La foto parece tomada el día ${fecha}, después de la entrega (más de 24 horas de diferencia).`}
+                    </span>
+                  );
+                })()}
               {!v && !error && <span className="block text-slate-500">Verificando la foto…</span>}
               {v?.estado === 'verificada' && (
                 <span className="flex items-center text-emerald-700">

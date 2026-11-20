@@ -14,6 +14,7 @@ import {
 import { AvisoIntegridad, IndicadorVerificado } from './AvisoIntegridad';
 import { descargarComprobantePdf, verComprobantePdf } from '../services/pdfService';
 import { formatearFechaColombia } from '../utils/constants';
+import { SelloTiempoBloque } from './SelloTiempo';
 
 const num = (n: number) => (Number(n) || 0).toLocaleString('es-CO');
 
@@ -276,6 +277,7 @@ export const ConsultaEntregaPublica: React.FC<{
                   ) : (
                     <span className="text-slate-500">Verificando…</span>
                   )}
+                  <SelloTiempoBloque bloque={c} />
                 </div>
                 ))(b)
               )}

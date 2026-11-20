@@ -22,6 +22,7 @@ import { nombreRegistro } from './usuariosService';
 import { derivarCabeceraLote, recalcularResumenLote } from './calculosService';
 import { generarYSubirPdfLote } from './pdfService';
 import { construirUrlPublicaPdf, construirUrlPublicaTrazabilidad } from './qrService';
+import { copiaFicha, sellarLote } from './selloTiempoService';
 
 // Firestore es la única fuente de verdad de los lotes. Ya no se leen ni se escriben copias en
 // localStorage: esas copias no se compartían entre usuarios y, al resincronizarse, pisaban los
@@ -613,7 +614,9 @@ export async function cerrarLote(
         pdfUrl: construirUrlPublicaTrazabilidad(codigoLimpio),
         versionPdf: (loteBase.versionPdf || 0) + 1,
         pdfActualizadoEn: fechaIsoAhora,
-        actualizadoEn: fechaIsoAhora
+        actualizadoEn: fechaIsoAhora,
+        // Copia de la ficha nutricional vigente (H41): el certificado del lote usa siempre esta
+        fichaNutricionalCierre: copiaFicha(config.fichaNutricional)
       };
 
       transaction.update(loteRef, patch);
@@ -624,6 +627,10 @@ export async function cerrarLote(
     console.error('Error cerrando lote en Firestore:', err);
     throw mensajeErrorFirestore('cerrar el lote', err);
   }
+
+  // Testigo externo (H03): el sello de cierre va a OpenTimestamps sin bloquear ni hacer fallar el
+  // cierre; si los calendarios no responden, se reintenta al abrir el detalle del lote
+  sellarLote(loteCerrado).catch(() => {});
 
   // Generar el PDF y subirlo a Storage de fondo (con timeout de protección para nunca colgar la UI)
   generarYSubirPdfLote(loteCerrado, config).catch((pdfErr) => {

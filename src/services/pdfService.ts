@@ -11,6 +11,7 @@ import { nombreDato } from './hashService';
 import { formatearFechaColombia, getFechaHoyBogota, ocultarCorreo } from '../utils/constants';
 import { evaluarParametroAgua } from './calculosService';
 import { logoPngDataUrl } from '../components/LogoLore';
+import { fichaDelLote, revisarSelloBloque, revisarSelloLote, RevisionSello, textoSelloPdf } from './selloTiempoService';
 
 
 // Las fuentes estándar del PDF solo tienen los caracteres latinos (WinAnsi). Uno fuera de ese
@@ -230,7 +231,8 @@ async function cargarPdf() {
  */
 export async function generarLotePdfBlob(
   lote: Lote,
-  config: ConfiguracionGeneral
+  config: ConfiguracionGeneral,
+  revisionSello?: RevisionSello | null
 ): Promise<{ blob: Blob; urlPublica: string }> {
   const { jsPDF, autoTable } = await cargarPdf();
   const doc = new jsPDF({
@@ -551,7 +553,9 @@ export async function generarLotePdfBlob(
   }
 
   // --- 8. FICHA NUTRICIONAL REFERENCIAL ---
-  const fn = config.fichaNutricional;
+  // La congelada al cerrar (H41); en lotes cerrados antes, la vigente con una nota
+  const fichaLote = fichaDelLote(lote, config);
+  const fn = fichaLote.ficha;
   if (currentY > doc.internal.pageSize.getHeight() - 70) {
     doc.addPage();
     currentY = 20;
@@ -568,16 +572,29 @@ export async function generarLotePdfBlob(
   doc.setFont('helvetica', 'italic');
   doc.setFontSize(7);
   doc.setTextColor(...C.gris);
-  doc.text(doc.splitTextToSize(textoPdf(`Fuente: ${fn.fuente}. ${fn.notas}`), pageWidth - 2 * M), M, currentY + 2);
+  doc.text(
+    doc.splitTextToSize(textoPdf(`Fuente: ${fn.fuente}. ${fn.notas}${fichaLote.congelada ? ' Ficha congelada al cerrar el lote.' : fichaLote.nota ? ` ${fichaLote.nota}` : ''}`), pageWidth - 2 * M),
+    M,
+    currentY + 2
+  );
   currentY += 9;
 
+  // Sello de tiempo (testigo externo OpenTimestamps): el de la pantalla si ya se revisó con la red,
+  // si no, la revisión local de la prueba guardada
+  const revSello =
+    lote.estado === 'cerrado' ? revisionSello || (await revisarSelloLote(lote, { consultarRed: false }).catch(() => null)) : null;
+  const selloPdf = revSello ? textoSelloPdf(revSello) : null;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  const lineasSello: string[] = selloPdf ? doc.splitTextToSize(textoPdf(selloPdf.texto), pageWidth - 2 * M - 10) : [];
+
   // --- 9. VERIFICACIÓN DE INTEGRIDAD ---
-  if (currentY > doc.internal.pageSize.getHeight() - 48) {
+  if (currentY > doc.internal.pageSize.getHeight() - 48 - lineasSello.length * 3.4) {
     doc.addPage();
     currentY = 20;
   }
   currentY = tituloSeccion(doc, 'Verificación de integridad', currentY);
-  const altoCaja = datosAnotaciones?.registros?.length ? 27 : 22;
+  const altoCaja = (datosAnotaciones?.registros?.length ? 27 : 22) + (lineasSello.length ? lineasSello.length * 3.4 + 1.5 : 0);
   doc.setDrawColor(...C.filete);
   doc.setLineWidth(0.2);
   doc.rect(M, currentY, pageWidth - 2 * M, altoCaja);
@@ -621,6 +638,13 @@ export async function generarLotePdfBlob(
     doc.text(doc.splitTextToSize(textoPdf(`Anotaciones: ${verifAnotaciones.mensaje}`), pageWidth - 2 * M - 10)[0], M + 5, yNota);
     yNota += 4.5;
   }
+  if (selloPdf && lineasSello.length) {
+    doc.setFont('helvetica', selloPdf.tono === 'rojo' ? 'bold' : 'normal');
+    doc.setFontSize(7.5);
+    doc.setTextColor(...C[selloPdf.tono]);
+    doc.text(lineasSello, M + 5, yNota);
+    yNota += lineasSello.length * 3.4 + 1.5;
+  }
   doc.setFont('helvetica', 'italic');
   doc.setFontSize(7);
   doc.setTextColor(...C.gris);
@@ -647,8 +671,8 @@ export async function generarYSubirPdfLote(
 /**
  * Dispara la descarga local directa del PDF para inspección o impresión
  */
-export async function descargarPdfLoteLocal(lote: Lote, config: ConfiguracionGeneral): Promise<void> {
-  const { blob } = await generarLotePdfBlob(lote, config);
+export async function descargarPdfLoteLocal(lote: Lote, config: ConfiguracionGeneral, revisionSello?: RevisionSello | null): Promise<void> {
+  const { blob } = await generarLotePdfBlob(lote, config, revisionSello);
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
@@ -662,10 +686,10 @@ export async function descargarPdfLoteLocal(lote: Lote, config: ConfiguracionGen
 /**
  * Abre la vista previa del PDF en una nueva pestaña (blob URL)
  */
-export async function previsualizarPdfLote(lote: Lote, config: ConfiguracionGeneral): Promise<void> {
+export async function previsualizarPdfLote(lote: Lote, config: ConfiguracionGeneral, revisionSello?: RevisionSello | null): Promise<void> {
   const ventana = abrirPestanaVacia();
   try {
-    const { blob } = await generarLotePdfBlob(lote, config);
+    const { blob } = await generarLotePdfBlob(lote, config, revisionSello);
     mostrarBlob(ventana, blob, `CultivosLore_Lote_${lote.codigo}.pdf`);
   } catch (err) {
     ventana?.close();
@@ -727,9 +751,16 @@ export async function generarComprobantePdfBlob(
   // Un comprobante definitivo se verifica antes de generarse: si su contenido no corresponde a su
   // hash (o quien lo pide ya detectó otra falla de la cadena), el PDF sale marcado como alterado
   let alteracion = opciones.alteracion || '';
+  let selloPdf: ReturnType<typeof textoSelloPdf> | null = null;
   if (!opciones.preliminar && c.hashComprobante) {
     const v = await verificarComprobante(c as ComprobanteEntrega);
     if (!v.contenidoIntegro && !v.noVerificable) alteracion = [alteracion, v.mensaje].filter(Boolean).join(' ');
+    // Segundo testigo: el sello de tiempo de OpenTimestamps del bloque (revisión local de la prueba)
+    const rs = await revisarSelloBloque(c as ComprobanteEntrega, { consultarRed: false }).catch(() => null);
+    if (rs) {
+      selloPdf = textoSelloPdf(rs);
+      if (rs.estado === 'alterado') alteracion = [alteracion, ...rs.avisos].filter(Boolean).join(' ');
+    }
   }
   const { jsPDF, autoTable } = await cargarPdf();
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
@@ -920,6 +951,7 @@ export async function generarComprobantePdfBlob(
             ? `Sello de cada lote al emitir: ${Object.entries(c.sellosLotes).map(([l, h]) => `${l} ${h ? h.slice(0, 16) + '…' : 'sin sello'}`).join(', ')}. `
             : '') +
           (c.registradoEnServidor?.toDate ? `Hora del servidor al emitir: ${formatearFechaColombia(c.registradoEnServidor.toDate().toISOString())}. ` : '') +
+          (selloPdf ? `${selloPdf.texto} ` : '') +
           'Cada comprobante es un bloque sellado con SHA-256 que contiene el hash del bloque anterior de la misma orden; ' +
           'alterar cualquier dato cambia su hash y rompe la cadena. Cadena de bloques privada de la plataforma. ' +
           'Escanee el código QR para consultar la entrega y verificar la cadena. La trazabilidad de cada lote se consulta con el QR del lote.'

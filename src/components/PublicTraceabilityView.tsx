@@ -11,6 +11,8 @@ import { AvisoIntegridad, IndicadorVerificado } from './AvisoIntegridad';
 import { AnotacionesLote } from '../types';
 import { descargarPdfLoteLocal } from '../services/pdfService';
 import { CONFIG_DEFAULT, formatearFechaColombia, ocultarCorreo } from '../utils/constants';
+import { fichaDelLote, revisarSelloLote, selloActualLote } from '../services/selloTiempoService';
+import { SelloTiempoInfo, useRevisionSello } from './SelloTiempo';
 import {
   ShieldCheck,
   CheckCircle2,
@@ -96,6 +98,15 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
   const [verEventosDetalle, setVerEventosDetalle] = useState(true);
 
   const [reintentos, setReintentos] = useState(0);
+
+  // Testigo externo (H03): sello de tiempo de OpenTimestamps del lote cerrado. Sin sesión no se
+  // escribe nada: si Bitcoin ya lo confirmó, la prueba completa se calcula solo en memoria.
+  const revisionSello = useRevisionSello(
+    lote && lote.estado === 'cerrado' ? () => revisarSelloLote(lote) : null,
+    lote
+      ? JSON.stringify([lote.codigo, lote.estado, selloActualLote(lote), lote.selloTiempo?.digest, lote.selloTiempo?.ots?.length, lote.fichaNutricionalCierre || null])
+      : ''
+  );
 
   useEffect(() => {
     if (loteInicial) {
@@ -223,7 +234,7 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
     setDescargandoPdf(true);
     setErrorPdf(null);
     try {
-      await descargarPdfLoteLocal(lote, config);
+      await descargarPdfLoteLocal(lote, config, revisionSello);
     } catch (err: any) {
       setErrorPdf('No se pudo generar el PDF en este dispositivo. Intente de nuevo o use otro navegador.');
     } finally {
@@ -326,6 +337,9 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
   const cab = revision?.cabecera;
   const esCerrado = lote.estado === 'cerrado';
   const ultimaHuella = lote.eventos?.length ? lote.eventos[lote.eventos.length - 1].hash : '';
+  // Ficha nutricional congelada al cerrar (H41) o, en lotes cerrados antes, la vigente con una nota
+  const fichaLote = fichaDelLote(lote, config);
+  const ficha = fichaLote.ficha;
 
   return (
     <div className="min-h-dvh bg-white text-slate-900 pb-16">
@@ -511,6 +525,14 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
               </p>
             )}
           </div>
+
+          {/* Testigo externo: sello de tiempo anclado en Bitcoin (OpenTimestamps) */}
+          {esCerrado && (
+            <div className="border-t border-slate-200 pt-3 space-y-1">
+              <span className="text-xs uppercase font-semibold text-slate-500 block">Sello de tiempo en Bitcoin (testigo externo)</span>
+              <SelloTiempoInfo revision={revisionSello} nombreArchivo={`sello-lote-${lote.codigo}`} />
+            </div>
+          )}
         </div>
 
         {/* MÉTRICAS PRODUCTIVAS CLAVE */}
@@ -715,25 +737,26 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
           <div className="flex items-center space-x-2">
             <Apple className="w-5 h-5 text-emerald-600" />
             <h3 className="text-sm font-semibold text-slate-900">
-              Información nutricional (Porción 100 g de filete crudo)
+              Información nutricional (Porción {ficha.porcionG} g de filete crudo)
             </h3>
           </div>
+          {fichaLote.nota && <p className="text-xs text-slate-500">{fichaLote.nota}</p>}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
             <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 text-center">
               <span className="text-slate-500 block">Energía</span>
-              <strong className="text-base text-slate-900">{config.fichaNutricional.energiaKcal} kcal</strong>
+              <strong className="text-base text-slate-900">{ficha.energiaKcal} kcal</strong>
             </div>
             <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 text-center">
               <span className="text-slate-500 block">Proteína</span>
-              <strong className="text-base text-slate-900">{config.fichaNutricional.proteinaG} g</strong>
+              <strong className="text-base text-slate-900">{ficha.proteinaG} g</strong>
             </div>
             <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 text-center">
               <span className="text-slate-500 block">Grasa total</span>
-              <strong className="text-base text-slate-900">{config.fichaNutricional.grasaTotalG} g</strong>
+              <strong className="text-base text-slate-900">{ficha.grasaTotalG} g</strong>
             </div>
             <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 text-center">
               <span className="text-slate-500 block">Sodio</span>
-              <strong className="text-base text-sky-600">{config.fichaNutricional.sodioMg} mg</strong>
+              <strong className="text-base text-sky-600">{ficha.sodioMg} mg</strong>
             </div>
           </div>
         </div>

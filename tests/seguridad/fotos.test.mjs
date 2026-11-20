@@ -58,18 +58,18 @@ async function enLlegada(id) {
   await accion('repartidor', id, { estado: 'en_ruta', rutaIniciadaEn: new Date().toISOString(), llegadaEn: null }, 'Inicio de ruta');
   await accion('repartidor', id, { llegadaEn: new Date().toISOString() }, 'Llegada');
 }
-function registroFoto(fotoId, id, eventoId, datos) {
+function registroFoto(fotoId, id, eventoId, datos, extra = {}) {
   return {
     id: fotoId, ordenId: id, granjaId: GRANJA, eventoId, subidaPorUid: 'repartidor', tomadaEn: 'x',
-    expiraEn: Timestamp.fromMillis(Date.now() + 15 * DIA), tipo: 'image/jpeg', ancho: 1, alto: 1, bytes: 1, hash: 'a'.repeat(64), datos
+    expiraEn: Timestamp.fromMillis(Date.now() + 15 * DIA), tipo: 'image/jpeg', ancho: 1, alto: 1, bytes: 1, hash: 'a'.repeat(64), datos, ...extra
   };
 }
-async function entregarConFoto(id, fotoId, datos) {
+async function entregarConFoto(id, fotoId, datos, extra = {}) {
   const o = await leer(`ordenes/${id}`);
   const db = como('repartidor');
   const b = writeBatch(db);
   const eventoId = `ev-entrega-${id}`;
-  b.set(doc(db, 'fotosEntrega', fotoId), registroFoto(fotoId, id, eventoId, datos));
+  b.set(doc(db, 'fotosEntrega', fotoId), registroFoto(fotoId, id, eventoId, datos, extra));
   b.update(doc(db, 'inventarioLotes', 'LT-001'), { entregado: increment(100), reservado: increment(-100), ultimaOrden: id, movidoEn: serverTimestamp(), tipoMovimiento: 'entrega' });
   b.update(doc(db, 'ordenes', id), {
     estado: 'entregado', entregadoPorLote: { 'LT-001': 100 }, cantidadEntregada: 100, actualizadoEn: 'y',
@@ -113,6 +113,36 @@ describe('fotosEntrega: contenido y reemplazo', () => {
     const o = await leer('ordenes/PED-S2');
     const ev = o.historial[o.historial.length - 1];
     await assertFails(setDoc(doc(como('repartidor'), 'fotosEntrega', fotoId), registroFoto(fotoId, 'PED-S2', ev.eventoId, 'data:image/jpeg;base64,' + 'B'.repeat(200))));
+  });
+});
+
+describe('fotosEntrega: fecha de la cámara (EXIF, H38)', () => {
+  const JPEG = 'data:image/jpeg;base64,/9j/' + 'A'.repeat(200) + '==';
+  const fotoId = (k) => `foto_exif_${k}` + 'x'.repeat(20);
+  test('la app anterior entrega sin la fecha de cámara', async () => {
+    await enLlegada('PED-E0');
+    await assertSucceeds(entregarConFoto('PED-E0', fotoId('0'), JPEG));
+  });
+  test('acepta la fecha de cámara sin zona horaria', async () => {
+    await enLlegada('PED-E1');
+    await assertSucceeds(entregarConFoto('PED-E1', fotoId('1'), JPEG, { tomadaEnExif: '2026-11-17T09:15:02' }));
+  });
+  test('acepta la fecha de cámara con zona horaria', async () => {
+    await enLlegada('PED-E2');
+    await assertSucceeds(entregarConFoto('PED-E2', fotoId('2'), JPEG, { tomadaEnExif: '2026-11-17T09:15:02-05:00' }));
+  });
+  test('rechaza una fecha de cámara con otra forma', async () => {
+    await enLlegada('PED-E3');
+    await assertFails(entregarConFoto('PED-E3', fotoId('3'), JPEG, { tomadaEnExif: '2026:11:17 09:15:02' }));
+    await assertFails(entregarConFoto('PED-E3', fotoId('3'), JPEG, { tomadaEnExif: '2026-11-17T09:15:02' + 'x'.repeat(500) }));
+    await assertFails(entregarConFoto('PED-E3', fotoId('3'), JPEG, { tomadaEnExif: 20261117 }));
+    await assertFails(entregarConFoto('PED-E3', fotoId('3'), JPEG, { tomadaEnExif: '<script>' }));
+    await assertSucceeds(entregarConFoto('PED-E3', fotoId('3'), JPEG));
+  });
+  test('la foto guardada no se modifica para cambiar su fecha de cámara', async () => {
+    await enLlegada('PED-E4');
+    await assertSucceeds(entregarConFoto('PED-E4', fotoId('4'), JPEG, { tomadaEnExif: '2026-11-17T09:15:02' }));
+    await assertFails(updateDoc(doc(como('repartidor'), 'fotosEntrega', fotoId('4')), { tomadaEnExif: '2026-11-18T09:15:02' }));
   });
 });
 

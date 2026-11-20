@@ -1203,3 +1203,67 @@ describe('Fotos de entrega (fase 7)', () => {
     await assertFails(deleteDoc(doc(como('vendedor'), 'fotosEntrega', fotoId)));
   });
 });
+
+describe('Sello de tiempo de los comprobantes (testigo externo, H03)', () => {
+  const HC = 'd'.repeat(64);
+  const OTS = 'AE9wZW5UaW1lc3RhbXBzAABQcm9vZgC/ieLohOiSlAEI' + 'A'.repeat(60);
+  const ENVIO = Timestamp.fromMillis(Date.parse('2026-11-17T15:00:00Z'));
+  const ID = 'cmp-sello-000000000000000001';
+  const BLOQUE = {
+    id: ID, version: 1, ordenId: 'ORD-SELLO', granjaId: GRANJA, tokenConsulta: 'c-token-sello-0000000000', emitidoEn: '2026-11-17T14:00:00.000Z',
+    emitidoPorUid: 'vendedor', empresa: 'Cultivos Loré', estadoEntrega: 'entregado', cantidadEntregada: 10, hashAnterior: '0'.repeat(64),
+    hashComprobante: HC
+  };
+  const ref = (db, id = ID) => doc(db, 'comprobantes', id);
+  const pendiente = (extra = {}) => ({ version: 1, digest: HC, ots: OTS, estado: 'pendiente', enviadoEn: serverTimestamp(), calendarios: 2, ...extra });
+  const guardado = { version: 1, digest: HC, ots: OTS, estado: 'pendiente', enviadoEn: ENVIO, calendarios: 2 };
+  const confirmado = (extra = {}) => ({ ...guardado, estado: 'confirmado', ots: OTS + 'BBBBBBBB', bloque: 925000, ...extra });
+  const preparar = (extra = {}, id = ID, granjaId = GRANJA) =>
+    env.withSecurityRulesDisabled((ctx) => setDoc(ref(ctx.firestore(), id), { ...BLOQUE, id, granjaId, ...extra }));
+
+  test('quien gestiona comprobantes agrega el sello pendiente (una sola vez)', async () => {
+    await preparar();
+    await assertSucceeds(updateDoc(ref(como('vendedor')), { selloTiempo: pendiente() }));
+    await assertFails(updateDoc(ref(como('vendedor')), { selloTiempo: pendiente({ calendarios: 3 }) }));
+  });
+
+  test('el sello debe cubrir el hash del bloque y no cambia nada más', async () => {
+    await preparar();
+    const db = como('vendedor');
+    await assertFails(updateDoc(ref(db), { selloTiempo: pendiente({ digest: 'e'.repeat(64) }) }));
+    await assertFails(updateDoc(ref(db), { selloTiempo: pendiente({ enviadoEn: ENVIO }) }));
+    await assertFails(updateDoc(ref(db), { selloTiempo: pendiente(), cantidadEntregada: 99 }));
+    await assertFails(updateDoc(ref(db), { selloTiempo: pendiente({ digest: 'e'.repeat(64) }), hashComprobante: 'e'.repeat(64) }));
+    await assertFails(updateDoc(ref(db), { cantidadEntregada: 99 }));
+  });
+
+  test('sin sesión, sin permiso de comprobantes o de otra granja no se crea', async () => {
+    await preparar();
+    await preparar({}, 'cmp-otra-granja-0000000001', 'otra');
+    await assertFails(updateDoc(ref(env.unauthenticatedContext().firestore()), { selloTiempo: pendiente() }));
+    await assertFails(updateDoc(ref(como('operario')), { selloTiempo: pendiente() }));
+    await assertFails(updateDoc(ref(como('repartidor')), { selloTiempo: pendiente() }));
+    await assertFails(updateDoc(ref(como('vendedor'), 'cmp-otra-granja-0000000001'), { selloTiempo: pendiente() }));
+  });
+
+  test('la confirmación la guarda cualquier usuario activo de la granja, con el mismo digest', async () => {
+    await preparar({ selloTiempo: guardado });
+    await assertFails(updateDoc(ref(env.unauthenticatedContext().firestore()), { selloTiempo: confirmado() }));
+    await assertFails(updateDoc(ref(como('repartidor')), { selloTiempo: confirmado({ digest: 'e'.repeat(64) }) }));
+    await assertFails(updateDoc(ref(como('repartidor')), { selloTiempo: confirmado({ ots: OTS }) }));
+    await assertSucceeds(updateDoc(ref(como('repartidor')), { selloTiempo: confirmado() }));
+    await assertFails(updateDoc(ref(como('maestro')), { selloTiempo: confirmado({ ots: OTS + 'BBBBBBBBCCCC' }) }));
+    await assertFails(updateDoc(ref(como('maestro')), { selloTiempo: null }));
+  });
+
+  test('un bloque de anulación también admite su sello', async () => {
+    await preparar({ tipoBloque: 'anulacion', anulaA: 'cmp-x', motivo: 'motivo de prueba largo' });
+    await assertSucceeds(updateDoc(ref(como('vendedor')), { selloTiempo: pendiente() }));
+  });
+
+  test('los bloques siguen sin poder borrarse', async () => {
+    await preparar({ selloTiempo: guardado });
+    const { deleteDoc } = await import('firebase/firestore');
+    await assertFails(deleteDoc(ref(como('maestro'))));
+  });
+});

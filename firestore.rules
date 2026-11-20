@@ -287,8 +287,11 @@ service cloud.firestore {
       let a = resource.data;
       let n = request.resource.data;
       let cambios = n.diff(a).affectedKeys();
-      return cambios.hasOnly(['estado', 'fechaCierre', 'resumen', 'pdfPath', 'pdfUrl', 'versionPdf', 'pdfActualizadoEn', 'actualizadoEn'])
+      return cambios.hasOnly(['estado', 'fechaCierre', 'resumen', 'pdfPath', 'pdfUrl', 'versionPdf', 'pdfActualizadoEn', 'actualizadoEn',
+                              'fichaNutricionalCierre'])
         && fechaCierreValida(n.get('fechaCierre', null), a.get('fechaSiembra', ''))
+        // Copia de la ficha nutricional vigente al cerrar (H41), opcional para la versión anterior de la app
+        && (!cambios.hasAny(['fichaNutricionalCierre']) || fichaCierreValida(n.fichaNutricionalCierre))
         && (!cambios.hasAny(['pdfPath']) || n.pdfPath == 'lotes/' + codigo + '.pdf')
         && (!cambios.hasAny(['pdfUrl']) || enlaceLoteValido(n.pdfUrl, codigo))
         && (!cambios.hasAny(['versionPdf']) || n.versionPdf == a.get('versionPdf', 0) + 1)
@@ -296,6 +299,58 @@ service cloud.firestore {
         && (!cambios.hasAny(['actualizadoEn']) || (n.actualizadoEn is string && n.actualizadoEn.size() <= 40))
         && cosechaCoherente(a, n, null)
         && (!('resumen' in n) || resumenCierreValido(a, n));
+    }
+
+    // Ficha congelada en el cierre: exactamente las nueve claves de la ficha de configuración, con sus
+    // tipos y los mismos límites. Acceso directo a cada campo (el cierre es de las operaciones con
+    // menos margen de expresiones): si falta una clave o no es un mapa, la evaluación falla y se rechaza.
+    function fichaCierreValida(f) {
+      return f.keys().hasOnly(['porcionG', 'energiaKcal', 'proteinaG', 'grasaTotalG', 'carbohidratosG', 'colesterolMg', 'sodioMg', 'fuente', 'notas'])
+        && f.porcionG is number && f.energiaKcal is number && f.proteinaG is number && f.grasaTotalG is number
+        && f.carbohidratosG is number && f.colesterolMg is number && f.sodioMg is number
+        && f.fuente is string && f.fuente.size() <= 500 && f.notas is string && f.notas.size() <= 1000;
+    }
+
+    // ----- Sello de tiempo (testigo externo OpenTimestamps, H03) -----
+    // selloTiempo va fuera de todo hash: la prueba .ots (base64) del sello del registro, enviada a
+    // los calendarios públicos de OpenTimestamps. Se escribe una sola vez, pendiente y con la hora del
+    // servidor; después solo puede pasar a confirmado (cuando Bitcoin lo confirma), con el mismo
+    // digest, la misma hora de envío y una prueba más larga. Una vez confirmado no cambia. Las reglas
+    // no pueden leer la prueba: la app comprueba que cubra este digest y que llegue a Bitcoin.
+    function formaSelloTiempo(s, digest) {
+      return s is map
+        && s.keys().hasOnly(['version', 'digest', 'ots', 'estado', 'enviadoEn', 'calendarios', 'bloque', 'confirmadoEn'])
+        && s.version == 1
+        && s.digest == digest
+        && hashValido(digest)
+        && s.ots is string && s.ots.size() >= 60 && s.ots.size() <= 40000 && s.ots.matches('^[A-Za-z0-9+/]+=*$')
+        && s.calendarios is int && s.calendarios >= 1 && s.calendarios <= 10;
+    }
+
+    // a/n: documento antes y después; creaSello: si quien escribe puede crear el sello (el mismo
+    // personal que cierra el lote o emite el comprobante). Completarlo lo puede hacer cualquier
+    // usuario activo de la granja (quien abra el registro cuando Bitcoin ya lo confirmó).
+    function selloTiempoValido(a, n, digest, creaSello) {
+      let s = n.selloTiempo;
+      let s0 = a.get('selloTiempo', null);
+      return n.diff(a).affectedKeys().hasOnly(['selloTiempo'])
+        && formaSelloTiempo(s, digest)
+        && (s0 == null
+              ? (creaSello && s.estado == 'pendiente' && s.enviadoEn == request.time && !('bloque' in s) && !('confirmadoEn' in s))
+              : (s0.estado == 'pendiente' && s.estado == 'confirmado'
+                  && s.digest == s0.digest && s.enviadoEn == s0.enviadoEn && s.calendarios == s0.calendarios
+                  && s.ots.size() > s0.ots.size()
+                  && s.bloque is int && s.bloque > 0 && s.bloque < 100000000
+                  && (!('confirmadoEn' in s) || (s.confirmadoEn is string && s.confirmadoEn.size() <= 40))));
+    }
+
+    // Única escritura posible en un lote cerrado: su sello de tiempo, con digest == su sello de cierre
+    function selloTiempoLoteValido() {
+      let maestro = isMasterAdmin();
+      let p = maestro && !exists(perfilPath()) ? {} : get(perfilPath()).data;
+      let a = resource.data;
+      return (maestro || (p.get('estado', '') == 'activo' && a.get('granjaId', 'cultivos-lore') == p.get('granjaId', 'cultivos-lore')))
+        && selloTiempoValido(a, request.resource.data, a.get('resumen', {}).get('hashFinal', ''), maestro || permisoEn(p, 'cerrarLotes'));
     }
 
     // ----- Creación -----
@@ -396,9 +451,12 @@ service cloud.firestore {
                     && creacionLoteValida(codigo);
 
       // Modificación o cierre: Solo permitido si el lote actualmente está ACTIVO (no sellado)
-      // Una vez cerrado/sellado (resource.data.estado == 'cerrado'), queda estrictamente bloqueado.
-      allow update: if (!('estado' in resource.data) || resource.data.estado == 'activo')
-                    && actualizacionLoteValida(codigo);
+      // Una vez cerrado/sellado (resource.data.estado == 'cerrado'), queda bloqueado: lo único que
+      // se puede escribir es su sello de tiempo (selloTiempo, fuera del hash), una vez y luego su
+      // confirmación en Bitcoin.
+      allow update: if ((!('estado' in resource.data) || resource.data.estado == 'activo')
+                        && actualizacionLoteValida(codigo))
+                    || (isSignedIn() && resource.data.get('estado', '') == 'cerrado' && selloTiempoLoteValido());
 
       // Eliminación: solo el Administrador Maestro y nunca un lote sellado
       allow delete: if isMasterAdmin() && resource.data.get('estado', 'activo') != 'cerrado';
@@ -1412,6 +1470,16 @@ service cloud.firestore {
       // que el código de consulta sea el de la orden: no se repite aquí (límite de expresiones)
     }
 
+    // Sello de tiempo de un bloque (comprobante o anulación): digest == su hashComprobante. Lo crea
+    // quien tiene el permiso de comprobantes de esa granja; lo completa cualquier usuario activo de ella.
+    function selloTiempoComprobanteValido() {
+      let maestro = isMasterAdmin();
+      let p = maestro && !exists(perfilPath()) ? {} : get(perfilPath()).data;
+      let a = resource.data;
+      return (maestro || (p.get('estado', '') == 'activo' && p.get('granjaId', 'cultivos-lore') == a.granjaId))
+        && selloTiempoValido(a, request.resource.data, a.hashComprobante, maestro || permisoPedidosEn(a.granjaId, 'gestionarComprobantes'));
+    }
+
     match /comprobantes/{comprobanteId} {
       // Lectura pública de UN comprobante conociendo su identificador aleatorio; listar, solo el operador
       allow get: if true;
@@ -1419,7 +1487,9 @@ service cloud.firestore {
       allow create: if request.resource.data.get('tipoBloque', 'entrega') == 'anulacion'
                       ? anulacionValida(comprobanteId)
                       : comprobanteValido(comprobanteId);
-      allow update, delete: if false;
+      // El bloque no cambia; solo se le agrega su sello de tiempo (fuera del hash) y su confirmación
+      allow update: if isSignedIn() && selloTiempoComprobanteValido();
+      allow delete: if false;
     }
 
     match /consultasEntrega/{token} {
@@ -1543,7 +1613,11 @@ service cloud.firestore {
       let o = getAfter(rutaOrden(f.ordenId)).data;
       let ev = o.historial[o.historial.size() - 1];
       return f.keys().hasOnly(['id', 'ordenId', 'granjaId', 'eventoId', 'subidaPorUid', 'tomadaEn', 'expiraEn', 'tipo',
-                               'ancho', 'alto', 'bytes', 'hash', 'datos'])
+                               'ancho', 'alto', 'bytes', 'hash', 'datos', 'tomadaEnExif'])
+        // Fecha de la cámara (EXIF DateTimeOriginal, H38), opcional: fecha y hora con zona opcional
+        && (!('tomadaEnExif' in f)
+            || (f.tomadaEnExif is string
+                && f.tomadaEnExif.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(Z|[+-][0-9]{2}:[0-9]{2})?$')))
         && f.id == fotoId
         && fotoId.size() >= 20
         && f.subidaPorUid == request.auth.uid

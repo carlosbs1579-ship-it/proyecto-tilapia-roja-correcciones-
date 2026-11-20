@@ -40,6 +40,20 @@ Estas pruebas no tocan producción. Usan emuladores propios: Firestore en 8185 y
    `PublicTraceabilityView.cargarLote` y el `leerConsultaEntrega` real, sin sesión).
 5. **Repite alteraciones como usuarios normales** (con reglas) y prueba dos huecos de las reglas.
 
+### Testigo externo, ficha congelada y fecha de cámara (tercera ronda)
+
+`calendarios-simulados.ts` reemplaza `fetch` solo para los calendarios de OpenTimestamps y para
+`blockstream.info`: responden con el mismo formato binario que los reales (comprobado a mano contra
+los calendarios públicos) y la prueba no depende de la red. El cierre y la emisión envían el sello con
+el código real; el repartidor guarda la confirmación (reglas activas). `construir.mjs` fija
+`VITE_SELLO_TIEMPO_DESDE=2026-01-01` para que los registros de la prueba deban tener sello.
+
+Ataques nuevos: TS-a (reescribir toda la cadena), TS-b (cambiar el digest del sello), TS-c (fabricar
+la prueba .ots con el sello nuevo), TS-d (volver a sellar el lote reescrito, confirmado 10 días después),
+TS-e y TS-h (borrar el sello del lote o del comprobante), TS-f (poner el sello de otro registro), TS-g
+(recalcular el comprobante), F41-a y F41-b (cambiar o borrar la ficha congelada) y EX-a (foto con fecha
+de cámara 10 días antes de la entrega).
+
 ## Cómo correrlo
 
 Desde esta carpeta (`tests/integridad`):
@@ -79,3 +93,6 @@ Desde la raíz:
 npx esbuild tests/integridad/verificar-lotes-prod.ts --bundle --platform=node --format=esm --packages=external --target=node20 "--define:import.meta.env={\"DEV\":false,\"PROD\":false,\"VITE_EMULADORES\":\"false\"}" --outfile=tests/integridad/.salida/verificar-lotes-prod.mjs
 node tests/integridad/.salida/verificar-lotes-prod.mjs
 ```
+
+Los dos scripts de producción también revisan el sello de tiempo (sin escribir la confirmación), la
+ficha y la fecha de cámara de las fotos.

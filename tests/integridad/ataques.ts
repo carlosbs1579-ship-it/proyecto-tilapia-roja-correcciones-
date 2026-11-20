@@ -41,6 +41,10 @@ import { anotacionesDe, hashRegistroAnotacion, proponerAnotacion, resolverAnotac
 import { revisarFoto, verificarFoto } from '../../src/services/fotosService';
 import { CONFIG_DEFAULT, ORIGEN_FIJO, PRODUCTO_FIJO } from '../../src/utils/constants';
 import { fragmentoSello } from '../../src/lib/integridad';
+import { compromisoFicha, confirmarSello, revisarSelloBloque, revisarSelloLote } from '../../src/services/selloTiempoService';
+import { aBase64, crearPruebaOts, deBase64, deHex, escribirOts, leerOts } from '../../src/lib/ots';
+import { revisarFechaExif } from '../../src/lib/exif';
+import { instalarCalendariosSimulados, CALENDARIO } from './calendarios-simulados';
 
 const aqui = path.dirname(fileURLToPath(import.meta.url));
 const OWNER = { authorization: 'Bearer owner', 'content-type': 'application/json' };
@@ -176,6 +180,15 @@ async function esperarAccion(uid: string, id: string) {
   throw new Error('La acción no se envió a tiempo');
 }
 
+async function esperarSello(ruta: string) {
+  for (let i = 0; i < 100; i++) {
+    const d = await leerJs(ruta);
+    if (d?.selloTiempo) return d.selloTiempo;
+    await new Promise((r) => setTimeout(r, 200));
+  }
+  throw new Error('No llegó el sello de tiempo de ' + ruta);
+}
+
 // selloQr: el sello que se imprimió en la etiqueta QR al cerrar el lote (?s=); es el ancla externa
 const ctx: { ordenId: string; fotoId: string; comprobanteId: string; token: string; selloQr: string } = { ordenId: '', fotoId: '', comprobanteId: '', token: '', selloQr: '' };
 
@@ -189,6 +202,8 @@ async function sembrarDatos() {
   }
   await cerrarLote(COD, OPER, CONFIG_DEFAULT);
   ctx.selloQr = fragmentoSello(((await getDocFromServer(doc(db, 'lotes', COD))).data() as any).resumen.hashFinal);
+  // Testigo externo: el cierre envía el sello a los calendarios (simulados) sin bloquearse
+  await esperarSello(`lotes/${COD}`);
 
   // Anotación propuesta por A y aprobada por B, antes de la orden: así el comprobante registra el
   // sello del lote y la cantidad y el último hash de sus anotaciones (H18, ancla parcial de A2)
@@ -216,7 +231,9 @@ async function sembrarDatos() {
   await esperarAccion(uidRep, a.id);
   a = registrarAccion(uidRep, { ordenId: orden.id, tipo: 'Llegada' });
   await esperarAccion(uidRep, a.id);
-  const foto = { id: 'foto-' + crypto.randomUUID(), hash: await calcularSha256(JPEG_A), datos: JPEG_A, ancho: 1, alto: 1, bytes: 120, tomadaEn: new Date().toISOString() };
+  // Fecha de cámara (EXIF) de hace una hora, en hora de Colombia, como la lee prepararFoto
+  const tomadaEnExif = new Date(Date.now() - 6 * 3600 * 1000).toISOString().slice(0, 19);
+  const foto = { id: 'foto-' + crypto.randomUUID(), hash: await calcularSha256(JPEG_A), datos: JPEG_A, ancho: 1, alto: 1, bytes: 120, tomadaEn: new Date().toISOString(), tomadaEnExif };
   a = registrarAccion(uidRep, { ordenId: orden.id, tipo: 'Entrega', descripcion: 'PRUEBA entrega', datos: { entregas: { [COD]: 50 } }, foto });
   await esperarAccion(uidRep, a.id);
   ctx.fotoId = foto.id;
@@ -226,6 +243,18 @@ async function sembrarDatos() {
   const comp = await emitirComprobanteDefinitivo(orden.id);
   ctx.comprobanteId = comp.id;
   ctx.token = comp.tokenConsulta;
+  await esperarSello(`comprobantes/${comp.id}`);
+  // Horas después Bitcoin confirma: un usuario activo de la granja (aquí el repartidor) abre el
+  // registro y guarda la prueba completa (reglas activas)
+  await entrar(REP, 'courier');
+  for (const ruta of [`lotes/${COD}`, `comprobantes/${comp.id}`]) {
+    const [col, id] = ruta.split('/');
+    const d = (await getDocFromServer(doc(db, col, id))).data() as any;
+    const conf = await confirmarSello(d.selloTiempo);
+    if (!conf) throw new Error('No se pudo confirmar el sello simulado de ' + ruta);
+    await updateDoc(doc(db, col, id), { selloTiempo: conf });
+  }
+  await entrar(VEND);
   if (!comp.sellosLotes?.[COD] || !comp.anotacionesLotes?.[COD]) throw new Error('El comprobante no registró el sello del lote o sus anotaciones');
 
   // Marca esPrueba donde no altera ningún hash (los comprobantes no: su hash cubre todos los campos,
@@ -262,6 +291,12 @@ async function evaluar(): Promise<Senales> {
     if (sinSello.estado !== 'integro') s.automaticas.push(`QR lote y detalle: ${sinSello.avisos.join(' | ')}`);
     else if (conSello.estado !== 'integro') s.automaticas.push(`Solo QR con sello impreso: ${conSello.avisos.join(' | ')}`);
     s.datos.qrAntiguoSinSello = sinSello.estado === 'integro' ? 'sin aviso' : 'avisado';
+    // Testigo externo: sello de tiempo en Bitcoin (vista pública, detalle y PDF)
+    const rsl = await revisarSelloLote(lote);
+    if (rsl.estado === 'alterado') s.automaticas.push(`Sello de tiempo del lote: ${rsl.avisos.join(' | ')}`);
+    else if (rsl.estado === 'sin_sello') s.automaticas.push(`Sello de tiempo del lote: ${rsl.mensaje}`);
+    if (rsl.advertencias.length) s.automaticas.push(`Sello de tiempo del lote: ${rsl.advertencias.join(' | ')}`);
+    s.datos.selloLote = rsl.estado;
     const ver = await verificarIntegridadLote(lote);
     if (!ver.valido) s.manuales.push(`Botón "Verificar integridad" / IntegrityCheckModal: ${ver.mensaje}`);
     const aprobadas = anotacionesDe(anot).filter((a) => a.estado === 'aprobada' && !va.alteradas.includes(a.numero));
@@ -287,6 +322,9 @@ async function evaluar(): Promise<Senales> {
   // FotosEntregaOrden verifica cada foto sola al mostrarse
   const rf = await revisarFoto(f, ref, { fecha: evEntrega.fecha, eventoId: evEntrega.eventoId, ordenId: ctx.ordenId }, fotoHashComp);
   if (rf.estado === 'alterada' || rf.estado === 'borrada') s.automaticas.push(`Fotos de la orden: ${rf.mensaje}`);
+  // Fecha de cámara (EXIF) frente a la hora de la entrega (FotosEntregaOrden)
+  const fx = revisarFechaExif(f?.tomadaEnExif, evEntrega.fecha);
+  if (fx.estado === 'difiere') s.automaticas.push(`Fotos de la orden: la foto parece tomada el ${new Date(fx.ms!).toISOString()}, ${fx.antes ? 'antes' : 'después'} de la entrega`);
   if (f && !(await verificarFoto(f, ref.hash))) s.manuales.push('Botón "Verificar foto" (anterior): "La foto no coincide con el hash registrado."');
   s.datos.foto = f
     ? { mostrada: f.datos.slice(0, 40) + '…', hashDoc: f.hash.slice(0, 12), hashEvento: ref.hash.slice(0, 12), estado: rf.estado }
@@ -318,6 +356,12 @@ async function evaluar(): Promise<Senales> {
     if (!v.ok) s.automaticas.push(`Panel interno de la orden, comprobante N.º ${c.version}: ${v.mensaje}`);
     const rs = await revisarSellosLotes(c);
     if (rs.avisos.length) s.automaticas.push(`Panel interno de la orden, comprobante N.º ${c.version}: ${rs.avisos.join(' ')}`);
+  }
+  // Sello de tiempo de cada bloque (consulta pública y panel interno)
+  for (const b of bloques) {
+    const rsb = await revisarSelloBloque(b);
+    if (rsb.estado === 'alterado') s.automaticas.push(`Sello de tiempo del registro N.º ${b.version}: ${rsb.avisos.join(' | ')}`);
+    else if (rsb.estado === 'sin_sello') s.automaticas.push(`Sello de tiempo del registro N.º ${b.version}: ${rsb.mensaje}`);
   }
   // DetalleOrdenOperador verifica la cadena del historial al abrir la orden (H14)
   const vh = await verificarHistorialOrden(orden.historial, orden.registradoEnServidor);
@@ -510,13 +554,77 @@ const ATAQUES: Ataque[] = [
       });
       await alterarJs(rCons(), (k) => { for (const v of Object.values<any>(k.versiones)) v.hashComprobante = h; });
       await alterarJs(rOrden(), (o) => { o.historial.find((e: any) => e.tipo === 'Comprobante emitido').datos.hashComprobante = h; });
-    } }
+    } },
+  // ----- Tercera ronda: testigo externo (OpenTimestamps), ficha congelada y fecha de cámara -----
+  { id: 'TS-a', nombre: 'Reescribir toda la cadena del lote con sello de tiempo confirmado (fase, cadena, resumen y anotaciones), sin tocar el sello', rutas: () => [rLote(), rAnot()],
+    ejecutar: async () => void (await reescribirLote()) },
+  { id: 'TS-b', nombre: 'TS-a y además poner el sello nuevo como digest del selloTiempo (la prueba sigue siendo la original)', rutas: () => [rLote(), rAnot()],
+    ejecutar: async () => {
+      const ancla = await reescribirLote();
+      await alterarJs(rLote(), (l) => { l.selloTiempo.digest = ancla; });
+    } },
+  { id: 'TS-c', nombre: 'TS-a y fabricar la prueba .ots con el sello nuevo (mismas operaciones y atestación de Bitcoin)', rutas: () => [rLote(), rAnot()],
+    ejecutar: async () => {
+      const ancla = await reescribirLote();
+      await alterarJs(rLote(), (l) => {
+        const a = leerOts(deBase64(l.selloTiempo.ots));
+        a.digest = deHex(ancla);
+        l.selloTiempo.ots = aBase64(escribirOts(a));
+        l.selloTiempo.digest = ancla;
+      });
+    } },
+  { id: 'TS-d', nombre: 'TS-a y volver a sellar el lote reescrito (prueba nueva que Bitcoin confirma 10 días después del cierre)', rutas: () => [rLote(), rAnot()],
+    ejecutar: async () => {
+      const ancla = await reescribirLote();
+      const l = await leerJs(rLote());
+      CALENDARIO.desfaseBloqueMs = 10 * 24 * 3600 * 1000;
+      const p = await crearPruebaOts(ancla, { compromisoExtra: await compromisoFicha(l.fichaNutricionalCierre) });
+      l.selloTiempo = { ...l.selloTiempo, digest: ancla, ots: p!.ots, estado: 'pendiente' };
+      delete l.selloTiempo.bloque;
+      delete l.selloTiempo.confirmadoEn;
+      await escribirJs(rLote(), l);
+    } },
+  { id: 'TS-e', nombre: 'Borrar el selloTiempo del lote', rutas: () => [rLote()],
+    ejecutar: () => alterarJs(rLote(), (l) => { delete l.selloTiempo; }) },
+  { id: 'TS-f', nombre: 'Cambiar el selloTiempo del lote por el de otro registro (el del comprobante)', rutas: () => [rLote()],
+    ejecutar: async () => {
+      const c = await leerJs(rComp());
+      await alterarJs(rLote(), (l) => { l.selloTiempo = c.selloTiempo; });
+    } },
+  { id: 'TS-g', nombre: 'Alterar el comprobante y recalcular su hash, el índice y el evento de la orden (el sello de tiempo queda igual)', rutas: () => [rComp(), rCons(), rOrden()],
+    ejecutar: async () => {
+      let h = '';
+      await alterarJs(rComp(), async (c) => {
+        c.cantidadEntregada = 80;
+        const { registradoEnServidor, selloTiempo, ...resto } = c;
+        h = c.hashComprobante = await calcularHashComprobante(resto);
+      });
+      await alterarJs(rCons(), (k) => { for (const v of Object.values<any>(k.versiones)) v.hashComprobante = h; });
+      await alterarJs(rOrden(), (o) => { o.historial.find((e: any) => e.tipo === 'Comprobante emitido').datos.hashComprobante = h; });
+    } },
+  { id: 'TS-h', nombre: 'Borrar el selloTiempo del comprobante', rutas: () => [rComp()],
+    ejecutar: () => alterarJs(rComp(), (c) => { delete c.selloTiempo; }) },
+  { id: 'F41-a', nombre: 'Cambiar la ficha nutricional congelada del lote cerrado (sodio 52 a 5 mg)', rutas: () => [rLote()],
+    ejecutar: () => alterarJs(rLote(), (l) => { l.fichaNutricionalCierre.sodioMg = 5; }) },
+  { id: 'F41-b', nombre: 'Borrar la ficha congelada (el certificado volvería a la ficha vigente)', rutas: () => [rLote()],
+    ejecutar: () => alterarJs(rLote(), (l) => { delete l.fichaNutricionalCierre; }) },
+  { id: 'EX-a', nombre: 'Foto con fecha de cámara (EXIF) de 10 días antes de la entrega', rutas: () => [rFoto()],
+    ejecutar: () => alterarJs(rFoto(), (f) => { f.tomadaEnExif = new Date(Date.now() - 10 * 24 * 3600 * 1000).toISOString().slice(0, 19); }) }
 ];
+
+// Reescritura completa del lote (como 6d): fase, cadena, resumen y anotaciones. Devuelve el sello nuevo.
+async function reescribirLote(): Promise<string> {
+  let ancla = '';
+  await alterarJs(rLote(), async (l) => { l.eventos[2].datos.cantidadKg = 80; ancla = await recalcularCadenaLote(COD, l.eventos); recalcularResumenGuardado(l); });
+  await alterarJs(rAnot(), (d) => recalcularAnotaciones(COD, d, ancla));
+  return ancla;
+}
 
 // ---------- Ataque 9f: borrar el bloque de anulación (necesita una anulación real) ----------
 async function ataqueAnulacion(resultados: any[]) {
   await entrar(VEND);
   const anul = await anularComprobante(ctx.comprobanteId, 'PRUEBA: anulación para probar el borrado del bloque');
+  await esperarSello(`comprobantes/${anul.id}`);
   const base = await evaluar();
   const crudo = await leerCrudo(`comprobantes/${anul.id}`);
   await borrarCrudo(`comprobantes/${anul.id}`);
@@ -626,6 +734,8 @@ async function pruebasReglas() {
 // ---------- Programa ----------
 async function principal() {
   if (!/127\.0\.0\.1:8185/.test(RAIZ) && !process.env.PERMITIR_OTRO_PUERTO) throw new Error('Solo emulador en 8185');
+  // Calendarios de OpenTimestamps y explorador de Bitcoin simulados: las pruebas no dependen de la red
+  instalarCalendariosSimulados();
   console.log('Sembrando datos válidos…');
   await sembrarDatos();
   console.log('Lote de prueba:', COD);
@@ -641,6 +751,7 @@ async function principal() {
     resultados.push({ id: a.id, nombre: a.nombre, resultado: clasificar(s), senales: s });
     console.log(`[${a.id}] ${clasificar(s)} · ${a.nombre}`);
     for (const [r, c] of originales) await restaurar(r, c);
+    CALENDARIO.desfaseBloqueMs = 0;
     const ok = await evaluar();
     if (ok.automaticas.length || ok.manuales.length) throw new Error(`No se restauró bien tras ${a.id}: ${JSON.stringify(ok)}`);
   }

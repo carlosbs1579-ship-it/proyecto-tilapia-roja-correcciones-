@@ -10,6 +10,7 @@ import { revisarLote, horaServidorRegistro } from '../../src/services/hashServic
 import { verificarAnotaciones } from '../../src/services/anotacionesService';
 import { quienRegistro } from '../../src/services/usuariosService';
 import type { AnotacionesLote, ConfiguracionGeneral, Lote } from '../../src/types';
+import { fichaDelLote, revisarSelloLote } from '../../src/services/selloTiempoService';
 
 const cfg = JSON.parse(readFileSync(join(homedir(), '.config', 'configstore', 'firebase-tools.json'), 'utf8'));
 const tok = await (await fetch('https://oauth2.googleapis.com/token', {
@@ -42,6 +43,10 @@ for (const lote of lotes) {
     `${lote.codigo} | ${lote.estado} | ${(lote.eventos || []).length} fases | revisión=${rev.estado} | sello QR=${rev.selloQr} | avisos=${rev.avisos.length}` +
       `${rev.avisos.length ? ' (' + rev.avisos.join(' / ') + ')' : ''} | firmas públicas: ${firmas} | fases con hora del servidor: ${horas}`
   );
+  // Testigo externo (H03) y ficha congelada (H41): solo lectura, sin escribir la confirmación
+  const rs = await revisarSelloLote(lote);
+  const fl = config ? fichaDelLote(lote, config) : null;
+  console.log(`   sello de tiempo: ${rs.estado} | ${rs.mensaje}${rs.avisos.length ? ' | ' + rs.avisos.join(' / ') : ''} | ficha: ${fl ? (fl.congelada ? 'congelada al cerrar' : fl.nota || 'vigente') : 'sin configuración'}`);
   if (anot) {
     const firmasAnot = [...new Set(anot.registros.map((r) => quienRegistro(r, true)))].join(', ');
     console.log(`   anotaciones: ${anot.registros.length} registro(s) | íntegra=${va.integra} | ${va.mensaje} | firmas públicas: ${firmasAnot}`);

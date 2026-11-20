@@ -8,6 +8,8 @@ import { join } from 'node:path';
 import { revisarConsultaEntrega, verificarComprobante } from '../../src/services/comprobantesService';
 import { verificarHistorialOrden } from '../../src/services/pedidosService';
 import type { OrdenEntrega } from '../../src/types';
+import { revisarSelloBloque } from '../../src/services/selloTiempoService';
+import { revisarFechaExif } from '../../src/lib/exif';
 
 const cfg = JSON.parse(readFileSync(join(homedir(), '.config', 'configstore', 'firebase-tools.json'), 'utf8'));
 const tok = await (await fetch('https://oauth2.googleapis.com/token', {
@@ -30,7 +32,8 @@ const comprobantes = await leer('comprobantes');
 console.log('--- Comprobantes (panel interno, con la orden)');
 for (const c of comprobantes) {
   const r = await verificarComprobante(c, { orden: ordenes.get(c.ordenId) });
-  console.log(`${c.id} | orden ${c.ordenId} | ${c.tipoBloque || 'comprobante'} | ok=${r.ok} | ${r.mensaje}`);
+  const rs = await revisarSelloBloque(c);
+  console.log(`${c.id} | orden ${c.ordenId} | ${c.tipoBloque || 'comprobante'} | ok=${r.ok} | ${r.mensaje} | sello de tiempo: ${rs.estado}${rs.avisos.length ? ' ' + rs.avisos.join(' / ') : ''}`);
 }
 console.log('--- Historial de las órdenes (cadena H14)');
 for (const o of ordenes.values()) {
@@ -42,5 +45,12 @@ for (const q of await leer('consultasEntrega')) {
   const bloques = comprobantes.filter((c: any) => Object.values(q.versiones || {}).some((v: any) => v.comprobanteId === c.id));
   const rev = await revisarConsultaEntrega(q, bloques, []);
   console.log(`${String(q.token).slice(0, 8)}… | orden ${q.ordenId} | ${bloques.length} bloque(s) | avisos=${rev.avisos.length} | vigente=${rev.vigenteId ? 'sí' : 'no'}${rev.avisos.length ? ' | ' + rev.avisos.join(' / ') : ''}${rev.notas.length ? ' | notas: ' + rev.notas.join(' / ') : ''}`);
+}
+console.log('--- Fotos de entrega (fecha de cámara, H38)');
+for (const f of await leer('fotosEntrega')) {
+  const o = ordenes.get(f.ordenId);
+  const ev = o?.historial.find((e: any) => e.eventoId === f.eventoId);
+  const r = revisarFechaExif(f.tomadaEnExif, ev?.fecha || f.tomadaEn);
+  console.log(`${String(f.id).slice(0, 14)}… | orden ${f.ordenId} | fecha de cámara: ${r.estado}`);
 }
 process.exit(0);

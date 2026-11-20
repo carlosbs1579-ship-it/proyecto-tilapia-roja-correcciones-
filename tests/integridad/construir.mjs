@@ -20,8 +20,9 @@ await build({
   format: 'esm',
   packages: 'external',
   target: 'node20',
-  // Origen fijo de los QR (en Node no hay window.location): el mismo que usa la app con VITE_ORIGEN_PUBLICO
-  define: { 'import.meta.env': JSON.stringify({ DEV: false, PROD: false, VITE_EMULADORES: 'false', VITE_ORIGEN_PUBLICO: 'http://localhost:3000' }) },
+  // Origen fijo de los QR (en Node no hay window.location): el mismo que usa la app con VITE_ORIGEN_PUBLICO.
+  // VITE_SELLO_TIEMPO_DESDE en el pasado: los lotes y comprobantes de la prueba deben tener sello de tiempo
+  define: { 'import.meta.env': JSON.stringify({ DEV: false, PROD: false, VITE_EMULADORES: 'false', VITE_ORIGEN_PUBLICO: 'http://localhost:3000', VITE_SELLO_TIEMPO_DESDE: '2026-01-01' }) },
   plugins: [sustituirConfig],
   logLevel: 'warning'
 });

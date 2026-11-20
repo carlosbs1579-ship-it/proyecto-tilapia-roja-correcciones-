@@ -61,7 +61,7 @@ Los 5 riesgos principales:
 | 9f | Borrar el bloque de anulación de un comprobante anulado | Detectado sin aviso en público (ve "vigente" sin marca ANULADO); avisado solo en interno | H16 | Detectado y avisado en público |
 | 10 | Borrar la foto antes de su vencimiento | No detectado (se ve como vencida) | H07 | Detectado y avisado (borrada antes de vencer) |
 | A1 | Alterar la anotación aprobada | Detectado y avisado | Ninguno | Detectado y avisado |
-| A2 | A1 y recalcular la cadena de anotaciones | No detectado | H03 | No detectado (pendiente, H03) |
+| A2 | A1 y recalcular la cadena de anotaciones | No detectado | H03 | Detectado y avisado (comprobante con las anotaciones, H18); los lotes nuevos además con el sello de tiempo en Bitcoin |
 | 11 | `?lote=` y `?entrega=` con valores raros (inyección, `<script>`, `../`, muy largo, token falso) | Correcto salvo `?lote=%25`: carga infinita | H34 | Correcto; ?lote=%25 muestra "código no válido" (probado en producción) |
 | 12 | Las mismas alteraciones como usuario con sesión (pasando reglas) | Bloqueado en 20 de 22; permitidos: resumen de lote activo sin evento y cabecera al sellar (no detectado) | H01 | Bloqueado en todos los casos (reglas H01) |
 | A1-a | Emisor de comprobantes escribe cliente, fechas, entregas o `fotoHash` inventados con hashes honestos | No detectado | H05, H04 | Bloqueado por reglas (H05) y detectado (H04) |
@@ -73,7 +73,7 @@ Los 5 riesgos principales:
 | A1-g | Reescribir `huellas` para señalar otro dato | Detectado y avisado, con diagnóstico equivocado | H35 | Detectado y avisado |
 | A1-h | Quitar la última resolución de una anotación (consola) | No detectado | H36 | Detectado y avisado |
 | A1-i | Quitar `hashAnterior` de un bloque de comprobante | No detectado | H16 | Detectado y avisado |
-| A1-j | Cambiar la ficha nutricional o los rangos tras el cierre | No detectado (cambia certificados antiguos) | H22, H41 | Configuración protegida (H22); la ficha no queda sellada (H41 pendiente) |
+| A1-j | Cambiar la ficha nutricional o los rangos tras el cierre | No detectado (cambia certificados antiguos) | H22, H41 | Lotes nuevos: la ficha se congela al cerrar y la cubre el sello de tiempo (F41-a/b detectados); los cerrados antes usan la ficha vigente con nota |
 | A3-a | Crear un lote atribuido a otra persona, con código distinto del id y hash inválido en evento 0 | No detectado | H21 | Bloqueado por reglas (H21) |
 | A3-b | Poner el nombre visible de otra persona y firmar eventos | No detectado | H45 | Parcial (H45) |
 | A3-c | Guardar como "foto" una URL externa con su hash coherente | No detectado | H13 | Bloqueado por reglas (H13) |
@@ -111,7 +111,8 @@ Los 5 riesgos principales:
 - Reproducción: ataques 6b, 6c, 8c, A2 (`recalcularCadenaLote`, `recalcularAnotaciones` en `tests/integridad/ataques.ts`).
 - Impacto: SHA-256 sin clave es público; quien tenga la consola, una cuenta de servicio o el Admin SDK reescribe historial y anotaciones sin rastro. Borrar el documento de anotaciones tampoco se nota.
 - Arreglo: (1) incluir el sello en el QR del certificado y de la etiqueta, `?lote=CODIGO&s=<16 hex de hashFinal>`, y comparar en la vista pública **(decisión del usuario)**, cambia el contenido del QR y las etiquetas ya impresas no lo traerían; (2) llevar en el lote un contador de anotaciones aprobadas para detectar el borrado; (3) a futuro, firmar `hashFinal` con una Cloud Function y Secret Manager, o sellar en el tiempo (OpenTimestamps) **(requiere datos reales / consultar)** para firmar los lotes ya cerrados; (4) documentar en la tesis el alcance real de la cadena.
-- Estado: Parcial, desplegado: el QR de los lotes cerrados lleva el sello (&s=) y la vista pública lo compara; las etiquetas impresas antes no lo traen. Falta un ancla fuera de Firestore para las anotaciones (A2): pendiente de tu aprobación
+- Estado: Parcial, desplegado: el QR de los lotes cerrados lleva el sello (&s=) y la vista pública lo compara; las etiquetas impresas antes no lo traen.
+- Estado (tercera ronda, en la rama, sin desplegar): Corregido. Testigo externo con OpenTimestamps: al cerrar un lote y al emitir o anular un comprobante, el sello (hashFinal o hashComprobante) se envía a tres calendarios públicos y la prueba .ots queda en `selloTiempo` (fuera del hash). Bitcoin la confirma en horas y la prueba completa se guarda al reabrir el registro con sesión. La vista pública, el detalle, la consulta de la entrega y los PDF comprueban que la prueba cubra el sello actual y que la atestación coincida con la raíz de Merkle del bloque (blockstream.info). Reescribir toda la cadena se detecta (TS-a a TS-h). Límite: mientras la prueba está pendiente (las primeras horas) o si un registro antiguo nunca se selló, una reescritura total sigue sin testigo; un lote reescrito y vuelto a sellar muestra la fecha del sello nuevo y un aviso si es más de 3 días posterior al cierre.
 
 #### H04. `verificarComprobante` no usa el hash que guarda la orden ni reconstruye el comprobante
 - Severidad: alta · Área: INTEGRIDAD-APP · Origen: Agente1 A1 (parte app), Agente2 F5
@@ -379,7 +380,7 @@ Los 5 riesgos principales:
 - Severidad: baja · Área: INTEGRIDAD-APP · Origen: Agente1 B4 (parte app)
 - Archivos: `src/services/fotosService.ts:62-89`; `src/components/DetalleEntregaRepartidor.tsx:484-486`.
 - Arreglo: rotular como "integridad de la copia guardada"; opcional, guardar la fecha EXIF antes de comprimir.
-- Estado: Pendiente de tu aprobación: fecha EXIF de la foto (campo nuevo)
+- Estado: Corregido en la rama (sin desplegar): antes de comprimir se lee DateTimeOriginal (lector propio, `src/lib/exif.ts`) y se guarda en `fotosEntrega.tomadaEnExif` (opcional, fuera del hash de la imagen; no entra en el evento de la orden). El panel interno avisa si difiere más de 24 horas de la entrega; sin EXIF dice "sin fecha de cámara" sin alarma. La fecha EXIF la pone el teléfono: es un indicio, no una prueba.
 
 #### H39. El PDF del lote no marca la fase alterada e imprime el sello guardado
 - Severidad: baja · Área: INTEGRIDAD-APP · Origen: Agente1 B5
@@ -399,7 +400,7 @@ Los 5 riesgos principales:
 - Archivos: `src/components/PublicTraceabilityView.tsx:604-630`; `src/services/pdfService.ts:342-369, 511-530`.
 - Reproducción: A1-j.
 - Arreglo: congelar ficha y rangos en el evento de cierre de lotes nuevos (ver H02).
-- Estado: Pendiente de tu aprobación: congelar la ficha nutricional en el cierre (campo nuevo)
+- Estado: Corregido en la rama (sin desplegar): el cierre guarda `fichaNutricionalCierre` (mismas nueve claves y tipos que la configuración, validadas por las reglas) y ya no cambia. El certificado, el PDF y la vista pública de un lote cerrado la usan; los lotes cerrados antes muestran la ficha vigente con la nota "ficha vigente (este lote se cerró antes de congelar la ficha)". La huella de la ficha va dentro de la prueba de OpenTimestamps del lote. Los rangos de agua y el volumen no se congelan (el resumen ya se calculó al cerrar).
 
 #### H42. El comprobante público incluye dirección del cliente, novedades internas y uid
 - Severidad: baja · Área: INTEGRIDAD-APP · Origen: Agente3 S12
@@ -627,6 +628,11 @@ Regla general: cada archivo tiene un dueño. Si un archivo es compartido, el due
 | Qué | Cuándo | Resultado |
 | --- | --- | --- |
 | Despliegue 1: reglas de Firestore (commit 3d35745; respaldo en respaldos_despliegue/2026-11-15_2310) | 2026-11-16 14:13 UTC | Bien. Publicadas iguales al repo. Antes: 146/146 y 71/71 pruebas. Después, en producción: consulta pública ?lote=20261031-A-E1 abre sin errores; ingreso, elección de función y lista de lotes como operador cargan sin errores de permisos. |
+
+Tercera ronda (H03 testigo externo, H41, H38), pendiente de desplegar, en este orden:
+1. Reglas de Firestore (`firestore.rules`): aceptan lo que escribe la web publicada (sin ficha, sin sello, sin fecha EXIF) y la nueva.
+2. Web (merge a main): incluye `vercel.json` con los calendarios de OpenTimestamps y blockstream.info en `connect-src`. No hay función /api (los calendarios aceptan CORS). Si la web se publica después del 2026-11-17, fijar `VITE_SELLO_TIEMPO_DESDE` con el día de publicación en Vercel o en `selloTiempoService.ts`.
+3. En producción: cerrar un lote de prueba y comprobar que aparece "pendiente de confirmar"; horas después, abrirlo y comprobar "Sello registrado en Bitcoin el día X (bloque N)".
 
 ## 7. Verificación final en producción (2026-11-16)
 

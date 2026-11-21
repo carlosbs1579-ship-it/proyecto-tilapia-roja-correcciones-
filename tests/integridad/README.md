@@ -54,6 +54,11 @@ TS-e y TS-h (borrar el sello del lote o del comprobante), TS-f (poner el sello d
 (recalcular el comprobante), F41-a y F41-b (cambiar o borrar la ficha congelada) y EX-a (foto con fecha
 de cámara 10 días antes de la entrega).
 
+Cuarta ronda: la raíz de Merkle se comprueba en blockstream.info y mempool.space a la vez
+(`CALENDARIO.exploradores` simula cada uno caído, con otra raíz o con otra hora). Ataques BX-a a BX-d;
+la sección 14 cubre los casos sin alteración (ambos coinciden, uno caído con nota "1 de 2", ambos
+caídos sin alarma). La sección 13 comprueba el documento sellado y el expediente de la cadena.
+
 ## Cómo correrlo
 
 Desde esta carpeta (`tests/integridad`):

@@ -531,7 +531,7 @@ export const PublicTraceabilityView: React.FC<PublicTraceabilityViewProps> = ({
           {esCerrado && (
             <div className="border-t border-slate-200 pt-3 space-y-1">
               <span className="text-xs uppercase font-semibold text-slate-500 block">Sello de tiempo en Bitcoin (testigo externo)</span>
-              <SelloTiempoInfo revision={revisionSello} nombreArchivo={`sello-lote-${lote.codigo}`} />
+              <SelloTiempoInfo revision={revisionSello} nombreArchivo={`sello-lote-${lote.codigo}`} lote={lote} />
             </div>
           )}
         </div>

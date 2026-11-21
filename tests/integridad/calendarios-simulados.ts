@@ -3,15 +3,24 @@
 // a mano contra a.pool.opentimestamps.org, b.pool.opentimestamps.org y a.pool.eternitywall.com):
 //   POST /digest           -> append(nonce de 8 bytes), sha256, atestación pendiente con la URL del calendario
 //   GET  /timestamp/<hex>  -> sha256, atestación de Bitcoin (altura nueva) o 404 si no se confirma
-// y el explorador (blockstream.info/api) devuelve la raíz de Merkle del bloque simulado.
+// y los exploradores (blockstream.info/api y mempool.space/api) devuelven la raíz de Merkle del bloque
+// simulado, o fallan o discrepan según CALENDARIO.exploradores.
 const ETIQUETA_PENDIENTE = [0x83, 0xdf, 0xe3, 0x0d, 0x2e, 0xf9, 0x0c, 0x8e];
 const ETIQUETA_BITCOIN = [0x05, 0x88, 0x96, 0x0d, 0x73, 0xd7, 0x19, 0x01];
+
+/** Cómo responde cada explorador simulado: igual que el bloque, caído, con otra raíz o con otra hora */
+export type ModoExplorador = 'ok' | 'caido' | 'otra_raiz' | 'otra_hora';
 
 export const CALENDARIO = {
   confirmar: true, // si el calendario entrega la prueba completa
   desfaseBloqueMs: 0, // hora del bloque simulado respecto de ahora
-  enviados: 0
+  enviados: 0,
+  // Por explorador (blockstream.info, mempool.space); sin entrada responde 'ok'
+  exploradores: {} as Record<string, ModoExplorador>
 };
+
+// Los dos exploradores usan la misma API: /api/block-height/<altura> y /api/block/<hash>
+const EXPLORADORES = ['blockstream.info', 'mempool.space'];
 
 const varuint = (n: number) => {
   const out: number[] = [];
@@ -58,14 +67,18 @@ export function instalarCalendariosSimulados() {
       bloques.set(h, { raiz: hex(raiz.slice().reverse()), hora: Date.now() + CALENDARIO.desfaseBloqueMs });
       return new Response(new Uint8Array([0x08, 0x00, ...ETIQUETA_BITCOIN, ...varbytes(varuint(h))]), { status: 200 });
     }
-    if (url.host === 'blockstream.info') {
+    if (EXPLORADORES.includes(url.host)) {
+      const modo = CALENDARIO.exploradores[url.host] || 'ok';
+      if (modo === 'caido') return new Response('Service Unavailable', { status: 503 });
       let m = /^\/api\/block-height\/(\d+)$/.exec(url.pathname);
       if (m) return bloques.has(+m[1]) ? new Response(Number(m[1]).toString(16).padStart(64, '0')) : new Response('', { status: 404 });
       m = /^\/api\/block\/([0-9a-f]{64})$/.exec(url.pathname);
       if (m) {
         const b = bloques.get(parseInt(m[1], 16));
         if (!b) return new Response('', { status: 404 });
-        return new Response(JSON.stringify({ merkle_root: b.raiz, timestamp: Math.floor(b.hora / 1000) }), { status: 200 });
+        const raiz = modo === 'otra_raiz' ? 'ff' + b.raiz.slice(2) : b.raiz;
+        const hora = Math.floor(b.hora / 1000) + (modo === 'otra_hora' ? 3600 : 0);
+        return new Response(JSON.stringify({ merkle_root: raiz, timestamp: hora }), { status: 200 });
       }
       return new Response('', { status: 404 });
     }

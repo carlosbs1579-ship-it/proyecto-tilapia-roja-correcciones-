@@ -5,8 +5,7 @@ import { jsonCanonico } from './hashService';
 import { sha256Texto } from '../lib/integridad';
 import {
   analizarOts,
-  bloqueBitcoin,
-  compromisoEnBloque,
+  comprobarBloque,
   completarPruebaOts,
   crearPruebaOts,
   deBase64,
@@ -96,9 +95,14 @@ export function fichaDelLote(lote: Pick<Lote, 'estado' | 'fichaNutricionalCierre
  * SHA-256 del JSON canónico): el sello de Bitcoin cubre el sello de cierre y la ficha a la vez
  */
 export async function compromisoFicha(f: FichaNutricional): Promise<string> {
+  return PREFIJO_EXTRA + (await sha256Texto(textoCanonicoFicha(f)));
+}
+
+/** Texto canónico exacto de la ficha congelada (JSON con sus nueve claves ordenadas) que se pasa a SHA-256 */
+export function textoCanonicoFicha(f: FichaNutricional): string {
   const copia: Record<string, unknown> = {};
   for (const k of CLAVES_FICHA) copia[k] = (f as any)[k];
-  return PREFIJO_EXTRA + (await sha256Texto(jsonCanonico(copia)));
+  return jsonCanonico(copia);
 }
 
 // ---------- Qué se sella ----------
@@ -257,9 +261,10 @@ export async function confirmarSello(sello: SelloTiempo): Promise<SelloTiempo | 
     const a = await analizarOts(ots);
     if (a.digest !== sello.digest || !a.bitcoin.length) return null;
     const altura = a.bitcoin[0].altura;
-    const bloque = await bloqueBitcoin(altura);
-    if (bloque && !compromisoEnBloque(a.bitcoin[0].compromiso, bloque)) return null;
-    return { ...sello, ots, estado: 'confirmado', bloque: altura, ...(bloque ? { confirmadoEn: bloque.fecha } : {}) };
+    // Dos exploradores en paralelo: si alguno discrepa no se guarda la confirmación
+    const c = await comprobarBloque(altura, a.bitcoin[0].compromiso);
+    if (c.estado === 'no_coincide') return null;
+    return { ...sello, ots, estado: 'confirmado', bloque: altura, ...(c.fecha ? { confirmadoEn: c.fecha } : {}) };
   } catch {
     return null;
   }
@@ -307,6 +312,7 @@ export interface RevisionSello {
   fechaBitcoin?: string; // hora del bloque (ISO)
   bloque?: number;
   comprobadoEnBitcoin: boolean; // se consultó el bloque y la raíz de Merkle coincide
+  nota?: string; // detalle discreto (por ejemplo, comprobado con 1 de 2 exploradores)
   enviadoEn?: string; // ISO
   digest?: string;
   ots?: string; // prueba vigente (la guardada o la completada en memoria) para descargar
@@ -379,17 +385,19 @@ export async function revisarSello(
   let fechaBitcoin: string | undefined;
   let bloque: number | undefined;
   let comprobadoEnBitcoin = false;
+  let nota: string | undefined;
   if (a.bitcoin.length) {
     const at = a.bitcoin[0];
     bloque = at.altura;
-    const b = opciones.consultarRed === false ? null : await bloqueBitcoin(at.altura);
-    if (b) {
-      if (compromisoEnBloque(at.compromiso, b)) {
-        comprobadoEnBitcoin = true;
-        fechaBitcoin = b.fecha;
-      } else {
-        avisos.push(`La prueba del sello de tiempo no coincide con el bloque ${at.altura} de Bitcoin: fue fabricada o alterada.`);
-      }
+    // Dos exploradores en paralelo (blockstream.info y mempool.space): basta que uno discrepe para
+    // avisar; si solo uno responde y coincide, se confirma con una nota; si ninguno, sin alarma
+    const c = opciones.consultarRed === false ? null : await comprobarBloque(at.altura, at.compromiso);
+    if (c && c.estado === 'coincide') {
+      comprobadoEnBitcoin = true;
+      fechaBitcoin = c.fecha;
+      if (c.respondieron < c.total) nota = `Comprobado con ${c.respondieron} de ${c.total} exploradores de Bitcoin.`;
+    } else if (c && c.estado === 'no_coincide') {
+      avisos.push(`La prueba del sello de tiempo no coincide con el bloque ${at.altura} de Bitcoin (${c.discrepancias.join('; ')}): fue fabricada o alterada.`);
     } else {
       fechaBitcoin = sello.confirmadoEn;
     }
@@ -418,7 +426,7 @@ export async function revisarSello(
     );
   }
 
-  const base = { avisos, advertencias, fechaBitcoin, bloque, comprobadoEnBitcoin, enviadoEn, digest: a.digest, ots };
+  const base = { avisos, advertencias, fechaBitcoin, bloque, comprobadoEnBitcoin, nota, enviadoEn, digest: a.digest, ots };
   if (avisos.length) return { ...base, estado: 'alterado', mensaje: 'El sello de tiempo no coincide.' };
   if (a.bitcoin.length) {
     return {
@@ -483,6 +491,7 @@ export function textoSelloPdf(r: RevisionSello): { texto: string; tono: 'verde' 
         texto:
           `Sello de tiempo: registrado en Bitcoin${r.fechaBitcoin ? ` el día ${formatearFechaColombia(r.fechaBitcoin)}` : ''} (bloque ${r.bloque}), ` +
           `testigo externo OpenTimestamps.${digest} La prueba .ots se descarga en la consulta pública y se verifica en opentimestamps.org.` +
+          (r.nota ? ` ${r.nota}` : '') +
           (r.advertencias.length ? ` ${r.advertencias.join(' ')}` : ''),
         tono: r.advertencias.length ? 'oro' : r.comprobadoEnBitcoin ? 'verde' : 'gris'
       };

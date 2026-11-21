@@ -1,8 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { BloqueAnulacion, ComprobanteEntrega, SelloTiempo } from '../types';
+import { BloqueAnulacion, ComprobanteEntrega, Lote, SelloTiempo } from '../types';
 import { AlertTriangle, Clock, Download } from 'lucide-react';
 import { AvisoIntegridad, IndicadorVerificado } from './AvisoIntegridad';
 import { descargarOts, mantenerSello, revisarSelloBloque, RevisionSello, sellarBloque } from '../services/selloTiempoService';
+import { descargarTexto, prepararVerificacionLote, PreparacionVerificacion } from '../services/expedienteService';
 
 /**
  * Revisión del sello de tiempo de un registro (testigo externo, H03). `revisar` se vuelve a llamar
@@ -29,26 +30,75 @@ export function useRevisionSello(revisar: (() => Promise<RevisionSello>) | null,
 }
 
 /**
+ * Documento sellado y expediente de un lote con sello de tiempo (verificación fuera de la
+ * plataforma). Se preparan y se comprueban al abrir el lote; null mientras tanto o sin lote.
+ */
+function usePreparacionVerificacion(lote: Lote | undefined): PreparacionVerificacion | null {
+  const [prep, setPrep] = useState<PreparacionVerificacion | null>(null);
+  const eventos = lote?.eventos || [];
+  const clave = lote
+    ? JSON.stringify([lote.codigo, lote.estado, eventos.length, eventos[eventos.length - 1]?.hash, lote.resumen?.hashFinal, lote.selloTiempo?.digest, lote.selloTiempo?.ots, lote.fichaNutricionalCierre || null])
+    : '';
+  useEffect(() => {
+    setPrep(null);
+    if (!lote?.selloTiempo) return;
+    let activo = true;
+    prepararVerificacionLote(lote).then((p) => activo && setPrep(p));
+    return () => {
+      activo = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clave]);
+  return prep;
+}
+
+/**
  * Estado del sello de tiempo: verde si Bitcoin lo confirma y coincide, oro si está pendiente o
  * falta, aviso rojo (AvisoIntegridad) si no coincide con el registro. Permite descargar la prueba.
  */
 export const SelloTiempoInfo: React.FC<{
   revision: RevisionSello | null;
   nombreArchivo: string;
+  /** Lote sellado: agrega el documento sellado y el expediente para verificar en opentimestamps.org */
+  lote?: Lote;
   compacto?: boolean;
   className?: string;
-}> = ({ revision: r, nombreArchivo, compacto = false, className = '' }) => {
+}> = ({ revision: r, nombreArchivo, lote, compacto = false, className = '' }) => {
+  const prep = usePreparacionVerificacion(lote);
   if (!r) return <p className={`text-xs text-slate-500 ${className}`}>Comprobando el sello de tiempo en Bitcoin…</p>;
 
+  const claseBoton = 'inline-flex items-center gap-1 text-xs font-semibold text-sky-700 hover:underline';
+  // Solo si la revisión no encontró alteración y el documento se comprobó contra el digest de la prueba
+  const archivos = r.estado !== 'alterado' && prep?.disponible ? prep.archivos : null;
   const descarga = r.ots ? (
-    <button
-      type="button"
-      onClick={() => descargarOts(r.ots!, nombreArchivo)}
-      className="inline-flex items-center gap-1 text-xs font-semibold text-sky-700 hover:underline"
-    >
-      <Download className="w-3 h-3" aria-hidden="true" />
-      Descargar prueba .ots
-    </button>
+    <div className="flex flex-wrap gap-x-4 gap-y-1">
+      <button type="button" onClick={() => descargarOts(r.ots!, nombreArchivo)} className={claseBoton}>
+        <Download className="w-3 h-3" aria-hidden="true" />
+        Descargar prueba .ots
+      </button>
+      {archivos && (
+        <>
+          <button type="button" onClick={() => descargarTexto(archivos.documento, archivos.nombreDocumento)} className={claseBoton}>
+            <Download className="w-3 h-3" aria-hidden="true" />
+            Descargar documento sellado
+          </button>
+          <button type="button" onClick={() => descargarTexto(archivos.expediente, archivos.nombreExpediente)} className={claseBoton}>
+            <Download className="w-3 h-3" aria-hidden="true" />
+            Descargar expediente de la cadena
+          </button>
+        </>
+      )}
+    </div>
+  ) : null;
+  const ayudaArchivos = archivos ? (
+    <p className="text-xs text-slate-500">
+      Para verificar fuera de la plataforma, cargue en opentimestamps.org la prueba .ots y el documento sellado. El expediente trae cada fase con su
+      hash y las instrucciones.
+    </p>
+  ) : prep && !prep.disponible && prep.motivo === 'correo' ? (
+    <p className="text-xs text-slate-500">
+      Los textos sellados de este lote contienen un correo: el documento sellado y el expediente no se ofrecen para no publicarlo.
+    </p>
   ) : null;
 
   const detalle = !compacto && r.digest && (
@@ -80,6 +130,7 @@ export const SelloTiempoInfo: React.FC<{
         ) : (
           <p className="text-xs text-slate-600">{r.mensaje}</p>
         ))}
+      {r.estado === 'confirmado' && r.nota && <p className="text-xs text-slate-500">{r.nota}</p>}
       {r.estado === 'pendiente' && (
         <p className="flex items-start gap-1 text-xs text-amber-800">
           <Clock className="w-3.5 h-3.5 shrink-0 mt-px" aria-hidden="true" />
@@ -101,6 +152,7 @@ export const SelloTiempoInfo: React.FC<{
       ))}
       {detalle}
       {descarga}
+      {!compacto && ayudaArchivos}
     </div>
   );
 };

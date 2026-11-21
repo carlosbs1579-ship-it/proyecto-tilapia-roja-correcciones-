@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { BloqueAnulacion, ComprobanteEntrega, Lote, SelloTiempo } from '../types';
-import { AlertTriangle, Clock, Download } from 'lucide-react';
+import { AlertTriangle, Clock, Download, ExternalLink } from 'lucide-react';
+import { deBase64 } from '../lib/ots';
 import { AvisoIntegridad, IndicadorVerificado } from './AvisoIntegridad';
 import { descargarOts, mantenerSello, revisarSelloBloque, RevisionSello, sellarBloque } from '../services/selloTiempoService';
 import { descargarTexto, prepararVerificacionLote, PreparacionVerificacion } from '../services/expedienteService';
@@ -53,6 +54,21 @@ function usePreparacionVerificacion(lote: Lote | undefined): PreparacionVerifica
 }
 
 /**
+ * Enlace que abre opentimestamps.org con el sello y la prueba ya cargados: el sitio verifica solo,
+ * en el navegador de quien lo abre, sin pasar por esta plataforma. Solo lleva datos ya públicos
+ * (el hash sellado y la prueba .ots).
+ */
+function enlaceOpenTimestamps(digest: string, otsB64: string): string | null {
+  try {
+    if (!/^[0-9a-f]{64}$/.test(digest)) return null;
+    const hex = Array.from(deBase64(otsB64), (b) => b.toString(16).padStart(2, '0')).join('');
+    return `https://opentimestamps.org/?algorithm=SHA256&digest=${digest}&ots=${hex}`;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Estado del sello de tiempo: verde si Bitcoin lo confirma y coincide, oro si está pendiente o
  * falta, aviso rojo (AvisoIntegridad) si no coincide con el registro. Permite descargar la prueba.
  */
@@ -70,8 +86,15 @@ export const SelloTiempoInfo: React.FC<{
   const claseBoton = 'inline-flex items-center gap-1 text-xs font-semibold text-sky-700 hover:underline';
   // Solo si la revisión no encontró alteración y el documento se comprobó contra el digest de la prueba
   const archivos = r.estado !== 'alterado' && prep?.disponible ? prep.archivos : null;
+  const enlace = r.ots && r.digest && r.estado !== 'alterado' ? enlaceOpenTimestamps(r.digest, r.ots) : null;
   const descarga = r.ots ? (
     <div className="flex flex-wrap gap-x-4 gap-y-1">
+      {enlace && (
+        <a href={enlace} target="_blank" rel="noopener noreferrer" className={claseBoton}>
+          <ExternalLink className="w-3 h-3" aria-hidden="true" />
+          Verificar en opentimestamps.org
+        </a>
+      )}
       <button type="button" onClick={() => descargarOts(r.ots!, nombreArchivo)} className={claseBoton}>
         <Download className="w-3 h-3" aria-hidden="true" />
         Descargar prueba .ots
@@ -92,8 +115,8 @@ export const SelloTiempoInfo: React.FC<{
   ) : null;
   const ayudaArchivos = archivos ? (
     <p className="text-xs text-slate-500">
-      Para verificar fuera de la plataforma, cargue en opentimestamps.org la prueba .ots y el documento sellado. El expediente trae cada fase con su
-      hash y las instrucciones.
+      Para verificar fuera de la plataforma use el enlace a opentimestamps.org, o cargue allí primero la prueba .ots y luego el documento
+      sellado. El expediente trae cada fase con su hash y las instrucciones.
     </p>
   ) : prep && !prep.disponible && prep.motivo === 'correo' ? (
     <p className="text-xs text-slate-500">

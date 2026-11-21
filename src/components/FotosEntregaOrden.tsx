@@ -82,8 +82,8 @@ export const FotosEntregaOrden: React.FC<{ orden: OrdenEntrega }> = ({ orden: o 
         return (
           <div
             key={ref.id}
-            className={`flex flex-wrap items-start gap-3 rounded-md p-2 border ${
-              alterada || borrada ? 'border-red-200 border-l-2 border-l-red-600 bg-red-50 fila-escalonada' : 'border-slate-100'
+            className={`flex flex-wrap items-start gap-3 rounded-xl p-2 border ${
+              alterada || borrada ? 'border-red-300 bg-red-50 fila-escalonada' : 'border-slate-100'
             }`}
           >
             {foto ? (
@@ -115,7 +115,7 @@ export const FotosEntregaOrden: React.FC<{ orden: OrdenEntrega }> = ({ orden: o 
                   if (f.estado === 'sin_fecha') return <span className="block text-slate-500">Sin fecha de cámara (captura de pantalla, foto editada o tomada antes de esta función).</span>;
                   const fecha = formatearFechaColombia(new Date(f.ms!).toISOString());
                   return f.estado === 'coincide' ? (
-                    <span className="block text-slate-500">Fecha de cámara: {fecha}.</span>
+                    <span className="block text-slate-500">Fecha de cámara: {fecha.endsWith('.') ? fecha : `${fecha}.`}</span>
                   ) : (
                     <span className="flex items-start text-amber-800 font-semibold" role="status">
                       <AlertTriangle className="w-3.5 h-3.5 mr-1 mt-0.5 shrink-0" aria-hidden="true" />

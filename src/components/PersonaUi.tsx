@@ -182,8 +182,9 @@ export const FirmaRegistro: React.FC<{ registro: { registradoPor?: string; regis
   const nombre = registro.registradoPorNombre || correo || quienRegistro(registro);
   return (
     <span className={className}>
-      <span className="firma">{nombre}</span>
-      {correo && correo !== nombre && <span className="block text-xs text-slate-500 [overflow-wrap:anywhere]">{correo}</span>}
+      <span className="firma" title={correo && correo !== nombre ? correo : undefined}>
+        {nombre}
+      </span>
     </span>
   );
 };

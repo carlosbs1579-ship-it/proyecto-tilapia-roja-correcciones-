@@ -143,6 +143,14 @@ function contenidoSellado(c: object): object {
   return contenido;
 }
 
+/**
+ * Texto exacto sellado del bloque: sus bytes UTF-8 son lo que se pasa a SHA-256 para obtener
+ * hashComprobante (el "documento sellado" para verificar en opentimestamps.org)
+ */
+export function textoSelladoComprobante(c: ComprobanteEntrega | BloqueAnulacion): string {
+  return jsonCanonico(contenidoSellado(c));
+}
+
 export async function calcularHashComprobante(
   c: Omit<ComprobanteEntrega, 'hashComprobante'> | ComprobanteEntrega | Omit<BloqueAnulacion, 'hashComprobante'> | BloqueAnulacion
 ): Promise<string> {

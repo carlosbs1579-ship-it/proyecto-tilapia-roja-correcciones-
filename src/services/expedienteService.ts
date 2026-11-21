@@ -36,7 +36,7 @@ export type PreparacionVerificacion =
   | { disponible: true; archivos: ArchivosVerificacion }
   | { disponible: false; motivo: 'sin_sello' | 'correo' | 'no_coincide' };
 
-const CORREO = /[^\s@"<>]+@[^\s@"<>]+\.[^\s@"<>]+/;
+export const CORREO = /[^\s@"<>]+@[^\s@"<>]+\.[^\s@"<>]+/;
 
 /** Nombre base de los archivos de verificación de un lote (el mismo que la prueba .ots) */
 export const nombreArchivoOtsLote = (codigo: string) => `sello-lote-${codigo}`;

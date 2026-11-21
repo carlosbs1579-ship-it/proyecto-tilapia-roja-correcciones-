@@ -107,6 +107,23 @@ export interface Lote {
   actualizadoEn: string;
   observacionesIniciales?: string;
   registradoEnServidor?: Record<string, MarcaServidor>; // hora del servidor de cada fase nueva (H19), fuera del hash
+  fichaNutricionalCierre?: FichaNutricional; // copia de la ficha vigente al cerrar (H41); no cambia después
+  selloTiempo?: SelloTiempo; // testigo externo del sello de cierre (H03), fuera del hash
+}
+
+/**
+ * Sello de tiempo de OpenTimestamps (testigo externo, H03): prueba .ots de que el sello del
+ * registro (digest) existía en una fecha, anclada en Bitcoin. Va fuera de todo hash.
+ */
+export interface SelloTiempo {
+  version: 1;
+  digest: string; // sello del registro (hashFinal del lote o hashComprobante)
+  ots: string; // prueba .ots en base64 (formato estándar de OpenTimestamps)
+  estado: 'pendiente' | 'confirmado';
+  enviadoEn: MarcaServidor; // hora del servidor al guardar el envío
+  calendarios: number; // calendarios que respondieron al envío
+  bloque?: number; // altura del bloque de Bitcoin (confirmado)
+  confirmadoEn?: string; // hora del bloque (ISO), si se pudo consultar al confirmar
 }
 
 // ---------- Entregas a clientes (posteriores al sellado del lote) ----------
@@ -239,6 +256,7 @@ export interface ComprobanteEntrega {
   anotacionesLotes?: Record<string, { registros: number; ultimoHash: string }>;
   hashComprobante: string; // SHA-256 del JSON canónico de todo lo anterior
   registradoEnServidor?: MarcaServidor; // hora del servidor al emitir (fuera del hash)
+  selloTiempo?: SelloTiempo; // testigo externo del bloque (H03), fuera del hash
 }
 
 // Hora del servidor (Timestamp de Firestore) leída de un documento
@@ -274,6 +292,7 @@ export interface BloqueAnulacion {
   hashAnterior: string;
   hashComprobante: string;
   registradoEnServidor?: MarcaServidor; // hora del servidor al anular (fuera del hash)
+  selloTiempo?: SelloTiempo; // testigo externo del bloque (H03), fuera del hash
 }
 
 export interface ConsultaEntrega {

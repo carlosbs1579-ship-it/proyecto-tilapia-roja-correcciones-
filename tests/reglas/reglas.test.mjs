@@ -725,3 +725,165 @@ describe('Firma con uid (H20) y hora del servidor (H19) en lotes y anotaciones',
     });
   });
 });
+
+describe('Testigo externo (H03) y ficha congelada (H41)', () => {
+  const HF = 'a'.repeat(64);
+  const OTS = 'AE9wZW5UaW1lc3RhbXBzAABQcm9vZgC/ieLohOiSlAEI' + 'A'.repeat(60);
+  const ENVIO = Timestamp.fromMillis(Date.parse('2026-11-17T15:00:00Z'));
+  const CERRADO = {
+    ...LOTE_ACTIVO, codigo: 'L-CERRADO', estado: 'cerrado', fechaCierre: '2026-11-17',
+    eventos: [{ indice: 0, tipo: 'Siembra', hash: HF }], resumen: { hashFinal: HF }
+  };
+  const ref = (db, codigo = 'L-CERRADO') => doc(db, 'lotes', codigo);
+  const pendiente = (extra = {}) => ({ version: 1, digest: HF, ots: OTS, estado: 'pendiente', enviadoEn: serverTimestamp(), calendarios: 3, ...extra });
+  const guardado = { version: 1, digest: HF, ots: OTS, estado: 'pendiente', enviadoEn: ENVIO, calendarios: 3 };
+  const confirmado = (extra = {}) => ({ ...guardado, estado: 'confirmado', ots: OTS + 'BBBBBBBB', bloque: 925000, confirmadoEn: '2026-11-17T18:00:00.000Z', ...extra });
+  const conSello = (s = guardado, codigo = 'L-CERRADO', extra = {}) =>
+    env.withSecurityRulesDisabled((ctx) => setDoc(ref(ctx.firestore(), codigo), { ...CERRADO, codigo, selloTiempo: s, ...extra }));
+  beforeEach(async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(ref(ctx.firestore()), CERRADO);
+      await setDoc(doc(ctx.firestore(), 'lotes', 'L-OTRA-GRANJA'), { ...CERRADO, codigo: 'L-OTRA-GRANJA', granjaId: 'otra' });
+    });
+  });
+
+  test('quien cierra lotes agrega el sello pendiente a un lote cerrado (una sola vez)', async () => {
+    await assertSucceeds(updateDoc(ref(como('operador')), { selloTiempo: pendiente() }));
+    await assertFails(updateDoc(ref(como('operador')), { selloTiempo: pendiente({ calendarios: 2 }) }));
+  });
+
+  test('un administrador de la granja y el maestro también pueden sellarlo', async () => {
+    await assertSucceeds(updateDoc(ref(como('subadmin')), { selloTiempo: pendiente() }));
+    await env.withSecurityRulesDisabled((ctx) => setDoc(ref(ctx.firestore(), 'L-M'), { ...CERRADO, codigo: 'L-M' }));
+    await assertSucceeds(updateDoc(ref(como('maestro'), 'L-M'), { selloTiempo: pendiente() }));
+  });
+
+  test('el sello debe cubrir el sello de cierre, con la hora del servidor y estado pendiente', async () => {
+    const db = como('operador');
+    await assertFails(updateDoc(ref(db), { selloTiempo: pendiente({ digest: 'b'.repeat(64) }) }));
+    await assertFails(updateDoc(ref(db), { selloTiempo: pendiente({ enviadoEn: ENVIO }) }));
+    await assertFails(updateDoc(ref(db), { selloTiempo: pendiente({ estado: 'confirmado', bloque: 1 }) }));
+    await assertFails(updateDoc(ref(db), { selloTiempo: pendiente({ ots: 'corto' }) }));
+    await assertFails(updateDoc(ref(db), { selloTiempo: pendiente({ ots: OTS + '<script>' }) }));
+    await assertFails(updateDoc(ref(db), { selloTiempo: pendiente({ extra: 1 }) }));
+    await assertFails(updateDoc(ref(db), { selloTiempo: pendiente({ calendarios: 0 }) }));
+    await assertFails(updateDoc(ref(db), { selloTiempo: pendiente({ bloque: 5 }) }));
+    await assertFails(updateDoc(ref(db), { selloTiempo: pendiente({ version: 2 }) }));
+  });
+
+  test('junto con el sello no cambia ningún otro dato del lote cerrado', async () => {
+    const db = como('operador');
+    await assertFails(updateDoc(ref(db), { selloTiempo: pendiente(), estanque: 'E9' }));
+    await assertFails(updateDoc(ref(db), { selloTiempo: pendiente(), 'resumen.hashFinal': 'b'.repeat(64) }));
+    await assertFails(updateDoc(ref(db), { selloTiempo: pendiente({ digest: 'b'.repeat(64) }), resumen: { hashFinal: 'b'.repeat(64) } }));
+    await assertFails(updateDoc(ref(db), { selloTiempo: pendiente(), estado: 'activo' }));
+  });
+
+  test('sin sesión, sin permiso de cierre o de otra granja no se crea el sello', async () => {
+    await assertFails(updateDoc(ref(env.unauthenticatedContext().firestore()), { selloTiempo: pendiente() }));
+    await assertFails(updateDoc(ref(como('repartidor')), { selloTiempo: pendiente() }));
+    await assertFails(updateDoc(ref(como('consulta')), { selloTiempo: pendiente() }));
+    await assertFails(updateDoc(ref(como('inactivo')), { selloTiempo: pendiente() }));
+    await assertFails(updateDoc(ref(como('operador'), 'L-OTRA-GRANJA'), { selloTiempo: pendiente() }));
+  });
+
+  test('un lote activo no recibe sello de tiempo', async () => {
+    await assertFails(updateDoc(ref(como('operador'), 'L-ACTIVO'), { selloTiempo: pendiente({ digest: 'h0' }) }));
+  });
+
+  test('quien cierra lotes (o el administrador) guarda la confirmación de Bitcoin', async () => {
+    await conSello();
+    await assertSucceeds(updateDoc(ref(como('operador')), { selloTiempo: confirmado() }));
+    await conSello();
+    await assertSucceeds(updateDoc(ref(como('subadmin')), { selloTiempo: confirmado() }));
+    await conSello();
+    await assertSucceeds(updateDoc(ref(como('maestro')), { selloTiempo: confirmado() }));
+  });
+
+  test('sin permiso de cierre no se guarda la confirmación (no puede dejar una confirmación falsa fija)', async () => {
+    await conSello();
+    await assertFails(updateDoc(ref(como('repartidor')), { selloTiempo: confirmado() }));
+    await assertFails(updateDoc(ref(como('engano')), { selloTiempo: confirmado() }));
+    await assertFails(updateDoc(ref(como('consulta')), { selloTiempo: confirmado() }));
+    await assertFails(updateDoc(ref(como('pendiente')), { selloTiempo: confirmado() }));
+    await env.withSecurityRulesDisabled((ctx) =>
+      setDoc(doc(ctx.firestore(), 'usuarios', 'sincierre'), perfil('sincierre', { roles: ['operator'], permisos: { ...PERMISOS_PRODUCCION, cerrarLotes: false } }))
+    );
+    await assertFails(updateDoc(ref(como('sincierre')), { selloTiempo: confirmado() }));
+    // El sello sigue pendiente: quien sí puede, lo completa después
+    await assertSucceeds(updateDoc(ref(como('operador')), { selloTiempo: confirmado() }));
+  });
+
+  test('sin sesión, inactivo o de otra granja no guarda la confirmación', async () => {
+    await conSello();
+    await assertFails(updateDoc(ref(env.unauthenticatedContext().firestore()), { selloTiempo: confirmado() }));
+    await assertFails(updateDoc(ref(como('inactivo')), { selloTiempo: confirmado() }));
+    await env.withSecurityRulesDisabled((ctx) =>
+      setDoc(ref(ctx.firestore(), 'L-OTRA-GRANJA'), { ...CERRADO, codigo: 'L-OTRA-GRANJA', granjaId: 'otra', selloTiempo: guardado })
+    );
+    await assertFails(updateDoc(ref(como('operador'), 'L-OTRA-GRANJA'), { selloTiempo: confirmado() }));
+  });
+
+  test('la confirmación mantiene digest, hora de envío y calendarios, y alarga la prueba', async () => {
+    await conSello();
+    const db = como('operador');
+    await assertFails(updateDoc(ref(db), { selloTiempo: confirmado({ digest: 'b'.repeat(64) }) }));
+    await assertFails(updateDoc(ref(db), { selloTiempo: confirmado({ enviadoEn: Timestamp.fromMillis(Date.parse('2026-11-18T00:00:00Z')) }) }));
+    await assertFails(updateDoc(ref(db), { selloTiempo: confirmado({ calendarios: 2 }) }));
+    await assertFails(updateDoc(ref(db), { selloTiempo: confirmado({ ots: OTS }) }));
+    await assertFails(updateDoc(ref(db), { selloTiempo: confirmado({ bloque: 0 }) }));
+    await assertFails(updateDoc(ref(db), { selloTiempo: confirmado({ confirmadoEn: 5 }) }));
+    await assertFails(updateDoc(ref(db), { selloTiempo: { ...guardado, ots: OTS + 'BBBB' } }));
+    const { confirmadoEn, ...sinFecha } = confirmado();
+    await assertSucceeds(updateDoc(ref(db), { selloTiempo: sinFecha }));
+  });
+
+  test('un sello confirmado no se cambia ni se borra', async () => {
+    await conSello(confirmado());
+    const db = como('maestro');
+    await assertFails(updateDoc(ref(db), { selloTiempo: confirmado({ ots: OTS + 'BBBBBBBBCCCC' }) }));
+    await assertFails(updateDoc(ref(db), { selloTiempo: { ...guardado } }));
+    await assertFails(updateDoc(ref(db), { selloTiempo: null }));
+  });
+
+  test('un sello pendiente no se borra ni se reemplaza por otro pendiente', async () => {
+    await conSello();
+    await assertFails(updateDoc(ref(como('maestro')), { selloTiempo: null }));
+    await assertFails(updateDoc(ref(como('maestro')), { selloTiempo: pendiente() }));
+  });
+
+  describe('ficha nutricional congelada al cerrar', () => {
+    const FICHA = { porcionG: 100, energiaKcal: 96, proteinaG: 20.1, grasaTotalG: 1.7, carbohidratosG: 0, colesterolMg: 50, sodioMg: 52, fuente: 'USDA', notas: 'Referencial' };
+    const cerrar = (ficha) => updateDoc(ref(como('operador'), 'L-ACTIVO'), { estado: 'cerrado', fechaCierre: '2026-11-10', fichaNutricionalCierre: ficha });
+
+    test('la app nueva cierra con la copia de la ficha', async () => {
+      await assertSucceeds(cerrar(FICHA));
+    });
+
+    test('la versión anterior de la app cierra sin la ficha', async () => {
+      await assertSucceeds(updateDoc(ref(como('operador'), 'L-ACTIVO'), { estado: 'cerrado', fechaCierre: '2026-11-10' }));
+    });
+
+    test('la ficha debe tener exactamente las claves y los tipos de la configuración', async () => {
+      await assertFails(cerrar({ ...FICHA, extra: 1 }));
+      const { sodioMg, ...sinSodio } = FICHA;
+      await assertFails(cerrar(sinSodio));
+      await assertFails(cerrar({ ...FICHA, energiaKcal: '96' }));
+      await assertFails(cerrar({ ...FICHA, fuente: 5 }));
+      await assertFails(cerrar({ ...FICHA, notas: 'x'.repeat(1001) }));
+      await assertFails(cerrar('ficha'));
+    });
+
+    test('después del cierre la ficha congelada no se cambia ni se borra', async () => {
+      await assertSucceeds(cerrar(FICHA));
+      await assertFails(updateDoc(ref(como('maestro'), 'L-ACTIVO'), { fichaNutricionalCierre: { ...FICHA, sodioMg: 1 } }));
+      await assertFails(updateDoc(ref(como('maestro'), 'L-ACTIVO'), { 'fichaNutricionalCierre.sodioMg': 1 }));
+      await assertFails(updateDoc(ref(como('maestro'), 'L-ACTIVO'), { fichaNutricionalCierre: null }));
+    });
+
+    test('un lote activo o uno nuevo no traen ficha congelada', async () => {
+      await assertFails(updateDoc(ref(como('operador'), 'L-ACTIVO'), { fichaNutricionalCierre: FICHA }));
+      await assertFails(crearLoteComoApp(como('operador'), 'operador', 'L-FICHA', { fichaNutricionalCierre: FICHA }));
+    });
+  });
+});

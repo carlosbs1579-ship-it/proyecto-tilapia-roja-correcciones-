@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import HoraServidor from './HoraServidor';
 import { EsqueletoTarjetas } from './Esqueleto';
 import { ArrowLeft, Download, FileText, ShieldAlert, ShieldCheck, Truck } from 'lucide-react';
 import { BloqueAnulacion, ComprobanteEntrega, ConsultaEntrega } from '../types';
@@ -14,6 +15,7 @@ import {
 import { AvisoIntegridad, IndicadorVerificado } from './AvisoIntegridad';
 import { descargarComprobantePdf, verComprobantePdf } from '../services/pdfService';
 import { formatearFechaColombia } from '../utils/constants';
+import { SelloTiempoBloque } from './SelloTiempo';
 
 const num = (n: number) => (Number(n) || 0).toLocaleString('es-CO');
 
@@ -231,7 +233,8 @@ export const ConsultaEntregaPublica: React.FC<{
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <span>
                       <strong>Comprobante N.º {c.version}</strong>
-                      {anulado(c.id) && <strong className="ml-1 px-1 rounded-md bg-red-100 text-red-700">ANULADO</strong>} · {formatearFechaColombia(c.emitidoEn)} ·{' '}
+                      {anulado(c.id) && <strong className="ml-1 px-1 rounded-md bg-red-100 text-red-700">ANULADO</strong>} · {formatearFechaColombia(c.emitidoEn)}
+                      <HoraServidor hora={horaServidorBloque(c)} modo="sufijo" etiqueta="Registrado en el servidor" /> ·{' '}
                       {c.estadoEntrega === 'entregado' ? 'entrega completa' : 'entrega parcial'} · entregado {num(c.cantidadEntregada)} {c.unidad}
                     </span>
                     <span className="flex gap-1">
@@ -256,15 +259,12 @@ export const ConsultaEntregaPublica: React.FC<{
                       {anulaciones[c.id].motivo}
                     </span>
                   )}
-                  {(() => {
-                    const h = horaServidorBloque(c);
-                    return h.servidor ? (
-                      <span className={`block ${h.desfase ? 'text-amber-800' : 'text-slate-500'}`}>
-                        Registrado en el servidor: {formatearFechaColombia(h.servidor.toISOString())}
-                        {h.desfase && ' · la hora indicada en el comprobante difiere en más de 10 minutos'}
-                      </span>
-                    ) : null;
-                  })()}
+                  <HoraServidor
+                    hora={horaServidorBloque(c)}
+                    modo="aviso"
+                    etiqueta="Registrado en el servidor"
+                    textoDesfase="la hora indicada en el comprobante difiere en más de 10 minutos"
+                  />
                   {c.sellosLotes && revision && !hayAvisos && !revision.notas.some((n) => n.startsWith('No se')) && (
                     <span className="block text-slate-500">Incluye el sello de cada lote al emitirse; coincide con la trazabilidad actual del lote.</span>
                   )}
@@ -276,6 +276,7 @@ export const ConsultaEntregaPublica: React.FC<{
                   ) : (
                     <span className="text-slate-500">Verificando…</span>
                   )}
+                  <SelloTiempoBloque bloque={c} />
                 </div>
                 ))(b)
               )}

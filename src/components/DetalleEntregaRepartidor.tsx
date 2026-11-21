@@ -85,6 +85,10 @@ export const DetalleEntregaRepartidor: React.FC<DetalleEntregaRepartidorProps> =
   const [panel, setPanel] = useState<'entrega' | 'novedad' | 'ajuste' | null>(null);
   const [mensaje, setMensaje] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  // Entrega enviada desde esta vista: el aviso de éxito sale solo cuando el servidor la acepta; si la
+  // rechaza se dice claramente, y sin conexión se avisa que quedó en el teléfono (bandeja local)
+  const [entregaSeguida, setEntregaSeguida] = useState<{ id: string; exito: string } | null>(null);
+  const [avisoEntrega, setAvisoEntrega] = useState<{ tono: 'espera' | 'ok' | 'error'; texto: string } | null>(null);
 
   // Formulario de entrega
   const [entregas, setEntregas] = useState<Record<string, number | ''>>({});
@@ -136,23 +140,50 @@ export const DetalleEntregaRepartidor: React.FC<DetalleEntregaRepartidorProps> =
     [orden.ajustes]
   );
 
-  const registrar = (accion: Parameters<typeof registrarAccion>[1]): boolean => {
+  const registrar = (accion: Parameters<typeof registrarAccion>[1]): AccionReparto | null => {
     const unico = PASOS_UNICOS.includes(accion.tipo);
     if (unico) {
-      if (tocadosRef.current.has(accion.tipo)) return false;
+      if (tocadosRef.current.has(accion.tipo)) return null;
       tocadosRef.current.add(accion.tipo);
     }
     try {
-      registrarAccion(uid, accion);
+      const registrada = registrarAccion(uid, accion);
       if (unico) setTocados(Array.from(tocadosRef.current));
-      return true;
+      return registrada;
     } catch (err: any) {
       if (unico) tocadosRef.current.delete(accion.tipo);
       setMensaje(null);
       setErrorMsg(err?.message || 'No se pudo guardar la acción.');
-      return false;
+      return null;
     }
   };
+
+  // Sigue la entrega en la bandeja: recibida o confirmada por el servidor, en conflicto o en espera
+  useEffect(() => {
+    if (!entregaSeguida) return;
+    const a = acciones.find((x) => x.id === entregaSeguida.id);
+    if (!a) return;
+    if (a.estado === 'recibida' || a.estado === 'confirmada') {
+      setAvisoEntrega({ tono: 'ok', texto: entregaSeguida.exito });
+      setEntregaSeguida(null);
+    } else if (a.estado === 'conflicto') {
+      setAvisoEntrega({
+        tono: 'error',
+        texto: `La entrega no se registró. ${a.mensaje || 'El servidor la rechazó.'} Revisa "Mis acciones en este teléfono" o avisa al operador.`
+      });
+      setEntregaSeguida(null);
+    } else if (a.estado === 'guardada' && (a.mensaje || !navigator.onLine)) {
+      // Sin conexión (o envío fallido que se reintentará): sigue en la bandeja del teléfono
+      setAvisoEntrega({
+        tono: 'espera',
+        texto: !navigator.onLine || /conexi/i.test(a.mensaje || '')
+          ? 'Entrega guardada en el teléfono: se enviará al recuperar la señal.'
+          : `Entrega guardada en el teléfono, aún sin enviar: ${a.mensaje}`
+      });
+    } else {
+      setAvisoEntrega({ tono: 'espera', texto: 'Enviando la entrega al servidor...' });
+    }
+  }, [acciones, entregaSeguida]);
 
   const elegirFoto = async (archivo: File | undefined) => {
     if (!archivo) return;
@@ -202,19 +233,30 @@ export const DetalleEntregaRepartidor: React.FC<DetalleEntregaRepartidorProps> =
       setErrorMsg('La foto de la entrega es obligatoria: tómala antes de confirmar.');
       return;
     }
-    if (!registrar({
+    const registrada = registrar({
       ordenId: orden.id,
       tipo: 'Entrega',
       descripcion: obsEntrega,
       datos: { entregas: Object.fromEntries(Object.entries(entregas).map(([c, v]) => [c, Number(v) || 0])) },
       foto
-    })) return;
+    });
+    if (!registrada) return;
     setFoto(null);
-    avisar(
-      faltante > 0
-        ? `Entrega parcial registrada: faltan ${num(faltante)} ${orden.unidad}. El operador decidirá cómo continuar.`
-        : 'Entrega completa registrada.'
-    );
+    setErrorMsg(null);
+    setMensaje(null);
+    setPanel(null);
+    // El éxito se muestra cuando el servidor la acepta (ver el efecto que sigue la bandeja)
+    setAvisoEntrega({
+      tono: 'espera',
+      texto: navigator.onLine ? 'Enviando la entrega al servidor...' : 'Entrega guardada en el teléfono: se enviará al recuperar la señal.'
+    });
+    setEntregaSeguida({
+      id: registrada.id,
+      exito:
+        faltante > 0
+          ? `Entrega parcial registrada: faltan ${num(faltante)} ${orden.unidad}. El operador decidirá cómo continuar.`
+          : 'Entrega completa registrada.'
+    });
   };
 
   const registrarNovedad = () => {
@@ -345,6 +387,28 @@ export const DetalleEntregaRepartidor: React.FC<DetalleEntregaRepartidorProps> =
         <div className="p-3 bg-emerald-50 border border-emerald-300 rounded-xl text-emerald-900 text-sm flex items-start space-x-2">
           <CheckCircle className="w-5 h-5 shrink-0 text-emerald-600" />
           <span>{mensaje}</span>
+        </div>
+      )}
+
+      {avisoEntrega && (
+        <div
+          role={avisoEntrega.tono === 'error' ? 'alert' : 'status'}
+          className={`p-3 rounded-xl text-sm flex items-start space-x-2 border ${
+            avisoEntrega.tono === 'ok'
+              ? 'bg-emerald-50 border-emerald-300 text-emerald-900'
+              : avisoEntrega.tono === 'error'
+                ? 'bg-red-50 border-red-300 text-red-900'
+                : 'bg-amber-50 border-amber-300 text-amber-900'
+          }`}
+        >
+          {avisoEntrega.tono === 'ok' ? (
+            <CheckCircle className="w-5 h-5 shrink-0 text-emerald-600" aria-hidden="true" />
+          ) : avisoEntrega.tono === 'error' ? (
+            <XCircle className="w-5 h-5 shrink-0 text-red-600" aria-hidden="true" />
+          ) : (
+            <Clock className="w-5 h-5 shrink-0 text-amber-600" aria-hidden="true" />
+          )}
+          <span>{avisoEntrega.texto}</span>
         </div>
       )}
 

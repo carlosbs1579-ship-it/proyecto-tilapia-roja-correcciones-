@@ -401,7 +401,8 @@ async function aplicarAccion(uid: string, accion: AccionReparto): Promise<'aplic
             alto: f.alto,
             bytes: f.bytes,
             hash: f.hash,
-            datos: f.datos
+            datos: f.datos,
+            ...(f.tomadaEnExif ? { tomadaEnExif: f.tomadaEnExif } : {})
           });
         }
         cambios = { estado: completa ? 'entregado' : 'entrega_parcial', entregadoPorLote, cantidadEntregada };

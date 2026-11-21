@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import HoraServidor from './HoraServidor';
 import { Pestanas } from './Pestanas';
 import { usePresencia } from '../lib/presencia';
 import { useVentana } from '../lib/ventana';
@@ -29,7 +30,7 @@ import { NuevoEventoModal } from './NuevoEventoModal';
 import { IntegrityCheckModal } from './IntegrityCheckModal';
 import { QrModal } from './QrModal';
 import { cerrarLote, modificarDatosSiembraOPiscina } from '../services/lotesService';
-import { previsualizarPdfLote, generarYSubirPdfLote, descargarPdfLoteLocal } from '../services/pdfService';
+import { previsualizarPdfLote, generarYSubirPdfLote, descargarPdfLoteLocal, valorDatoVisible } from '../services/pdfService';
 import { formatearFechaColombia } from '../utils/constants';
 import { evaluarParametroAgua } from '../services/calculosService';
 import { DiagnosticoFase, horaServidorRegistro, nombreDato, revisarLote, RevisionLote } from '../services/hashService';
@@ -40,6 +41,8 @@ import { EntregasPanel } from './EntregasPanel';
 import { AnotacionesLotePanel } from './AnotacionesLotePanel';
 import { anotacionesDe, escucharAnotaciones, verificarAnotaciones } from '../services/anotacionesService';
 import { AnotacionesLote } from '../types';
+import { mantenerSello, revisarSelloLote, selloActualLote, sellarLote } from '../services/selloTiempoService';
+import { SelloTiempoInfo, useRevisionSello } from './SelloTiempo';
 
 interface LoteDetailModalProps {
   isOpen: boolean;
@@ -110,6 +113,29 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
       activo = false;
     };
   }, [lote, config, datosAnotaciones]);
+  // Testigo externo (H03): al abrir un lote cerrado sin sello de tiempo, quien puede cerrar lotes lo
+  // envía (reintento si falló al cerrar); si está pendiente, se pide la confirmación de Bitcoin y se
+  // guarda. Nunca bloquea la ventana ni muestra errores: si no se puede, queda para otra apertura.
+  // Solo se sella un lote cuya cadena se verificó íntegra: nunca se ancla en Bitcoin un registro alterado.
+  const intentoSello = useRef('');
+  useEffect(() => {
+    if (!isOpen || lote.estado !== 'cerrado' || revision?.estado !== 'integro') return;
+    const clave = `${lote.codigo}|${lote.selloTiempo?.estado || 'sin'}`;
+    if (intentoSello.current === clave) return;
+    intentoSello.current = clave;
+    mantenerSello({
+      ruta: ['lotes', lote.codigo],
+      sello: lote.selloTiempo,
+      crear: puedeCerrar ? () => sellarLote(lote) : undefined
+    }).then((confirmado) => {
+      if (confirmado) setLote((l) => (l.codigo === lote.codigo ? { ...l, selloTiempo: confirmado } : l));
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, lote.codigo, lote.estado, lote.selloTiempo?.estado, revision?.estado]);
+  const revisionSello = useRevisionSello(
+    isOpen && lote.estado === 'cerrado' ? () => revisarSelloLote(lote) : null,
+    JSON.stringify([isOpen, lote.codigo, lote.estado, selloActualLote(lote), lote.selloTiempo?.digest, lote.selloTiempo?.ots?.length, lote.fichaNutricionalCierre || null])
+  );
   const [modalEventoOpen, setModalEventoOpen] = useState(false);
   const [modalIntegridadOpen, setModalIntegridadOpen] = useState(false);
   const [modalQrOpen, setModalQrOpen] = useState(false);
@@ -213,7 +239,9 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
       const mismaVersion =
         (previo.actualizadoEn || '') === (loteInicial.actualizadoEn || '') &&
         previo.estado === loteInicial.estado &&
-        (previo.eventos?.length || 0) === (loteInicial.eventos?.length || 0);
+        (previo.eventos?.length || 0) === (loteInicial.eventos?.length || 0) &&
+        // El sello de tiempo se agrega después del cierre sin cambiar actualizadoEn
+        (previo.selloTiempo?.ots?.length || 0) === (loteInicial.selloTiempo?.ots?.length || 0);
       if (mismaVersion) return previo;
       return (loteInicial.actualizadoEn || '') >= (previo.actualizadoEn || '') ? loteInicial : previo;
     });
@@ -265,7 +293,7 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
 
   const handleVistaPreviaPdf = async () => {
     try {
-      await previsualizarPdfLote(lote, config);
+      await previsualizarPdfLote(lote, config, revisionSello);
     } catch (err: any) {
       setErrorAccion(`No se pudo abrir la vista previa del PDF: ${err.message || err}`);
     }
@@ -328,7 +356,7 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
               </button>
 
               <button
-                onClick={() => descargarPdfLoteLocal(lote, config)}
+                onClick={() => descargarPdfLoteLocal(lote, config, revisionSello)}
                 className="inline-flex items-center space-x-2 px-3 py-2 text-xs font-semibold rounded-md bg-slate-50 hover:bg-white text-slate-900 transition-colors"
               >
                 <Download className="w-4 h-4" />
@@ -409,6 +437,15 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
                   El ciclo de producción terminó y el registro quedó sellado: no admite cambios ni fases nuevas. La consulta, los certificados y la
                   verificación de la cadena siguen disponibles.
                 </p>
+              </div>
+            )}
+            {lote.estado === 'cerrado' && (
+              <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs space-y-1">
+                <span className="rotulo text-slate-500 block">Sello de tiempo en Bitcoin (testigo externo)</span>
+                <SelloTiempoInfo revision={revisionSello} nombreArchivo={`sello-lote-${lote.codigo}`} />
+                {!lote.selloTiempo && revisionSello?.estado !== 'anterior' && puedeCerrar && (
+                  <p className="text-xs text-slate-500">El sello se envía solo a los calendarios públicos; si no responden, se reintenta al volver a abrir el lote.</p>
+                )}
               </div>
             )}
 
@@ -644,6 +681,8 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
                       }
                     }
 
+                    const horaSrv = horaServidorRegistro(lote.registradoEnServidor, ev.indice, ev.registradoEn);
+
                     return (
                       <div
                         key={ev.id}
@@ -674,6 +713,7 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
                                 )}
                                 <span className="text-xs text-slate-500 font-medium">
                                   {ev.fechaEvento}
+                                  {!ev.descripcion && <HoraServidor hora={horaSrv} modo="sufijo" className="font-normal" />}
                                 </span>
                                 {alertasDelEvento.length > 0 && (
                                   <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded-sm font-semibold flex items-center space-x-1">
@@ -684,7 +724,10 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
                               </div>
 
                               {ev.descripcion && (
-                                <p className="text-xs text-slate-600 mt-1">{ev.descripcion}</p>
+                                <p className="text-xs text-slate-600 mt-1">
+                                  {ev.descripcion}
+                                  <HoraServidor hora={horaSrv} modo="sufijo" />
+                                </p>
                               )}
 
                               {/* Datos técnicos específicos formateados */}
@@ -695,7 +738,7 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
                                       key={k}
                                       className="text-xs bg-slate-100 text-slate-700 px-2 py-1 rounded-md border border-slate-200"
                                     >
-                                      <strong className="text-slate-900">{nombreDato(k)}:</strong> {typeof v === 'boolean' ? (v ? 'SÍ' : 'NO') : String(v)}
+                                      <strong className="text-slate-900">{nombreDato(k)}:</strong> {typeof v === 'boolean' ? (v ? 'SÍ' : 'NO') : valorDatoVisible(v)}
                                     </span>
                                   ))}
                                 </div>
@@ -707,15 +750,7 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
                                   {alertasDelEvento.join(' · ')}
                                 </div>
                               )}
-                              {(() => {
-                                const h = horaServidorRegistro(lote.registradoEnServidor, ev.indice, ev.registradoEn);
-                                return h.servidor ? (
-                                  <p className={`mt-2 text-xs ${h.desfase ? 'text-amber-800' : 'text-slate-500'}`}>
-                                    Hora del servidor: {formatearFechaColombia(h.servidor.toISOString())}
-                                    {h.desfase && ' · la hora declarada por el equipo difiere en más de 10 minutos'}
-                                  </p>
-                                ) : null;
-                              })()}
+                              <HoraServidor hora={horaSrv} modo="aviso" className="mt-2" />
                             </div>
                           </div>
 

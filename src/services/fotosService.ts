@@ -1,6 +1,7 @@
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '../firebase/firebaseConfig';
 import { sha256Texto, huellaParaComparar, esErrorSinHuellaSegura } from '../lib/integridad';
+import { fechaExifDeArchivo } from '../lib/exif';
 import { generarId } from './pedidosService';
 
 // Fotos de entrega. No se usa Firebase Storage: la foto se comprime en el teléfono (JPEG de hasta
@@ -22,6 +23,7 @@ export interface FotoPreparada {
   alto: number;
   bytes: number; // tamaño aproximado del JPEG
   tomadaEn: string;
+  tomadaEnExif?: string; // fecha de la cámara (EXIF DateTimeOriginal) del archivo original, si la trae (H38)
 }
 
 export interface FotoEntrega {
@@ -38,6 +40,7 @@ export interface FotoEntrega {
   bytes: number;
   hash: string;
   datos: string;
+  tomadaEnExif?: string; // fecha de la cámara del archivo original (fuera del hash de la imagen)
 }
 
 function cargarImagen(archivo: File): Promise<HTMLImageElement> {
@@ -61,6 +64,8 @@ function cargarImagen(archivo: File): Promise<HTMLImageElement> {
  */
 export async function prepararFoto(archivo: File): Promise<FotoPreparada> {
   if (!archivo.type.startsWith('image/')) throw new Error('El archivo no es una imagen.');
+  // La fecha de la cámara se lee del archivo original: la copia comprimida ya no trae EXIF
+  const tomadaEnExif = await fechaExifDeArchivo(archivo);
   const img = await cargarImagen(archivo);
   const escala = Math.min(1, LADO_MAXIMO / Math.max(img.naturalWidth, img.naturalHeight));
   const ancho = Math.max(1, Math.round(img.naturalWidth * escala));
@@ -84,7 +89,8 @@ export async function prepararFoto(archivo: File): Promise<FotoPreparada> {
     ancho,
     alto,
     bytes: Math.round(((datos.length - datos.indexOf(',') - 1) * 3) / 4),
-    tomadaEn: new Date().toISOString()
+    tomadaEn: new Date().toISOString(),
+    ...(tomadaEnExif ? { tomadaEnExif } : {})
   };
 }
 

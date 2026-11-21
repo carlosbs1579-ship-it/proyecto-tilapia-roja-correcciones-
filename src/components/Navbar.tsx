@@ -33,7 +33,7 @@ const SelectorRapidoFuncion: React.FC<{
   compacto?: boolean;
 }> = ({ funciones, activa, onElegir, compacto }) => (
   <LayoutGroup id={compacto ? 'funcion-movil' : 'funcion-escritorio'}>
-  <div className="flex items-center rounded-lg bg-slate-800 p-1" role="group" aria-label="Cambiar de función">
+  <div className={`flex items-center rounded-lg bg-slate-800 p-1 ${compacto ? 'w-full min-[420px]:w-auto' : ''}`} role="group" aria-label="Cambiar de función">
     {funciones.map((f) => (
       <button
         key={f}
@@ -41,7 +41,7 @@ const SelectorRapidoFuncion: React.FC<{
         onClick={() => f !== activa && onElegir(f)}
         aria-pressed={f === activa}
         title={f === activa ? `Trabajando como ${ETIQUETA_ROL[f]}` : `Cambiar a ${ETIQUETA_ROL[f]}`}
-        className={`pestana relative flex items-center rounded-md font-semibold ${compacto ? 'min-h-10 px-3 text-xs' : 'min-h-9 px-3 text-xs'} ${
+        className={`pestana relative flex items-center rounded-md font-semibold ${compacto ? 'min-h-10 flex-1 justify-center px-2.5 text-xs min-[420px]:flex-none min-[420px]:px-3' : 'min-h-9 px-3 text-xs'} ${
           f === activa ? 'text-slate-900' : 'text-slate-300 hover:text-white'
         }`}
       >
@@ -132,6 +132,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   // Mientras se elige la función no se muestran pestañas
   const tabs = eligiendoFuncion ? [] : tabsDeFuncion(funcionActiva, perfilUsuario).map((id) => TABS[id]);
   const tabInicial = tabsDeFuncion(funcionActiva, perfilUsuario)[0];
+  const conSelector = funciones.length > 1 && Boolean(funcionActiva) && !eligiendoFuncion;
 
   return (
     <header className="bg-slate-900 text-white border-b-4 border-double border-amber-600 sticky top-0 z-40 pt-[env(safe-area-inset-top,0px)]">
@@ -165,12 +166,14 @@ export const Navbar: React.FC<NavbarProps> = ({
             {usuario ? (
               <>
                 <div className="flex items-center space-x-2">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                  {/* Con el selector de función a la vista, el nombre solo cabe en pantallas muy anchas: así
+                      las pestañas no quedan cortadas (la función activa ya se ve en el selector) */}
+                  <div className={`w-8 h-8 rounded-full items-center justify-center ${
                     'bg-slate-700 text-slate-300'
-                  }`}>
+                  } ${conSelector ? 'flex md:hidden 2xl:flex' : 'flex'}`}>
                     <UserIcon className="w-4 h-4" />
                   </div>
-                  <div className="hidden lg:block text-left text-xs">
+                  <div className={`hidden text-left text-xs ${conSelector ? '2xl:block' : 'lg:block'}`}>
                     <p className="font-semibold text-slate-200 truncate max-w-[150px]" title={usuario.email || undefined}>{perfilUsuario?.displayName || usuario.email}</p>
                     <p className={`text-xs flex items-center truncate max-w-[150px] ${
                       funcionActiva ? 'text-slate-300 font-semibold' : 'text-slate-300'
@@ -188,7 +191,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                       )}
                     </p>
                   </div>
-                  {funciones.length > 1 && funcionActiva && !eligiendoFuncion && (
+                  {conSelector && (
                     <div className="hidden md:block">
                       <SelectorRapidoFuncion funciones={funciones} activa={funcionActiva} onElegir={onSeleccionarFuncion} />
                     </div>
@@ -216,9 +219,10 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
 
         {/* Cambio de función en el celular */}
-        {usuario && funciones.length > 1 && funcionActiva && !eligiendoFuncion && (
-          <div className="md:hidden flex items-center justify-between border-t border-slate-800 py-2">
-            <span className="text-xs text-slate-300">Función:</span>
+        {usuario && conSelector && (
+          <div className="md:hidden flex items-center justify-between gap-2 border-t border-slate-800 py-2">
+            {/* En pantallas angostas el selector ocupa todo el ancho y el rótulo queda solo para lectores */}
+            <span className="text-xs text-slate-300 max-[419px]:sr-only">Función:</span>
             <SelectorRapidoFuncion funciones={funciones} activa={funcionActiva} onElegir={onSeleccionarFuncion} compacto />
           </div>
         )}

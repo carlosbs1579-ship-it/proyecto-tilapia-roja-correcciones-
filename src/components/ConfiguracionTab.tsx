@@ -388,7 +388,7 @@ export const ConfiguracionTab: React.FC<ConfiguracionTabProps> = ({
                           Ciérralos o corrige su estanque antes de eliminarlo.
                         </p>
                       ) : cerrados.length > 0 ? (
-                        <p className="text-xs text-red-800">
+                        <p className="text-xs text-amber-800">
                           {cerrados.length} {plural(cerrados.length, 'lote cerrado lo registra', 'lotes cerrados lo registran')}. Sus certificados no cambian,
                           pero la densidad, la analítica y la ocupación ya no mostrarán este estanque.
                         </p>

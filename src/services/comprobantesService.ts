@@ -4,6 +4,7 @@ import { BloqueAnulacion, ComprobanteEntrega, ConsultaEntrega, EventoOrden, Lote
 import { calcularSha256, jsonCanonico, verificarIntegridadLote } from './hashService';
 import { esErrorSinHuellaSegura, huellaParaComparar, MENSAJE_NO_VERIFICABLE, sha256Texto } from '../lib/integridad';
 import { agregarEvento, cantidadPendiente, mensajeError, nuevoEvento, redondear, TOLERANCIA_HORA_MS } from './pedidosService';
+import { sellarBloque } from './selloTiempoService';
 
 // Comprobantes de entrega. Un comprobante definitivo es un registro inmutable en
 // comprobantes/{id} construido SOLO con datos ya confirmados en el servidor (la orden leída dentro
@@ -135,9 +136,10 @@ async function hashDeEventos(eventos: EventoOrden[]): Promise<string> {
   return calcularSha256(jsonCanonico(eventos));
 }
 
-// Contenido sellado del bloque: todo salvo su propio hash y la hora del servidor
+// Contenido sellado del bloque: todo salvo su propio hash, la hora del servidor y el sello de tiempo
+// (los tres se agregan fuera del hash; los bloques anteriores no los tienen y su hash no cambia)
 function contenidoSellado(c: object): object {
-  const { hashComprobante, registradoEnServidor, ...contenido } = c as ComprobanteEntrega;
+  const { hashComprobante, registradoEnServidor, selloTiempo, ...contenido } = c as ComprobanteEntrega;
   return contenido;
 }
 
@@ -189,7 +191,7 @@ export async function anularComprobante(comprobanteId: string, motivo: string): 
   const motivoLimpio = motivo.trim();
   if (motivoLimpio.length < 10) throw new Error('Explica el motivo de la anulación (mínimo 10 caracteres).');
   try {
-    return await runTransaction(db, async (tx) => {
+    const bloqueNuevo = await runTransaction(db, async (tx) => {
       const compSnap = await tx.get(doc(db, 'comprobantes', comprobanteId));
       if (!compSnap.exists()) throw new Error('El comprobante no existe.');
       const anulado = compSnap.data() as ComprobanteEntrega | BloqueAnulacion;
@@ -247,6 +249,8 @@ export async function anularComprobante(comprobanteId: string, motivo: string): 
       });
       return bloque;
     });
+    sellarBloque(bloqueNuevo).catch(() => {});
+    return bloqueNuevo;
   } catch (err) {
     console.error('Error anulando el comprobante:', err);
     throw mensajeError('anular el comprobante', err);
@@ -388,7 +392,7 @@ export async function emitirComprobanteDefinitivo(ordenId: string): Promise<Comp
   try {
     const previa = await getDoc(doc(db, 'ordenes', ordenId));
     const anotaciones = previa.exists() ? await anotacionesDeLotes(Object.keys((previa.data() as OrdenEntrega).procedencias || {})) : {};
-    return await runTransaction(db, async (tx) => {
+    const emitido = await runTransaction(db, async (tx) => {
       const snap = await tx.get(doc(db, 'ordenes', ordenId));
       if (!snap.exists()) throw new Error('La orden no existe.');
       const orden = snap.data() as OrdenEntrega;
@@ -459,6 +463,9 @@ export async function emitirComprobanteDefinitivo(ordenId: string): Promise<Comp
       });
       return comprobante;
     });
+    // Testigo externo (H03): el hash del comprobante va a OpenTimestamps sin bloquear la emisión
+    sellarBloque(emitido).catch(() => {});
+    return emitido;
   } catch (err) {
     console.error('Error emitiendo el comprobante:', err);
     throw mensajeError('emitir el comprobante', err);

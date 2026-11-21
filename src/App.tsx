@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { EsqueletoPantalla } from './components/Esqueleto';
 import { PantallaVerificando } from './components/PantallaVerificando';
 const PantallaIngreso = lazy(() => import('./components/PantallaIngreso').then((m) => ({ default: m.PantallaIngreso })));
-import { DISTANCIA, DURACION, VAR_CONTENIDO_TAB, entrada, salida } from './lib/motion';
+import { DISTANCIA, VAR_CONTENIDO_TAB, entrada, salida } from './lib/motion';
 import { LimiteError, recargarUnaVez } from './components/LimiteError';
 import { useConservar, usePresencia } from './lib/presencia';
 import { onAuthStateChanged, signOut, User } from 'firebase/auth';
@@ -40,8 +40,24 @@ const Cargando = () => <EsqueletoPantalla />;
 import { LotesTab } from './components/LotesTab';
 import { AuthModal } from './components/AuthModal';
 import { NuevoLoteModal } from './components/NuevoLoteModal';
-// El detalle del lote se descarga al abrirlo por primera vez (mantiene el paquete inicial bajo 500 kB)
-const LoteDetailModal = lazy(() => import('./components/LoteDetailModal').then((m) => ({ default: m.LoteDetailModal })));
+// El detalle del lote va en un paquete aparte (mantiene el paquete inicial bajo 500 kB). Se precarga en
+// reposo en cuanto hay lotes y al tocar la zona de contenido, para que la primera apertura anime al instante.
+// Si ya está precargado, lazy lo recibe resuelto en el acto: con una promesa, aunque ya esté resuelta,
+// React suspende y retrasa unos 300 ms la aparición de la ventana
+type ModuloDetalle = typeof import('./components/LoteDetailModal');
+let moduloDetalle: ModuloDetalle | null = null;
+const importarLoteDetalle = () => import('./components/LoteDetailModal').then((m) => (moduloDetalle = m));
+const LoteDetailModal = lazy(() => {
+  const listo = moduloDetalle;
+  if (listo) {
+    const resuelto = { then: (ok: (m: { default: ModuloDetalle['LoteDetailModal'] }) => void) => ok({ default: listo.LoteDetailModal }) };
+    return resuelto as unknown as Promise<{ default: ModuloDetalle['LoteDetailModal'] }>;
+  }
+  return importarLoteDetalle().then((m) => ({ default: m.LoteDetailModal }));
+});
+const precargarLoteDetalle = () => {
+  if (!moduloDetalle) importarLoteDetalle().catch(() => {});
+};
 import { QrModal } from './components/QrModal';
 import { PublicTraceabilityView } from './components/PublicTraceabilityView';
 import { AlertCircle, Lock, Shield, ShieldAlert } from 'lucide-react';
@@ -433,6 +449,18 @@ export default function App() {
       ? loteDetalleEnLista
       : loteDetalleVisible;
 
+  // Precarga del detalle del lote en reposo (sin requestIdleCallback, p. ej. Safari, con un breve retraso)
+  const hayLotes = lotes.length > 0;
+  useEffect(() => {
+    if (!hayLotes) return;
+    if (typeof window.requestIdleCallback === 'function') {
+      const id = window.requestIdleCallback(precargarLoteDetalle, { timeout: 2000 });
+      return () => window.cancelIdleCallback(id);
+    }
+    const t = window.setTimeout(precargarLoteDetalle, 300);
+    return () => window.clearTimeout(t);
+  }, [hayLotes]);
+
   const accesoRestringido = (
     <div className="max-w-2xl mx-auto bg-white rounded-xl border border-slate-200 shadow-xs p-6 flex items-start space-x-3 text-xs text-slate-700">
       <Lock className="w-5 h-5 text-slate-500 shrink-0" />
@@ -609,9 +637,11 @@ export default function App() {
       )}
 
       {/* CONTENIDO PRINCIPAL SEGÚN PESTAÑA SELECCIONADA */}
-      <div className="relative flex-1 flex flex-col min-h-[60vh]">
-      {/* mode="wait": solo un main sale a la vez y la pestaña nueva se monta cuando termina (H58) */}
-      <AnimatePresence mode="wait" initial={false} custom={direccionTab}>
+      <div className="relative flex-1 flex flex-col min-h-[60vh]" onPointerDownCapture={hayLotes ? precargarLoteDetalle : undefined}>
+      {/* Fundido cruzado: la pestaña nueva entra mientras la anterior sale (150 ms) fuera del flujo. La que
+          sale no recibe toques (variante `sale`), así un cambio rápido no deja pestañas viejas activas (H58).
+          El scroll de H31 se restaura sobre main[data-tab] de la pestaña nueva */}
+      <AnimatePresence mode="popLayout" initial={false} custom={direccionTab}>
       <motion.main
         key={tabActiva}
         data-tab={tabActiva}
@@ -809,8 +839,8 @@ export default function App() {
         {avisoFuncion && (
           <motion.div
             role="status"
-            initial={{ opacity: 0, y: DISTANCIA.pantalla }}
-            animate={{ opacity: 1, y: 0, transition: entrada(DURACION.base) }}
+            initial={{ opacity: 0, y: '100%' }}
+            animate={{ opacity: 1, y: 0, transition: entrada() }}
             exit={{ opacity: 0, y: DISTANCIA.pequena, transition: salida() }}
             className="pointer-events-none fixed bottom-4 left-4 z-50 max-w-[calc(100vw-2rem)] sm:max-w-xs flex items-center space-x-2 rounded-lg bg-slate-900 text-white shadow-lg px-3 py-2 text-xs"
           >

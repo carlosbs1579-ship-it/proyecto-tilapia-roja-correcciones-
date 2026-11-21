@@ -1,13 +1,13 @@
 {
-  "fecha": "2026-11-16T21:39:20.032Z",
+  "fecha": "2026-11-17T00:07:52.758Z",
   "lote": "20260801-A-E1",
   "lote2": "20260801-A-E2",
   "contexto": {
-    "ordenId": "PED-20261116-KYGVK",
-    "fotoId": "foto-2d0f0a84-a194-4a48-9b1d-5822b169401e",
-    "comprobanteId": "cmpac7d078495793ab6c1e66900dbd9cbc2d148c3fd",
-    "token": "cd636f7c962c21dcc6c45c388ceb6de7ff38af869",
-    "selloQr": "b1fb9669989d284a"
+    "ordenId": "PED-20261116-TD7Y8",
+    "fotoId": "foto-3a5a37f8-4dd4-4dcf-99f9-729623763780",
+    "comprobanteId": "cmp8b2d3e9043103d6eb52499440de1fdba677b3925",
+    "token": "c3978afff35b43c0430b531ea7227c1a66a036da8",
+    "selloQr": "5fd02ae7140c092b"
   },
   "ataques": [
     {
@@ -23,6 +23,7 @@
         ],
         "datos": {
           "qrAntiguoSinSello": "sin aviso",
+          "selloLote": "confirmado",
           "lote": {
             "estanque": "E1",
             "fechaSiembra": "2026-08-01",
@@ -67,6 +68,7 @@
         ],
         "datos": {
           "qrAntiguoSinSello": "sin aviso",
+          "selloLote": "confirmado",
           "lote": {
             "estanque": "E1",
             "fechaSiembra": "2026-08-01",
@@ -111,6 +113,7 @@
         ],
         "datos": {
           "qrAntiguoSinSello": "sin aviso",
+          "selloLote": "confirmado",
           "lote": {
             "estanque": "E1",
             "fechaSiembra": "2026-08-01",
@@ -155,6 +158,7 @@
         "manuales": [],
         "datos": {
           "qrAntiguoSinSello": "sin aviso",
+          "selloLote": "confirmado",
           "lote": {
             "estanque": "E1",
             "fechaSiembra": "2026-08-01",
@@ -199,6 +203,7 @@
         ],
         "datos": {
           "qrAntiguoSinSello": "avisado",
+          "selloLote": "confirmado",
           "lote": {
             "estanque": "E1",
             "fechaSiembra": "2026-08-01",
@@ -243,6 +248,7 @@
         ],
         "datos": {
           "qrAntiguoSinSello": "avisado",
+          "selloLote": "confirmado",
           "lote": {
             "estanque": "E1",
             "fechaSiembra": "2026-08-01",
@@ -281,6 +287,7 @@
       "senales": {
         "automaticas": [
           "QR lote y detalle: Alimento acumulado (kg): el dato guardado (120) no corresponde a las fases registradas (80). | FCA: el dato guardado (0.26) no corresponde a las fases registradas (0.17). | El sello del lote cambió después de registrar sus anotaciones: el registro sellado fue modificado.",
+          "Sello de tiempo del lote: Posible alteración detectada: el sello registrado en Bitcoin el día 16 de nov de 2026, 07:07 p. m. no coincide con el actual.",
           "QR lote, sección anotaciones: El sello del lote cambió después de anotar: las anotaciones ya no corresponden a este registro sellado.",
           "QR entrega: Comprobante N.º 1: El lote 20260801-A-E1 cambió después de emitir este comprobante: su sello actual no continúa el que quedó registrado.",
           "Panel interno de la orden, comprobante N.º 1: El lote 20260801-A-E1 cambió después de emitir este comprobante: su sello actual no continúa el que quedó registrado."
@@ -288,6 +295,7 @@
         "manuales": [],
         "datos": {
           "qrAntiguoSinSello": "avisado",
+          "selloLote": "alterado",
           "lote": {
             "estanque": "E1",
             "fechaSiembra": "2026-08-01",
@@ -326,12 +334,14 @@
       "senales": {
         "automaticas": [
           "QR lote y detalle: Alimento acumulado (kg): el dato guardado (120) no corresponde a las fases registradas (80). | FCA: el dato guardado (0.26) no corresponde a las fases registradas (0.17).",
+          "Sello de tiempo del lote: Posible alteración detectada: el sello registrado en Bitcoin el día 16 de nov de 2026, 07:07 p. m. no coincide con el actual.",
           "QR entrega: Comprobante N.º 1: El lote 20260801-A-E1 cambió después de emitir este comprobante: su sello actual no continúa el que quedó registrado. | Comprobante N.º 1: Las anotaciones del lote 20260801-A-E1 cambiaron después de emitir este comprobante: se borraron o se recalcularon.",
           "Panel interno de la orden, comprobante N.º 1: El lote 20260801-A-E1 cambió después de emitir este comprobante: su sello actual no continúa el que quedó registrado. Las anotaciones del lote 20260801-A-E1 cambiaron después de emitir este comprobante: se borraron o se recalcularon."
         ],
         "manuales": [],
         "datos": {
           "qrAntiguoSinSello": "avisado",
+          "selloLote": "alterado",
           "lote": {
             "estanque": "E1",
             "fechaSiembra": "2026-08-01",
@@ -370,12 +380,14 @@
       "senales": {
         "automaticas": [
           "QR lote y detalle: Alimento acumulado (kg): el dato guardado (120) no corresponde a las fases registradas (80). | FCA: el dato guardado (0.26) no corresponde a las fases registradas (0.17).",
+          "Sello de tiempo del lote: Posible alteración detectada: el sello registrado en Bitcoin el día 16 de nov de 2026, 07:07 p. m. no coincide con el actual.",
           "QR entrega: Comprobante N.º 1: El lote 20260801-A-E1 cambió después de emitir este comprobante: su sello actual no continúa el que quedó registrado. | Comprobante N.º 1: Las anotaciones del lote 20260801-A-E1 cambiaron después de emitir este comprobante: se borraron o se recalcularon.",
           "Panel interno de la orden, comprobante N.º 1: El lote 20260801-A-E1 cambió después de emitir este comprobante: su sello actual no continúa el que quedó registrado. Las anotaciones del lote 20260801-A-E1 cambiaron después de emitir este comprobante: se borraron o se recalcularon."
         ],
         "manuales": [],
         "datos": {
           "qrAntiguoSinSello": "avisado",
+          "selloLote": "alterado",
           "lote": {
             "estanque": "E1",
             "fechaSiembra": "2026-08-01",
@@ -413,13 +425,15 @@
       "resultado": "detectado y avisado",
       "senales": {
         "automaticas": [
-          "Solo QR con sello impreso: El sello impreso en el código QR (b1fb9669989d284a) no coincide con el sello actual del lote: el registro cambió después de imprimir la etiqueta.",
+          "Solo QR con sello impreso: El sello impreso en el código QR (5fd02ae7140c092b) no coincide con el sello actual del lote: el registro cambió después de imprimir la etiqueta.",
+          "Sello de tiempo del lote: Posible alteración detectada: el sello registrado en Bitcoin el día 16 de nov de 2026, 07:07 p. m. no coincide con el actual.",
           "QR entrega: Comprobante N.º 1: El lote 20260801-A-E1 cambió después de emitir este comprobante: su sello actual no continúa el que quedó registrado. | Comprobante N.º 1: Las anotaciones del lote 20260801-A-E1 cambiaron después de emitir este comprobante: se borraron o se recalcularon.",
           "Panel interno de la orden, comprobante N.º 1: El lote 20260801-A-E1 cambió después de emitir este comprobante: su sello actual no continúa el que quedó registrado. Las anotaciones del lote 20260801-A-E1 cambiaron después de emitir este comprobante: se borraron o se recalcularon."
         ],
         "manuales": [],
         "datos": {
           "qrAntiguoSinSello": "sin aviso",
+          "selloLote": "alterado",
           "lote": {
             "estanque": "E1",
             "fechaSiembra": "2026-08-01",
@@ -462,6 +476,7 @@
         "manuales": [],
         "datos": {
           "qrAntiguoSinSello": "avisado",
+          "selloLote": "confirmado",
           "lote": {
             "estanque": "E1",
             "fechaSiembra": "2026-08-01",
@@ -500,13 +515,15 @@
       "senales": {
         "automaticas": [
           "QR lote y detalle: El sello de cierre guardado no coincide con la última fase registrada: se borró o se cambió una fase. | Peces cosechados: el dato guardado (900) no corresponde a las fases registradas (0). | Peces vivos: el dato guardado (80) no corresponde a las fases registradas (980). | Peso promedio (g): el dato guardado (480) no corresponde a las fases registradas (350). | Biomasa estimada (kg): el dato guardado (38.4) no corresponde a las fases registradas (343). | Biomasa cosechada (kg): el dato guardado (432) no corresponde a las fases registradas (0). | FCA: el dato guardado (0.26) no corresponde a las fases registradas (0.36). | Ganancia diaria (g): el dato guardado (4.44) no corresponde a las fases registradas (3.22). | El sello del lote cambió después de registrar sus anotaciones: el registro sellado fue modificado.",
+          "Sello de tiempo del lote: Posible alteración detectada: el sello registrado en Bitcoin el día 16 de nov de 2026, 07:07 p. m. no coincide con el actual.",
           "QR lote, sección anotaciones: El sello del lote cambió después de anotar: las anotaciones ya no corresponden a este registro sellado."
         ],
         "manuales": [
-          "Botón \"Verificar integridad\" / IntegrityCheckModal: El sello de cierre registrado (b1fb9669989d…) no coincide con el último hash de la cadena (0723f84328ba…): se borró o se cambió una fase."
+          "Botón \"Verificar integridad\" / IntegrityCheckModal: El sello de cierre registrado (5fd02ae7140c…) no coincide con el último hash de la cadena (d09f071debab…): se borró o se cambió una fase."
         ],
         "datos": {
           "qrAntiguoSinSello": "avisado",
+          "selloLote": "alterado",
           "lote": {
             "estanque": "E1",
             "fechaSiembra": "2026-08-01",
@@ -545,6 +562,7 @@
       "senales": {
         "automaticas": [
           "QR lote y detalle: Peces cosechados: el dato guardado (900) no corresponde a las fases registradas (0). | Peces vivos: el dato guardado (80) no corresponde a las fases registradas (980). | Peso promedio (g): el dato guardado (480) no corresponde a las fases registradas (350). | Biomasa estimada (kg): el dato guardado (38.4) no corresponde a las fases registradas (343). | Biomasa cosechada (kg): el dato guardado (432) no corresponde a las fases registradas (0). | FCA: el dato guardado (0.26) no corresponde a las fases registradas (0.36). | Ganancia diaria (g): el dato guardado (4.44) no corresponde a las fases registradas (3.22). | El sello del lote cambió después de registrar sus anotaciones: el registro sellado fue modificado.",
+          "Sello de tiempo del lote: Posible alteración detectada: el sello registrado en Bitcoin el día 16 de nov de 2026, 07:07 p. m. no coincide con el actual.",
           "QR lote, sección anotaciones: El sello del lote cambió después de anotar: las anotaciones ya no corresponden a este registro sellado.",
           "QR entrega: Comprobante N.º 1: El lote 20260801-A-E1 cambió después de emitir este comprobante: su sello actual no continúa el que quedó registrado.",
           "Panel interno de la orden, comprobante N.º 1: El lote 20260801-A-E1 cambió después de emitir este comprobante: su sello actual no continúa el que quedó registrado."
@@ -552,6 +570,7 @@
         "manuales": [],
         "datos": {
           "qrAntiguoSinSello": "avisado",
+          "selloLote": "alterado",
           "lote": {
             "estanque": "E1",
             "fechaSiembra": "2026-08-01",
@@ -590,12 +609,14 @@
       "senales": {
         "automaticas": [
           "QR lote y detalle: Peces cosechados: el dato guardado (900) no corresponde a las fases registradas (0). | Peces vivos: el dato guardado (80) no corresponde a las fases registradas (980). | Peso promedio (g): el dato guardado (480) no corresponde a las fases registradas (350). | Biomasa estimada (kg): el dato guardado (38.4) no corresponde a las fases registradas (343). | Biomasa cosechada (kg): el dato guardado (432) no corresponde a las fases registradas (0). | FCA: el dato guardado (0.26) no corresponde a las fases registradas (0.36). | Ganancia diaria (g): el dato guardado (4.44) no corresponde a las fases registradas (3.22).",
+          "Sello de tiempo del lote: Posible alteración detectada: el sello registrado en Bitcoin el día 16 de nov de 2026, 07:07 p. m. no coincide con el actual.",
           "QR entrega: Comprobante N.º 1: El lote 20260801-A-E1 cambió después de emitir este comprobante: su sello actual no continúa el que quedó registrado. | Comprobante N.º 1: Las anotaciones del lote 20260801-A-E1 cambiaron después de emitir este comprobante: se borraron o se recalcularon.",
           "Panel interno de la orden, comprobante N.º 1: El lote 20260801-A-E1 cambió después de emitir este comprobante: su sello actual no continúa el que quedó registrado. Las anotaciones del lote 20260801-A-E1 cambiaron después de emitir este comprobante: se borraron o se recalcularon."
         ],
         "manuales": [],
         "datos": {
           "qrAntiguoSinSello": "avisado",
+          "selloLote": "alterado",
           "lote": {
             "estanque": "E1",
             "fechaSiembra": "2026-08-01",
@@ -633,13 +654,15 @@
       "resultado": "detectado y avisado",
       "senales": {
         "automaticas": [
-          "Solo QR con sello impreso: El sello impreso en el código QR (b1fb9669989d284a) no coincide con el sello actual del lote: el registro cambió después de imprimir la etiqueta.",
+          "Solo QR con sello impreso: El sello impreso en el código QR (5fd02ae7140c092b) no coincide con el sello actual del lote: el registro cambió después de imprimir la etiqueta.",
+          "Sello de tiempo del lote: Posible alteración detectada: el sello registrado en Bitcoin el día 16 de nov de 2026, 07:07 p. m. no coincide con el actual.",
           "QR entrega: Comprobante N.º 1: El lote 20260801-A-E1 cambió después de emitir este comprobante: su sello actual no continúa el que quedó registrado. | Comprobante N.º 1: Las anotaciones del lote 20260801-A-E1 cambiaron después de emitir este comprobante: se borraron o se recalcularon.",
           "Panel interno de la orden, comprobante N.º 1: El lote 20260801-A-E1 cambió después de emitir este comprobante: su sello actual no continúa el que quedó registrado. Las anotaciones del lote 20260801-A-E1 cambiaron después de emitir este comprobante: se borraron o se recalcularon."
         ],
         "manuales": [],
         "datos": {
           "qrAntiguoSinSello": "sin aviso",
+          "selloLote": "alterado",
           "lote": {
             "estanque": "E1",
             "fechaSiembra": "2026-08-01",
@@ -683,6 +706,7 @@
         "manuales": [],
         "datos": {
           "qrAntiguoSinSello": "sin aviso",
+          "selloLote": "confirmado",
           "lote": {
             "estanque": "E1",
             "fechaSiembra": "2026-08-01",
@@ -721,11 +745,13 @@
       "senales": {
         "automaticas": [
           "QR entrega: Registro N.º 1: Verificación fallida: el índice de consulta registra otro hash.",
-          "Panel interno de la orden, comprobante N.º 1: Verificación fallida: la orden registró otro hash al emitirlo."
+          "Panel interno de la orden, comprobante N.º 1: Verificación fallida: la orden registró otro hash al emitirlo.",
+          "Sello de tiempo del registro N.º 1: Posible alteración detectada: el sello registrado en Bitcoin el día 16 de nov de 2026, 07:07 p. m. no coincide con el actual."
         ],
         "manuales": [],
         "datos": {
           "qrAntiguoSinSello": "sin aviso",
+          "selloLote": "confirmado",
           "lote": {
             "estanque": "E1",
             "fechaSiembra": "2026-08-01",
@@ -763,11 +789,13 @@
       "resultado": "detectado y avisado",
       "senales": {
         "automaticas": [
-          "Panel interno de la orden, comprobante N.º 1: Verificación fallida: la orden registró otro hash al emitirlo; el cliente no coincide con la orden."
+          "Panel interno de la orden, comprobante N.º 1: Verificación fallida: la orden registró otro hash al emitirlo; el cliente no coincide con la orden.",
+          "Sello de tiempo del registro N.º 1: Posible alteración detectada: el sello registrado en Bitcoin el día 16 de nov de 2026, 07:07 p. m. no coincide con el actual."
         ],
         "manuales": [],
         "datos": {
           "qrAntiguoSinSello": "sin aviso",
+          "selloLote": "confirmado",
           "lote": {
             "estanque": "E1",
             "fechaSiembra": "2026-08-01",
@@ -810,6 +838,7 @@
         "manuales": [],
         "datos": {
           "qrAntiguoSinSello": "sin aviso",
+          "selloLote": "confirmado",
           "lote": {
             "estanque": "E1",
             "fechaSiembra": "2026-08-01",
@@ -853,6 +882,7 @@
         "manuales": [],
         "datos": {
           "qrAntiguoSinSello": "sin aviso",
+          "selloLote": "confirmado",
           "lote": {
             "estanque": "E1",
             "fechaSiembra": "2026-08-01",
@@ -889,6 +919,7 @@
         "manuales": [],
         "datos": {
           "qrAntiguoSinSello": "sin aviso",
+          "selloLote": "confirmado",
           "lote": {
             "estanque": "E1",
             "fechaSiembra": "2026-08-01",
@@ -925,6 +956,7 @@
       "senales": {
         "automaticas": [
           "QR lote y detalle: El lote está sellado pero no tiene fases registradas: su historial fue vaciado. | El lote está sellado pero su sello de cierre está vacío. | El sello del lote cambió después de registrar sus anotaciones: el registro sellado fue modificado.",
+          "Sello de tiempo del lote: Posible alteración detectada: el sello registrado en Bitcoin el día 16 de nov de 2026, 07:07 p. m. no coincide con el actual.",
           "QR lote, sección anotaciones: El sello del lote cambió después de anotar: las anotaciones ya no corresponden a este registro sellado.",
           "QR entrega: Comprobante N.º 1: El lote 20260801-A-E1 cambió después de emitir este comprobante: su sello actual no continúa el que quedó registrado.",
           "Panel interno de la orden, comprobante N.º 1: El lote 20260801-A-E1 cambió después de emitir este comprobante: su sello actual no continúa el que quedó registrado."
@@ -934,6 +966,7 @@
         ],
         "datos": {
           "qrAntiguoSinSello": "avisado",
+          "selloLote": "alterado",
           "lote": {
             "estanque": "E1",
             "fechaSiembra": "2026-08-01",
@@ -979,6 +1012,7 @@
         ],
         "datos": {
           "qrAntiguoSinSello": "avisado",
+          "selloLote": "confirmado",
           "lote": {
             "estanque": "E1",
             "fechaSiembra": "2026-08-01",
@@ -1021,6 +1055,7 @@
         "manuales": [],
         "datos": {
           "qrAntiguoSinSello": "avisado",
+          "selloLote": "confirmado",
           "lote": {
             "estanque": "E1",
             "fechaSiembra": "2026-08-01",
@@ -1065,6 +1100,7 @@
         "manuales": [],
         "datos": {
           "qrAntiguoSinSello": "sin aviso",
+          "selloLote": "confirmado",
           "lote": {
             "estanque": "E1",
             "fechaSiembra": "2026-08-01",
@@ -1102,11 +1138,13 @@
       "resultado": "detectado y avisado",
       "senales": {
         "automaticas": [
-          "Panel interno de la orden, comprobante N.º 1: Verificación fallida: la orden registró otro hash al emitirlo."
+          "Panel interno de la orden, comprobante N.º 1: Verificación fallida: la orden registró otro hash al emitirlo.",
+          "Sello de tiempo del registro N.º 1: Posible alteración detectada: el sello registrado en Bitcoin el día 16 de nov de 2026, 07:07 p. m. no coincide con el actual."
         ],
         "manuales": [],
         "datos": {
           "qrAntiguoSinSello": "sin aviso",
+          "selloLote": "confirmado",
           "lote": {
             "estanque": "E1",
             "fechaSiembra": "2026-08-01",
@@ -1149,6 +1187,7 @@
         "manuales": [],
         "datos": {
           "qrAntiguoSinSello": "sin aviso",
+          "selloLote": "confirmado",
           "lote": {
             "estanque": "E1",
             "fechaSiembra": "2026-08-01",
@@ -1192,6 +1231,7 @@
         "manuales": [],
         "datos": {
           "qrAntiguoSinSello": "sin aviso",
+          "selloLote": "confirmado",
           "lote": {
             "estanque": "E1",
             "fechaSiembra": "2026-08-01",
@@ -1235,6 +1275,7 @@
         "manuales": [],
         "datos": {
           "qrAntiguoSinSello": "sin aviso",
+          "selloLote": "confirmado",
           "lote": {
             "estanque": "E1",
             "fechaSiembra": "2026-08-01",
@@ -1277,6 +1318,7 @@
         "manuales": [],
         "datos": {
           "qrAntiguoSinSello": "sin aviso",
+          "selloLote": "confirmado",
           "lote": {
             "estanque": "E1",
             "fechaSiembra": "2026-08-01",
@@ -1320,6 +1362,7 @@
         "manuales": [],
         "datos": {
           "qrAntiguoSinSello": "sin aviso",
+          "selloLote": "confirmado",
           "lote": {
             "estanque": "E1",
             "fechaSiembra": "2026-08-01",
@@ -1363,6 +1406,7 @@
         "manuales": [],
         "datos": {
           "qrAntiguoSinSello": "sin aviso",
+          "selloLote": "confirmado",
           "lote": {
             "estanque": "E1",
             "fechaSiembra": "2026-08-01",
@@ -1405,6 +1449,7 @@
         "manuales": [],
         "datos": {
           "qrAntiguoSinSello": "sin aviso",
+          "selloLote": "confirmado",
           "lote": {
             "estanque": "E1",
             "fechaSiembra": "2026-08-01",
@@ -1442,13 +1487,15 @@
       "resultado": "detectado y avisado",
       "senales": {
         "automaticas": [
-          "Solo QR con sello impreso: El sello impreso en el código QR (b1fb9669989d284a) no coincide con el sello actual del lote: el registro cambió después de imprimir la etiqueta.",
+          "Solo QR con sello impreso: El sello impreso en el código QR (5fd02ae7140c092b) no coincide con el sello actual del lote: el registro cambió después de imprimir la etiqueta.",
+          "Sello de tiempo del lote: Posible alteración detectada: el sello registrado en Bitcoin el día 16 de nov de 2026, 07:07 p. m. no coincide con el actual.",
           "QR entrega: Comprobante N.º 1: El lote 20260801-A-E1 cambió después de emitir este comprobante: su sello actual no continúa el que quedó registrado. | Comprobante N.º 1: Las anotaciones del lote 20260801-A-E1 cambiaron después de emitir este comprobante: se borraron o se recalcularon.",
           "Panel interno de la orden, comprobante N.º 1: El lote 20260801-A-E1 cambió después de emitir este comprobante: su sello actual no continúa el que quedó registrado. Las anotaciones del lote 20260801-A-E1 cambiaron después de emitir este comprobante: se borraron o se recalcularon."
         ],
         "manuales": [],
         "datos": {
           "qrAntiguoSinSello": "sin aviso",
+          "selloLote": "alterado",
           "lote": {
             "estanque": "E1",
             "fechaSiembra": "2026-08-01",
@@ -1486,12 +1533,15 @@
       "resultado": "detectado y avisado",
       "senales": {
         "automaticas": [
-          "Solo QR con sello impreso: El sello impreso en el código QR (b1fb9669989d284a) no coincide con el sello actual del lote: el registro cambió después de imprimir la etiqueta.",
+          "Solo QR con sello impreso: El sello impreso en el código QR (5fd02ae7140c092b) no coincide con el sello actual del lote: el registro cambió después de imprimir la etiqueta.",
+          "Sello de tiempo del lote: Posible alteración detectada: el sello registrado en Bitcoin el día 16 de nov de 2026, 07:07 p. m. no coincide con el actual.",
+          "Sello de tiempo del registro N.º 1: Posible alteración detectada: el sello registrado en Bitcoin el día 16 de nov de 2026, 07:07 p. m. no coincide con el actual.",
           "Panel interno de la orden, historial: Posible alteración detectada en el evento N.º 5 (Comprobante emitido): su contenido no corresponde a su huella."
         ],
         "manuales": [],
         "datos": {
           "qrAntiguoSinSello": "sin aviso",
+          "selloLote": "alterado",
           "lote": {
             "estanque": "E1",
             "fechaSiembra": "2026-08-01",
@@ -1524,6 +1574,492 @@
       }
     },
     {
+      "id": "TS-a",
+      "nombre": "Reescribir toda la cadena del lote con sello de tiempo confirmado (fase, cadena, resumen y anotaciones), sin tocar el sello",
+      "resultado": "detectado y avisado",
+      "senales": {
+        "automaticas": [
+          "Solo QR con sello impreso: El sello impreso en el código QR (5fd02ae7140c092b) no coincide con el sello actual del lote: el registro cambió después de imprimir la etiqueta.",
+          "Sello de tiempo del lote: Posible alteración detectada: el sello registrado en Bitcoin el día 16 de nov de 2026, 07:07 p. m. no coincide con el actual.",
+          "QR entrega: Comprobante N.º 1: El lote 20260801-A-E1 cambió después de emitir este comprobante: su sello actual no continúa el que quedó registrado. | Comprobante N.º 1: Las anotaciones del lote 20260801-A-E1 cambiaron después de emitir este comprobante: se borraron o se recalcularon.",
+          "Panel interno de la orden, comprobante N.º 1: El lote 20260801-A-E1 cambió después de emitir este comprobante: su sello actual no continúa el que quedó registrado. Las anotaciones del lote 20260801-A-E1 cambiaron después de emitir este comprobante: se borraron o se recalcularon."
+        ],
+        "manuales": [],
+        "datos": {
+          "qrAntiguoSinSello": "sin aviso",
+          "selloLote": "alterado",
+          "lote": {
+            "estanque": "E1",
+            "fechaSiembra": "2026-08-01",
+            "fechaCierre": "2026-11-16",
+            "producto": "Tilapia roja entera fresca",
+            "cantidadSembrada": 1000,
+            "supervivencia": 98,
+            "pesoPromedioActualG": 480,
+            "biomasaEstimadaKg": 38.4,
+            "fases": 6,
+            "alimentoFase2": 80,
+            "anotacionesValidas": 1,
+            "qrAntiguoSinSello": "sin aviso"
+          },
+          "foto": {
+            "mostrada": "data:image/jpeg;base64,/9j/4AAQSkZJRgABA…",
+            "hashDoc": "d1da3e6695f6",
+            "hashEvento": "d1da3e6695f6",
+            "estado": "verificada"
+          },
+          "entregaPublica": {
+            "cantidadEntregada": 50,
+            "cliente": "PRUEBA-Restaurante Integridad",
+            "vigente": "ninguno (la cadena tiene problemas)",
+            "versionesIndice": 1,
+            "bloquesLeidos": 1
+          },
+          "historialOrden": "verificado"
+        }
+      }
+    },
+    {
+      "id": "TS-b",
+      "nombre": "TS-a y además poner el sello nuevo como digest del selloTiempo (la prueba sigue siendo la original)",
+      "resultado": "detectado y avisado",
+      "senales": {
+        "automaticas": [
+          "Solo QR con sello impreso: El sello impreso en el código QR (5fd02ae7140c092b) no coincide con el sello actual del lote: el registro cambió después de imprimir la etiqueta.",
+          "Sello de tiempo del lote: Posible alteración detectada: el sello registrado en Bitcoin el día 16 de nov de 2026, 07:07 p. m. no coincide con el actual. | La prueba del sello de tiempo no corresponde al sello registrado: fue reemplazada.",
+          "QR entrega: Comprobante N.º 1: El lote 20260801-A-E1 cambió después de emitir este comprobante: su sello actual no continúa el que quedó registrado. | Comprobante N.º 1: Las anotaciones del lote 20260801-A-E1 cambiaron después de emitir este comprobante: se borraron o se recalcularon.",
+          "Panel interno de la orden, comprobante N.º 1: El lote 20260801-A-E1 cambió después de emitir este comprobante: su sello actual no continúa el que quedó registrado. Las anotaciones del lote 20260801-A-E1 cambiaron después de emitir este comprobante: se borraron o se recalcularon."
+        ],
+        "manuales": [],
+        "datos": {
+          "qrAntiguoSinSello": "sin aviso",
+          "selloLote": "alterado",
+          "lote": {
+            "estanque": "E1",
+            "fechaSiembra": "2026-08-01",
+            "fechaCierre": "2026-11-16",
+            "producto": "Tilapia roja entera fresca",
+            "cantidadSembrada": 1000,
+            "supervivencia": 98,
+            "pesoPromedioActualG": 480,
+            "biomasaEstimadaKg": 38.4,
+            "fases": 6,
+            "alimentoFase2": 80,
+            "anotacionesValidas": 1,
+            "qrAntiguoSinSello": "sin aviso"
+          },
+          "foto": {
+            "mostrada": "data:image/jpeg;base64,/9j/4AAQSkZJRgABA…",
+            "hashDoc": "d1da3e6695f6",
+            "hashEvento": "d1da3e6695f6",
+            "estado": "verificada"
+          },
+          "entregaPublica": {
+            "cantidadEntregada": 50,
+            "cliente": "PRUEBA-Restaurante Integridad",
+            "vigente": "ninguno (la cadena tiene problemas)",
+            "versionesIndice": 1,
+            "bloquesLeidos": 1
+          },
+          "historialOrden": "verificado"
+        }
+      }
+    },
+    {
+      "id": "TS-c",
+      "nombre": "TS-a y fabricar la prueba .ots con el sello nuevo (mismas operaciones y atestación de Bitcoin)",
+      "resultado": "detectado y avisado",
+      "senales": {
+        "automaticas": [
+          "Solo QR con sello impreso: El sello impreso en el código QR (5fd02ae7140c092b) no coincide con el sello actual del lote: el registro cambió después de imprimir la etiqueta.",
+          "Sello de tiempo del lote: La prueba del sello de tiempo no coincide con el bloque 900000 de Bitcoin: fue fabricada o alterada.",
+          "QR entrega: Comprobante N.º 1: El lote 20260801-A-E1 cambió después de emitir este comprobante: su sello actual no continúa el que quedó registrado. | Comprobante N.º 1: Las anotaciones del lote 20260801-A-E1 cambiaron después de emitir este comprobante: se borraron o se recalcularon.",
+          "Panel interno de la orden, comprobante N.º 1: El lote 20260801-A-E1 cambió después de emitir este comprobante: su sello actual no continúa el que quedó registrado. Las anotaciones del lote 20260801-A-E1 cambiaron después de emitir este comprobante: se borraron o se recalcularon."
+        ],
+        "manuales": [],
+        "datos": {
+          "qrAntiguoSinSello": "sin aviso",
+          "selloLote": "alterado",
+          "lote": {
+            "estanque": "E1",
+            "fechaSiembra": "2026-08-01",
+            "fechaCierre": "2026-11-16",
+            "producto": "Tilapia roja entera fresca",
+            "cantidadSembrada": 1000,
+            "supervivencia": 98,
+            "pesoPromedioActualG": 480,
+            "biomasaEstimadaKg": 38.4,
+            "fases": 6,
+            "alimentoFase2": 80,
+            "anotacionesValidas": 1,
+            "qrAntiguoSinSello": "sin aviso"
+          },
+          "foto": {
+            "mostrada": "data:image/jpeg;base64,/9j/4AAQSkZJRgABA…",
+            "hashDoc": "d1da3e6695f6",
+            "hashEvento": "d1da3e6695f6",
+            "estado": "verificada"
+          },
+          "entregaPublica": {
+            "cantidadEntregada": 50,
+            "cliente": "PRUEBA-Restaurante Integridad",
+            "vigente": "ninguno (la cadena tiene problemas)",
+            "versionesIndice": 1,
+            "bloquesLeidos": 1
+          },
+          "historialOrden": "verificado"
+        }
+      }
+    },
+    {
+      "id": "TS-d",
+      "nombre": "TS-a y volver a sellar el lote reescrito (prueba nueva que Bitcoin confirma 10 días después del cierre)",
+      "resultado": "detectado y avisado",
+      "senales": {
+        "automaticas": [
+          "Solo QR con sello impreso: El sello impreso en el código QR (5fd02ae7140c092b) no coincide con el sello actual del lote: el registro cambió después de imprimir la etiqueta.",
+          "Sello de tiempo del lote: El sello se registró en Bitcoin 9 días después del cierre o la emisión: solo prueba que el registro existía desde el 26 de nov de 2026, 07:07 p. m..",
+          "QR entrega: Comprobante N.º 1: El lote 20260801-A-E1 cambió después de emitir este comprobante: su sello actual no continúa el que quedó registrado. | Comprobante N.º 1: Las anotaciones del lote 20260801-A-E1 cambiaron después de emitir este comprobante: se borraron o se recalcularon.",
+          "Panel interno de la orden, comprobante N.º 1: El lote 20260801-A-E1 cambió después de emitir este comprobante: su sello actual no continúa el que quedó registrado. Las anotaciones del lote 20260801-A-E1 cambiaron después de emitir este comprobante: se borraron o se recalcularon."
+        ],
+        "manuales": [],
+        "datos": {
+          "qrAntiguoSinSello": "sin aviso",
+          "selloLote": "confirmado",
+          "lote": {
+            "estanque": "E1",
+            "fechaSiembra": "2026-08-01",
+            "fechaCierre": "2026-11-16",
+            "producto": "Tilapia roja entera fresca",
+            "cantidadSembrada": 1000,
+            "supervivencia": 98,
+            "pesoPromedioActualG": 480,
+            "biomasaEstimadaKg": 38.4,
+            "fases": 6,
+            "alimentoFase2": 80,
+            "anotacionesValidas": 1,
+            "qrAntiguoSinSello": "sin aviso"
+          },
+          "foto": {
+            "mostrada": "data:image/jpeg;base64,/9j/4AAQSkZJRgABA…",
+            "hashDoc": "d1da3e6695f6",
+            "hashEvento": "d1da3e6695f6",
+            "estado": "verificada"
+          },
+          "entregaPublica": {
+            "cantidadEntregada": 50,
+            "cliente": "PRUEBA-Restaurante Integridad",
+            "vigente": "ninguno (la cadena tiene problemas)",
+            "versionesIndice": 1,
+            "bloquesLeidos": 1
+          },
+          "historialOrden": "verificado"
+        }
+      }
+    },
+    {
+      "id": "TS-e",
+      "nombre": "Borrar el selloTiempo del lote",
+      "resultado": "detectado y avisado",
+      "senales": {
+        "automaticas": [
+          "Sello de tiempo del lote: Sin sello de tiempo: este registro debería tener su sello en Bitcoin y no lo tiene. Si el aviso persiste, consulte a Cultivos Loré."
+        ],
+        "manuales": [],
+        "datos": {
+          "qrAntiguoSinSello": "sin aviso",
+          "selloLote": "sin_sello",
+          "lote": {
+            "estanque": "E1",
+            "fechaSiembra": "2026-08-01",
+            "fechaCierre": "2026-11-16",
+            "producto": "Tilapia roja entera fresca",
+            "cantidadSembrada": 1000,
+            "supervivencia": 98,
+            "pesoPromedioActualG": 480,
+            "biomasaEstimadaKg": 38.4,
+            "fases": 6,
+            "alimentoFase2": 120,
+            "anotacionesValidas": 1,
+            "qrAntiguoSinSello": "sin aviso"
+          },
+          "foto": {
+            "mostrada": "data:image/jpeg;base64,/9j/4AAQSkZJRgABA…",
+            "hashDoc": "d1da3e6695f6",
+            "hashEvento": "d1da3e6695f6",
+            "estado": "verificada"
+          },
+          "entregaPublica": {
+            "cantidadEntregada": 50,
+            "cliente": "PRUEBA-Restaurante Integridad",
+            "vigente": "N.º 1",
+            "versionesIndice": 1,
+            "bloquesLeidos": 1
+          },
+          "historialOrden": "verificado"
+        }
+      }
+    },
+    {
+      "id": "TS-f",
+      "nombre": "Cambiar el selloTiempo del lote por el de otro registro (el del comprobante)",
+      "resultado": "detectado y avisado",
+      "senales": {
+        "automaticas": [
+          "Sello de tiempo del lote: Posible alteración detectada: el sello registrado en Bitcoin el día 16 de nov de 2026, 07:07 p. m. no coincide con el actual. | La ficha nutricional congelada al cerrar no coincide con la registrada en el sello de tiempo: fue cambiada."
+        ],
+        "manuales": [],
+        "datos": {
+          "qrAntiguoSinSello": "sin aviso",
+          "selloLote": "alterado",
+          "lote": {
+            "estanque": "E1",
+            "fechaSiembra": "2026-08-01",
+            "fechaCierre": "2026-11-16",
+            "producto": "Tilapia roja entera fresca",
+            "cantidadSembrada": 1000,
+            "supervivencia": 98,
+            "pesoPromedioActualG": 480,
+            "biomasaEstimadaKg": 38.4,
+            "fases": 6,
+            "alimentoFase2": 120,
+            "anotacionesValidas": 1,
+            "qrAntiguoSinSello": "sin aviso"
+          },
+          "foto": {
+            "mostrada": "data:image/jpeg;base64,/9j/4AAQSkZJRgABA…",
+            "hashDoc": "d1da3e6695f6",
+            "hashEvento": "d1da3e6695f6",
+            "estado": "verificada"
+          },
+          "entregaPublica": {
+            "cantidadEntregada": 50,
+            "cliente": "PRUEBA-Restaurante Integridad",
+            "vigente": "N.º 1",
+            "versionesIndice": 1,
+            "bloquesLeidos": 1
+          },
+          "historialOrden": "verificado"
+        }
+      }
+    },
+    {
+      "id": "TS-g",
+      "nombre": "Alterar el comprobante y recalcular su hash, el índice y el evento de la orden (el sello de tiempo queda igual)",
+      "resultado": "detectado y avisado",
+      "senales": {
+        "automaticas": [
+          "Sello de tiempo del registro N.º 1: Posible alteración detectada: el sello registrado en Bitcoin el día 16 de nov de 2026, 07:07 p. m. no coincide con el actual.",
+          "Panel interno de la orden, historial: Posible alteración detectada en el evento N.º 5 (Comprobante emitido): su contenido no corresponde a su huella."
+        ],
+        "manuales": [],
+        "datos": {
+          "qrAntiguoSinSello": "sin aviso",
+          "selloLote": "confirmado",
+          "lote": {
+            "estanque": "E1",
+            "fechaSiembra": "2026-08-01",
+            "fechaCierre": "2026-11-16",
+            "producto": "Tilapia roja entera fresca",
+            "cantidadSembrada": 1000,
+            "supervivencia": 98,
+            "pesoPromedioActualG": 480,
+            "biomasaEstimadaKg": 38.4,
+            "fases": 6,
+            "alimentoFase2": 120,
+            "anotacionesValidas": 1,
+            "qrAntiguoSinSello": "sin aviso"
+          },
+          "foto": {
+            "mostrada": "data:image/jpeg;base64,/9j/4AAQSkZJRgABA…",
+            "hashDoc": "d1da3e6695f6",
+            "hashEvento": "d1da3e6695f6",
+            "estado": "verificada"
+          },
+          "entregaPublica": {
+            "cantidadEntregada": 80,
+            "cliente": "PRUEBA-Restaurante Integridad",
+            "vigente": "N.º 1",
+            "versionesIndice": 1,
+            "bloquesLeidos": 1
+          },
+          "historialOrden": "alterado"
+        }
+      }
+    },
+    {
+      "id": "TS-h",
+      "nombre": "Borrar el selloTiempo del comprobante",
+      "resultado": "detectado y avisado",
+      "senales": {
+        "automaticas": [
+          "Sello de tiempo del registro N.º 1: Sin sello de tiempo: este registro debería tener su sello en Bitcoin y no lo tiene. Si el aviso persiste, consulte a Cultivos Loré."
+        ],
+        "manuales": [],
+        "datos": {
+          "qrAntiguoSinSello": "sin aviso",
+          "selloLote": "confirmado",
+          "lote": {
+            "estanque": "E1",
+            "fechaSiembra": "2026-08-01",
+            "fechaCierre": "2026-11-16",
+            "producto": "Tilapia roja entera fresca",
+            "cantidadSembrada": 1000,
+            "supervivencia": 98,
+            "pesoPromedioActualG": 480,
+            "biomasaEstimadaKg": 38.4,
+            "fases": 6,
+            "alimentoFase2": 120,
+            "anotacionesValidas": 1,
+            "qrAntiguoSinSello": "sin aviso"
+          },
+          "foto": {
+            "mostrada": "data:image/jpeg;base64,/9j/4AAQSkZJRgABA…",
+            "hashDoc": "d1da3e6695f6",
+            "hashEvento": "d1da3e6695f6",
+            "estado": "verificada"
+          },
+          "entregaPublica": {
+            "cantidadEntregada": 50,
+            "cliente": "PRUEBA-Restaurante Integridad",
+            "vigente": "N.º 1",
+            "versionesIndice": 1,
+            "bloquesLeidos": 1
+          },
+          "historialOrden": "verificado"
+        }
+      }
+    },
+    {
+      "id": "F41-a",
+      "nombre": "Cambiar la ficha nutricional congelada del lote cerrado (sodio 52 a 5 mg)",
+      "resultado": "detectado y avisado",
+      "senales": {
+        "automaticas": [
+          "Sello de tiempo del lote: La ficha nutricional congelada al cerrar no coincide con la registrada en el sello de tiempo: fue cambiada."
+        ],
+        "manuales": [],
+        "datos": {
+          "qrAntiguoSinSello": "sin aviso",
+          "selloLote": "alterado",
+          "lote": {
+            "estanque": "E1",
+            "fechaSiembra": "2026-08-01",
+            "fechaCierre": "2026-11-16",
+            "producto": "Tilapia roja entera fresca",
+            "cantidadSembrada": 1000,
+            "supervivencia": 98,
+            "pesoPromedioActualG": 480,
+            "biomasaEstimadaKg": 38.4,
+            "fases": 6,
+            "alimentoFase2": 120,
+            "anotacionesValidas": 1,
+            "qrAntiguoSinSello": "sin aviso"
+          },
+          "foto": {
+            "mostrada": "data:image/jpeg;base64,/9j/4AAQSkZJRgABA…",
+            "hashDoc": "d1da3e6695f6",
+            "hashEvento": "d1da3e6695f6",
+            "estado": "verificada"
+          },
+          "entregaPublica": {
+            "cantidadEntregada": 50,
+            "cliente": "PRUEBA-Restaurante Integridad",
+            "vigente": "N.º 1",
+            "versionesIndice": 1,
+            "bloquesLeidos": 1
+          },
+          "historialOrden": "verificado"
+        }
+      }
+    },
+    {
+      "id": "F41-b",
+      "nombre": "Borrar la ficha congelada (el certificado volvería a la ficha vigente)",
+      "resultado": "detectado y avisado",
+      "senales": {
+        "automaticas": [
+          "Sello de tiempo del lote: El sello de tiempo registra una ficha nutricional congelada que ya no está en el lote: fue borrada."
+        ],
+        "manuales": [],
+        "datos": {
+          "qrAntiguoSinSello": "sin aviso",
+          "selloLote": "alterado",
+          "lote": {
+            "estanque": "E1",
+            "fechaSiembra": "2026-08-01",
+            "fechaCierre": "2026-11-16",
+            "producto": "Tilapia roja entera fresca",
+            "cantidadSembrada": 1000,
+            "supervivencia": 98,
+            "pesoPromedioActualG": 480,
+            "biomasaEstimadaKg": 38.4,
+            "fases": 6,
+            "alimentoFase2": 120,
+            "anotacionesValidas": 1,
+            "qrAntiguoSinSello": "sin aviso"
+          },
+          "foto": {
+            "mostrada": "data:image/jpeg;base64,/9j/4AAQSkZJRgABA…",
+            "hashDoc": "d1da3e6695f6",
+            "hashEvento": "d1da3e6695f6",
+            "estado": "verificada"
+          },
+          "entregaPublica": {
+            "cantidadEntregada": 50,
+            "cliente": "PRUEBA-Restaurante Integridad",
+            "vigente": "N.º 1",
+            "versionesIndice": 1,
+            "bloquesLeidos": 1
+          },
+          "historialOrden": "verificado"
+        }
+      }
+    },
+    {
+      "id": "EX-a",
+      "nombre": "Foto con fecha de cámara (EXIF) de 10 días antes de la entrega",
+      "resultado": "detectado y avisado",
+      "senales": {
+        "automaticas": [
+          "Fotos de la orden: la foto parece tomada el 2026-11-07T05:07:51.000Z, antes de la entrega"
+        ],
+        "manuales": [],
+        "datos": {
+          "qrAntiguoSinSello": "sin aviso",
+          "selloLote": "confirmado",
+          "lote": {
+            "estanque": "E1",
+            "fechaSiembra": "2026-08-01",
+            "fechaCierre": "2026-11-16",
+            "producto": "Tilapia roja entera fresca",
+            "cantidadSembrada": 1000,
+            "supervivencia": 98,
+            "pesoPromedioActualG": 480,
+            "biomasaEstimadaKg": 38.4,
+            "fases": 6,
+            "alimentoFase2": 120,
+            "anotacionesValidas": 1,
+            "qrAntiguoSinSello": "sin aviso"
+          },
+          "foto": {
+            "mostrada": "data:image/jpeg;base64,/9j/4AAQSkZJRgABA…",
+            "hashDoc": "d1da3e6695f6",
+            "hashEvento": "d1da3e6695f6",
+            "estado": "verificada"
+          },
+          "entregaPublica": {
+            "cantidadEntregada": 50,
+            "cliente": "PRUEBA-Restaurante Integridad",
+            "vigente": "N.º 1",
+            "versionesIndice": 1,
+            "bloquesLeidos": 1
+          },
+          "historialOrden": "verificado"
+        }
+      }
+    },
+    {
       "id": "9f",
       "nombre": "Borrar el bloque de anulación de un comprobante anulado",
       "resultado": "detectado y avisado",
@@ -1535,6 +2071,7 @@
         "manuales": [],
         "datos": {
           "qrAntiguoSinSello": "sin aviso",
+          "selloLote": "confirmado",
           "lote": {
             "estanque": "E1",
             "fechaSiembra": "2026-08-01",
@@ -1763,7 +2300,7 @@
     },
     {
       "param": "?entrega=(token real)",
-      "resultado": "muestra la entrega PED-20261116-KYGVK"
+      "resultado": "muestra la entrega PED-20261116-TD7Y8"
     }
   ]
 }

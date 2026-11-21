@@ -11,3 +11,4 @@ tests/integridad/.salida/
 tests/integridad/reglas-copia.rules
 .respaldo-*.json
 tests/integridad/.salida/
+auditoria/capturas-revision2/

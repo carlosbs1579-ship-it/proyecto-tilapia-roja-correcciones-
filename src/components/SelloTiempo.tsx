@@ -4,7 +4,9 @@ import { AlertTriangle, Clock, Download, ExternalLink } from 'lucide-react';
 import { deBase64 } from '../lib/ots';
 import { AvisoIntegridad, IndicadorVerificado } from './AvisoIntegridad';
 import { descargarOts, mantenerSello, revisarSelloBloque, RevisionSello, sellarBloque } from '../services/selloTiempoService';
-import { descargarTexto, prepararVerificacionLote, PreparacionVerificacion } from '../services/expedienteService';
+import { CORREO, descargarTexto, prepararVerificacionLote, PreparacionVerificacion } from '../services/expedienteService';
+import { textoSelladoComprobante } from '../services/comprobantesService';
+import { calcularSha256 } from '../services/hashService';
 
 /**
  * Revisión del sello de tiempo de un registro (testigo externo, H03). `revisar` se vuelve a llamar
@@ -77,9 +79,11 @@ export const SelloTiempoInfo: React.FC<{
   nombreArchivo: string;
   /** Lote sellado: agrega el documento sellado y el expediente para verificar en opentimestamps.org */
   lote?: Lote;
+  /** Comprobante sellado: su texto exacto, ya comprobado contra el digest, para descargarlo */
+  documento?: { texto: string; nombre: string } | null;
   compacto?: boolean;
   className?: string;
-}> = ({ revision: r, nombreArchivo, lote, compacto = false, className = '' }) => {
+}> = ({ revision: r, nombreArchivo, lote, documento, compacto = false, className = '' }) => {
   const prep = usePreparacionVerificacion(lote);
   if (!r) return <p className={`text-xs text-slate-500 ${className}`}>Comprobando el sello de tiempo en Bitcoin…</p>;
 
@@ -99,6 +103,12 @@ export const SelloTiempoInfo: React.FC<{
         <Download className="w-3 h-3" aria-hidden="true" />
         Descargar prueba .ots
       </button>
+      {documento && !archivos && r.estado !== 'alterado' && (
+        <button type="button" onClick={() => descargarTexto(documento.texto, documento.nombre)} className={claseBoton}>
+          <Download className="w-3 h-3" aria-hidden="true" />
+          Descargar documento sellado
+        </button>
+      )}
       {archivos && (
         <>
           <button type="button" onClick={() => descargarTexto(archivos.documento, archivos.nombreDocumento)} className={claseBoton}>
@@ -209,5 +219,33 @@ export const SelloTiempoBloque: React.FC<{
     () => revisarSelloBloque({ ...bloque, selloTiempo: sello || undefined }),
     JSON.stringify([bloque.id, bloque.hashComprobante, sello?.digest, sello?.ots?.length])
   );
-  return <SelloTiempoInfo revision={revision} nombreArchivo={`sello-comprobante-${bloque.id}`} compacto className={className} />;
+  // Documento sellado del comprobante: solo si su SHA-256 es el hash del bloque y el digest del sello,
+  // y no contiene correos (los bloques anteriores a H20 los traían)
+  const [documento, setDocumento] = useState<{ texto: string; nombre: string } | null>(null);
+  useEffect(() => {
+    setDocumento(null);
+    if (!sello?.digest) return;
+    let activo = true;
+    const texto = textoSelladoComprobante(bloque);
+    calcularSha256(texto)
+      .then((h) => {
+        if (activo && h === bloque.hashComprobante && h === sello.digest && !CORREO.test(texto)) {
+          setDocumento({ texto, nombre: `comprobante-${bloque.id}-documento-sellado.txt` });
+        }
+      })
+      .catch(() => {});
+    return () => {
+      activo = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bloque.id, bloque.hashComprobante, sello?.digest]);
+  return (
+    <SelloTiempoInfo
+      revision={revision}
+      nombreArchivo={`sello-comprobante-${bloque.id}`}
+      documento={documento}
+      compacto
+      className={className}
+    />
+  );
 };

@@ -146,6 +146,13 @@ const payloadDe = (codigoLote: string, ev: RegistroEncadenado): PayloadHashEvent
 });
 
 /**
+ * Texto canónico exacto de una fase del lote: sus bytes UTF-8 son lo que se pasa a SHA-256 para
+ * obtener el hash de la fase (el mismo que usan el registro y la verificación)
+ */
+export const textoCanonicoEvento = (codigoLote: string, ev: RegistroEncadenado): string =>
+  generarJsonCanonico(payloadDe(codigoLote, ev));
+
+/**
  * Verifica la integridad completa de una cadena de hashes. Por defecto es la cadena de
  * producción del lote, que parte del hash génesis; otras cadenas (como las entregas) parten
  * del hash con el que se anclan, indicado en hashInicial.

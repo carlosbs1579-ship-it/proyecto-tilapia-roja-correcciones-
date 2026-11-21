@@ -42,9 +42,12 @@ import { revisarFoto, verificarFoto } from '../../src/services/fotosService';
 import { CONFIG_DEFAULT, ORIGEN_FIJO, PRODUCTO_FIJO } from '../../src/utils/constants';
 import { fragmentoSello } from '../../src/lib/integridad';
 import { compromisoFicha, confirmarSello, revisarSelloBloque, revisarSelloLote } from '../../src/services/selloTiempoService';
-import { aBase64, crearPruebaOts, deBase64, deHex, escribirOts, leerOts } from '../../src/lib/ots';
+import { aBase64, completarPruebaOts, crearPruebaOts, deBase64, deHex, escribirOts, leerOts } from '../../src/lib/ots';
 import { revisarFechaExif } from '../../src/lib/exif';
-import { instalarCalendariosSimulados, CALENDARIO } from './calendarios-simulados';
+import { instalarCalendariosSimulados, CALENDARIO, ModoExplorador } from './calendarios-simulados';
+import { prepararVerificacionLote } from '../../src/services/expedienteService';
+import { analizarOts } from '../../src/lib/ots';
+import { createHash } from 'crypto';
 
 const aqui = path.dirname(fileURLToPath(import.meta.url));
 const OWNER = { authorization: 'Bearer owner', 'content-type': 'application/json' };
@@ -615,8 +618,53 @@ const ATAQUES: Ataque[] = [
   { id: 'F41-b', nombre: 'Borrar la ficha congelada (el certificado volvería a la ficha vigente)', rutas: () => [rLote()],
     ejecutar: () => alterarJs(rLote(), (l) => { delete l.fichaNutricionalCierre; }) },
   { id: 'EX-a', nombre: 'Foto con fecha de cámara (EXIF) de 10 días antes de la entrega', rutas: () => [rFoto()],
-    ejecutar: () => alterarJs(rFoto(), (f) => { f.tomadaEnExif = new Date(Date.now() - 10 * 24 * 3600 * 1000).toISOString().slice(0, 19); }) }
+    ejecutar: () => alterarJs(rFoto(), (f) => { f.tomadaEnExif = new Date(Date.now() - 10 * 24 * 3600 * 1000).toISOString().slice(0, 19); }) },
+  // ----- Cuarta ronda: dos exploradores de Bitcoin (blockstream.info y mempool.space) -----
+  { id: 'BX-a', nombre: 'Prueba .ots nueva del mismo sello anclada en un bloque cuya raíz de Merkle mempool.space contradice', rutas: () => [rLote()],
+    ejecutar: () => reemplazarPruebaConfirmada({ 'mempool.space': 'otra_raiz' }) },
+  { id: 'BX-b', nombre: 'Prueba .ots nueva del mismo sello anclada en un bloque cuya raíz de Merkle blockstream.info contradice', rutas: () => [rLote()],
+    ejecutar: () => reemplazarPruebaConfirmada({ 'blockstream.info': 'otra_raiz' }) },
+  { id: 'BX-c', nombre: 'Prueba .ots nueva del mismo sello: los dos exploradores coinciden en la raíz pero dan horas distintas del bloque', rutas: () => [rLote()],
+    ejecutar: () => reemplazarPruebaConfirmada({ 'mempool.space': 'otra_hora' }) },
+  { id: 'BX-d', nombre: 'BX-a con blockstream.info caído (solo responde mempool.space, que contradice)', rutas: () => [rLote()],
+    ejecutar: () => reemplazarPruebaConfirmada({ 'blockstream.info': 'caido', 'mempool.space': 'otra_raiz' }) }
 ];
+
+// Prueba nueva y completa (bloque nuevo) para el sello actual del lote, con los exploradores en el modo dado
+async function pruebaConfirmadaNueva(l: any, modos: Record<string, ModoExplorador>): Promise<string> {
+  const p = await crearPruebaOts(l.resumen.hashFinal, { compromisoExtra: await compromisoFicha(l.fichaNutricionalCierre) });
+  const completa = await completarPruebaOts(p!.ots);
+  if (!completa) throw new Error('El calendario simulado no confirmó la prueba nueva');
+  CALENDARIO.exploradores = modos;
+  return completa;
+}
+async function reemplazarPruebaConfirmada(modos: Record<string, ModoExplorador>) {
+  const l = await leerJs(rLote());
+  l.selloTiempo = { ...l.selloTiempo, ots: await pruebaConfirmadaNueva(l, modos), estado: 'confirmado' };
+  await escribirJs(rLote(), l);
+}
+
+// Casos sin alteración con dos exploradores (en memoria, sin escribir): ambos coinciden, uno caído, ninguno
+async function comprobarExploradores(): Promise<{ comprobacion: string; resultado: string }[]> {
+  const filas: { comprobacion: string; resultado: string }[] = [];
+  const lote = await leerJs(rLote());
+  const casos: [string, Record<string, ModoExplorador>, (r: any) => boolean][] = [
+    ['Ambos exploradores coinciden: confirmado, sin nota', {}, (r) => r.estado === 'confirmado' && r.comprobadoEnBitcoin && !r.nota],
+    ['mempool.space caído: confirmado con nota "1 de 2"', { 'mempool.space': 'caido' }, (r) => r.estado === 'confirmado' && r.comprobadoEnBitcoin && /1 de 2/.test(r.nota || '')],
+    ['blockstream.info caído: confirmado con nota "1 de 2"', { 'blockstream.info': 'caido' }, (r) => r.estado === 'confirmado' && r.comprobadoEnBitcoin && /1 de 2/.test(r.nota || '')],
+    ['Ambos caídos: sin alarma, no se pudo comprobar ahora', { 'blockstream.info': 'caido', 'mempool.space': 'caido' }, (r) => r.estado === 'confirmado' && !r.comprobadoEnBitcoin && !r.avisos.length && /No se pudo consultar/.test(r.mensaje)],
+    ['mempool.space da otra raíz: aviso rojo', { 'mempool.space': 'otra_raiz' }, (r) => r.estado === 'alterado' && r.avisos.some((a: string) => /mempool\.space/.test(a))]
+  ];
+  for (const [nombre, modos, ok] of casos) {
+    const sello = { ...lote.selloTiempo, ots: await pruebaConfirmadaNueva(lote, modos), estado: 'confirmado' };
+    const r = await revisarSelloLote({ ...lote, selloTiempo: sello });
+    CALENDARIO.exploradores = {};
+    const cumple = ok(r);
+    filas.push({ comprobacion: nombre, resultado: (cumple ? 'correcto' : 'FALLA') + ` (${r.estado}${r.nota ? ', ' + r.nota : ''})` });
+    if (!cumple) throw new Error('Exploradores: ' + nombre + ' ' + JSON.stringify(r));
+  }
+  return filas;
+}
 
 // Reescritura completa del lote (como 6d): fase, cadena, resumen y anotaciones. Devuelve el sello nuevo.
 async function reescribirLote(): Promise<string> {
@@ -738,6 +786,59 @@ async function pruebasReglas() {
 }
 
 // ---------- Programa ----------
+// ---------- Verificación fuera de la plataforma: documento sellado y expediente ----------
+// SHA-256 del documento sellado == digest de la prueba .ots == hashFinal, y la cadena se recalcula
+// entera desde el expediente (con node:crypto, sin el código de la app). Controles negativos en memoria.
+async function comprobarExpediente(): Promise<{ comprobacion: string; resultado: string }[]> {
+  const sha = (t: string) => createHash('sha256').update(Buffer.from(t, 'utf8')).digest('hex');
+  const filas: { comprobacion: string; resultado: string }[] = [];
+  const ok = (comprobacion: string, cumple: boolean, detalle = '') => {
+    filas.push({ comprobacion, resultado: (cumple ? 'correcto' : 'FALLA') + (detalle ? ` (${detalle})` : '') });
+    if (!cumple) throw new Error('Expediente: ' + comprobacion + ' ' + detalle);
+  };
+  const lote = (await getDocFromServer(doc(db, 'lotes', COD))).data() as any;
+  const prep = await prepararVerificacionLote(lote);
+  ok('El lote sellado ofrece documento y expediente', prep.disponible, prep.disponible ? '' : prep.motivo);
+  if (!prep.disponible) return filas;
+  const { documento, expediente } = prep.archivos;
+  const ots = await analizarOts(lote.selloTiempo.ots);
+  const hDoc = sha(documento);
+  ok('SHA-256(documento sellado) == digest del .ots == hashFinal == sello guardado', hDoc === ots.digest && hDoc === lote.resumen.hashFinal && hDoc === lote.selloTiempo.digest, hDoc.slice(0, 16));
+  // Recalcular la cadena solo con lo que dice el expediente
+  const bloques = expediente.split('\n');
+  const hashes = bloques.filter((l) => l.startsWith('Hash: ')).map((l) => l.slice(6));
+  const textos = bloques.filter((l) => l.startsWith('Texto: ')).map((l) => l.slice(7));
+  const textosFases = textos.slice(0, lote.eventos.length);
+  let anterior = '0'.repeat(64);
+  let cadena = textosFases.length === lote.eventos.length && hashes.length === lote.eventos.length;
+  textosFases.forEach((t, i) => {
+    const j = JSON.parse(t);
+    if (sha(t) !== hashes[i] || hashes[i] !== lote.eventos[i].hash || j.hashAnterior !== anterior || j.indice !== i) cadena = false;
+    anterior = hashes[i];
+  });
+  ok(`Desde el expediente, las ${lote.eventos.length} fases dan su hash y enlazan desde el génesis`, cadena && anterior === hDoc);
+  ok('El documento sellado es el texto de la última fase', textosFases[textosFases.length - 1] === documento);
+  const textoFicha = textos[lote.eventos.length];
+  const compromiso = textoFicha ? '46' + sha(textoFicha) : null;
+  ok('Ficha congelada: 46 + SHA-256(texto) == dato agregado en la prueba .ots', Boolean(textoFicha) && compromiso === ots.compromisoExtra && expediente.includes(`append ${compromiso}`));
+  ok('Ningún texto contiene un correo ni el expediente un guion largo', !/@/.test(textos.join('')) && !expediente.includes(String.fromCharCode(0x2014)));
+  // Controles negativos (en memoria, sin escribir)
+  const alterado = JSON.parse(JSON.stringify(lote));
+  alterado.eventos[1].datos = { ...alterado.eventos[1].datos, PRUEBA: 1 };
+  const p1 = await prepararVerificacionLote(alterado);
+  ok('Fase alterada: no se ofrecen', !p1.disponible && p1.motivo === 'no_coincide');
+  const otroDigest = JSON.parse(JSON.stringify(lote));
+  otroDigest.selloTiempo.ots = aBase64(escribirOts({ ...leerOts(deBase64(lote.selloTiempo.ots)), digest: deHex('ab'.repeat(32)) }));
+  const p2 = await prepararVerificacionLote(otroDigest);
+  ok('Prueba .ots de otro digest: no se ofrecen', !p2.disponible && p2.motivo === 'no_coincide');
+  const conCorreo = JSON.parse(JSON.stringify(lote));
+  conCorreo.eventos[0].registradoPor = 'alguien@prueba.co';
+  conCorreo.resumen.hashFinal = await recalcularCadenaLote(conCorreo.codigo, conCorreo.eventos);
+  const p3 = await prepararVerificacionLote(conCorreo);
+  ok('Fase firmada con correo: no se ofrecen y se dice', !p3.disponible && p3.motivo === 'correo');
+  return filas;
+}
+
 async function principal() {
   if (!/127\.0\.0\.1:8185/.test(RAIZ) && !process.env.PERMITIR_OTRO_PUERTO) throw new Error('Solo emulador en 8185');
   // Calendarios de OpenTimestamps y explorador de Bitcoin simulados: las pruebas no dependen de la red
@@ -748,6 +849,10 @@ async function principal() {
   const base = await evaluar();
   console.log('Línea base:', clasificar(base), JSON.stringify(base.automaticas.concat(base.manuales)));
   if (base.automaticas.length || base.manuales.length) throw new Error('La línea base no está íntegra: ' + JSON.stringify(base));
+  const expediente = await comprobarExpediente();
+  for (const e of expediente) console.log(`[EXP] ${e.resultado} · ${e.comprobacion}`);
+  const exploradores = await comprobarExploradores();
+  for (const e of exploradores) console.log(`[BX] ${e.resultado} · ${e.comprobacion}`);
 
   const resultados: any[] = [];
   for (const a of ATAQUES) {
@@ -758,6 +863,7 @@ async function principal() {
     console.log(`[${a.id}] ${clasificar(s)} · ${a.nombre}`);
     for (const [r, c] of originales) await restaurar(r, c);
     CALENDARIO.desfaseBloqueMs = 0;
+    CALENDARIO.exploradores = {};
     const ok = await evaluar();
     if (ok.automaticas.length || ok.manuales.length) throw new Error(`No se restauró bien tras ${a.id}: ${JSON.stringify(ok)}`);
   }
@@ -779,7 +885,7 @@ async function principal() {
   await ataqueAnulacion(resultados);
   console.log(`[9f] ${resultados[resultados.length - 1].resultado}`);
 
-  const salida = { fecha: new Date().toISOString(), lote: COD, lote2: COD2, contexto: ctx, ataques: resultados, reglas, parametros };
+  const salida = { fecha: new Date().toISOString(), lote: COD, lote2: COD2, contexto: ctx, ataques: resultados, reglas, parametros, expediente, exploradores };
   writeFileSync(path.join(aqui, '..', 'resultados.json'), JSON.stringify(salida, null, 2));
   const md = [
     '# Resultados de las pruebas de alteración (generado)', '', `Fecha: ${salida.fecha} · Lote: ${COD}`, '',
@@ -787,7 +893,9 @@ async function principal() {
     '| Ataque | Resultado | QR antiguo | Avisos automáticos | Fallas al pulsar verificar | Lo que ve el público |', '| --- | --- | --- | --- | --- | --- |',
     ...resultados.map((r) => `| ${r.id}. ${r.nombre} | ${r.resultado} | ${/^(4|5|6|6b|6c|6d|7|8|8b|8c|8d|A1-b|A1-b2|A1-c)$/.test(r.id) ? r.senales.datos.qrAntiguoSinSello : '-'} | ${r.senales.automaticas.join('<br>').replace(/\|/g, '/').replace(/ \/ /g, '<br>') || 'ninguno'} | ${r.senales.manuales.join('<br>') || 'ninguna'} | ${(JSON.stringify(r.id.startsWith('9') || r.id === 'A1-i' ? r.senales.datos.entregaPublica : r.id.match(/^(1|2|3|3b|10)$/) ? r.senales.datos.foto : r.senales.datos.lote) ?? "sin datos").replace(/\|/g, '/')} |`),
     '', '## 11. Parámetros de la URL', '', '| Parámetro | Resultado |', '| --- | --- |', ...parametros.map((p) => `| \`${p.param}\` | ${p.resultado} |`),
-    '', '## 12. Alteraciones como usuario autenticado (con reglas)', '', '| Usuario | Intento | Resultado |', '| --- | --- | --- |', ...reglas.map((r) => `| ${r.quien} | ${r.intento} | ${r.resultado} |`), ''
+    '', '## 12. Alteraciones como usuario autenticado (con reglas)', '', '| Usuario | Intento | Resultado |', '| --- | --- | --- |', ...reglas.map((r) => `| ${r.quien} | ${r.intento} | ${r.resultado} |`), '',
+    '## 13. Verificación fuera de la plataforma (documento sellado y expediente)', '', '| Comprobación | Resultado |', '| --- | --- |', ...expediente.map((e) => `| ${e.comprobacion} | ${e.resultado} |`), '',
+    '## 14. Dos exploradores de Bitcoin sin alteración (blockstream.info y mempool.space)', '', '| Caso | Resultado |', '| --- | --- |', ...exploradores.map((e) => `| ${e.comprobacion} | ${e.resultado} |`), ''
   ].join('\n');
   writeFileSync(path.join(aqui, '..', 'resultados.md'), md);
   console.log('Listo: tests/integridad/resultados.md');

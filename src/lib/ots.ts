@@ -50,6 +50,8 @@ export const CALENDARIOS_CONFIANZA = [
 ];
 
 export const EXPLORADOR_BITCOIN = 'https://blockstream.info/api';
+/** Exploradores públicos de Bitcoin que se consultan en paralelo (misma API: block-height y block) */
+export const EXPLORADORES_BITCOIN = [EXPLORADOR_BITCOIN, 'https://mempool.space/api'];
 
 export interface Atestacion {
   tipo: 'pendiente' | 'bitcoin' | 'desconocida';
@@ -377,18 +379,19 @@ export interface BloqueBitcoin {
   fecha: string; // ISO, hora del bloque
 }
 
-const cacheBloques = new Map<number, Promise<BloqueBitcoin | null>>();
+const cacheBloques = new Map<string, Promise<BloqueBitcoin | null>>();
 
 /** Cabecera de un bloque de Bitcoin desde un explorador público (null si no responde) */
-export function bloqueBitcoin(altura: number, limiteMs = 20000): Promise<BloqueBitcoin | null> {
-  if (!cacheBloques.has(altura)) {
+export function bloqueBitcoin(altura: number, limiteMs = 20000, explorador: string = EXPLORADOR_BITCOIN): Promise<BloqueBitcoin | null> {
+  const clave = `${explorador}|${altura}`;
+  if (!cacheBloques.has(clave)) {
     const p = (async () => {
       try {
-        const rh = await conLimite(`${EXPLORADOR_BITCOIN}/block-height/${altura}`, { method: 'GET' }, limiteMs);
+        const rh = await conLimite(`${explorador}/block-height/${altura}`, { method: 'GET' }, limiteMs);
         if (!rh.ok) return null;
         const hash = (await rh.text()).trim();
         if (!/^[0-9a-f]{64}$/.test(hash)) return null;
-        const rb = await conLimite(`${EXPLORADOR_BITCOIN}/block/${hash}`, { method: 'GET' }, limiteMs);
+        const rb = await conLimite(`${explorador}/block/${hash}`, { method: 'GET' }, limiteMs);
         if (!rb.ok) return null;
         const b = await rb.json();
         if (typeof b?.merkle_root !== 'string' || typeof b?.timestamp !== 'number') return null;
@@ -397,12 +400,12 @@ export function bloqueBitcoin(altura: number, limiteMs = 20000): Promise<BloqueB
         return null;
       }
     })();
-    cacheBloques.set(altura, p);
+    cacheBloques.set(clave, p);
     p.then((r) => {
-      if (!r) cacheBloques.delete(altura);
+      if (!r) cacheBloques.delete(clave);
     });
   }
-  return cacheBloques.get(altura)!;
+  return cacheBloques.get(clave)!;
 }
 
 /**
@@ -442,3 +445,33 @@ export async function analizarOts(otsB64: string): Promise<AnalisisOts> {
 /** El compromiso de la prueba coincide con la raíz de Merkle del bloque (orden de bytes invertido) */
 export const compromisoEnBloque = (compromiso: string, bloque: BloqueBitcoin) =>
   aHex(deHex(compromiso).reverse()) === bloque.raizMerkle;
+
+export interface ComprobacionBloque {
+  /** coincide: todos los que respondieron coinciden; no_coincide: alguno discrepa; sin_respuesta: ninguno respondió */
+  estado: 'coincide' | 'no_coincide' | 'sin_respuesta';
+  respondieron: number;
+  total: number;
+  fecha?: string; // hora del bloque (ISO), si todos los que respondieron coinciden
+  discrepancias: string[]; // qué explorador discrepa y en qué
+}
+
+/**
+ * Comprueba el compromiso de una atestación contra la raíz de Merkle del bloque en todos los
+ * exploradores a la vez. Basta que uno dé otra raíz, o que den horas distintas, para no coincidir.
+ */
+export async function comprobarBloque(altura: number, compromiso: string, limiteMs = 20000): Promise<ComprobacionBloque> {
+  const total = EXPLORADORES_BITCOIN.length;
+  const bloques = await Promise.all(EXPLORADORES_BITCOIN.map((e) => bloqueBitcoin(altura, limiteMs, e).catch(() => null)));
+  const respuestas: { explorador: string; b: BloqueBitcoin }[] = [];
+  bloques.forEach((b, i) => {
+    if (b) respuestas.push({ explorador: new URL(EXPLORADORES_BITCOIN[i]).host, b });
+  });
+  if (!respuestas.length) return { estado: 'sin_respuesta', respondieron: 0, total, discrepancias: [] };
+  const discrepancias: string[] = [];
+  for (const r of respuestas) {
+    if (!compromisoEnBloque(compromiso, r.b)) discrepancias.push(`${r.explorador} da otra raíz de Merkle`);
+  }
+  if (new Set(respuestas.map((r) => r.b.fecha)).size > 1) discrepancias.push('los exploradores dan horas distintas para el bloque');
+  if (discrepancias.length) return { estado: 'no_coincide', respondieron: respuestas.length, total, discrepancias };
+  return { estado: 'coincide', respondieron: respuestas.length, total, fecha: respuestas[0].b.fecha, discrepancias };
+}

@@ -442,7 +442,7 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
             {lote.estado === 'cerrado' && (
               <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs space-y-1">
                 <span className="rotulo text-slate-500 block">Sello de tiempo en Bitcoin (testigo externo)</span>
-                <SelloTiempoInfo revision={revisionSello} nombreArchivo={`sello-lote-${lote.codigo}`} />
+                <SelloTiempoInfo revision={revisionSello} nombreArchivo={`sello-lote-${lote.codigo}`} lote={lote} />
                 {!lote.selloTiempo && revisionSello?.estado !== 'anterior' && puedeCerrar && (
                   <p className="text-xs text-slate-500">El sello se envía solo a los calendarios públicos; si no responden, se reintenta al volver a abrir el lote.</p>
                 )}

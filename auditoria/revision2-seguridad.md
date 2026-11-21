@@ -68,3 +68,40 @@ Nota del primer intento: al cambiar el proveedor a `PRUEBA-auditoria`, la línea
 ## Hallazgos críticos
 
 Ninguno.
+
+## Producción (Fase 4)
+
+Fecha: 2026-11-20. main = `1c634db` (mismo árbol que `1ea9c4d`), ya en Vercel, con las reglas nuevas de Firestore publicadas. No se cambió código ni reglas.
+
+**Método.** Igual que en la sección 3. Primero se corrió `ataques.ts` en el emulador propio (8185/9199) para generar datos con los servicios reales y las reglas: lote `20260801-A-E1`, orden `PED-20261120-DVF5L`, foto `foto-11d2bcf9…` y comprobante `cmp62c713d3…`. Las 47+ pruebas del emulador quedaron como "detectado y avisado". Los `resultados.*` del repo se restauraron con git; la copia quedó en el scratchpad. Después se corrió `prod-alteraciones-f4.ts` en el scratchpad. Es el script de la Fase 2 con dos cambios: suma `revisarSelloLote` (testigo externo, sin consultar la red) y prueba escrituras sin sesión. El lote y la foto llevan `esPrueba: true`. El comprobante no lo lleva, porque su hash cubre todos los campos; su cliente es "PRUEBA-Restaurante Integridad". El script verifica que ninguno de esos ids exista en producción y aborta si alguno ya está.
+
+| Prueba | Resultado en producción |
+| --- | --- |
+| Línea base | Lote íntegro, sello del QR coincide, sello de tiempo `confirmado` sin avisos, foto verificada y comprobante íntegro |
+| 1. Un byte del comprobante (`cliente.nombre` "…Integridad" → "…Integridae") | **Detectado y avisado**: "Verificación fallida: el contenido no corresponde a su hash; el cliente no coincide con la orden." |
+| 2. Reemplazar la foto de entrega (otro JPEG válido, `hash` sin tocar) | **Detectado y avisado**: "Posible alteración detectada: la imagen no coincide con la registrada en la entrega." |
+| 3. Editar el hash de la última fase y `resumen.hashFinal` (coherentes entre sí) | **Detectado y avisado**: "Fase #5 (Cosecha) alterada…" y "El sello impreso en el código QR no coincide…". Sin sello en el QR: alterado, 1 aviso. `revisarSelloLote`: `alterado`, "el sello registrado en Bitcoin … no coincide con el actual" |
+| Restaurado | Todo vuelve a íntegro, incluido el sello de tiempo `confirmado` |
+
+El sello de tiempo de la prueba viene de los calendarios simulados del emulador. Por eso `revisarSelloLote` se corrió con `consultarRed: false`: se comprueba que el digest coincida, no el bloque real de Bitcoin.
+
+**Reglas publicadas, sin sesión (REST de producción sin token):**
+
+| Intento | Resultado |
+| --- | --- |
+| Crear `lotes/PRUEBA-SINSESION-F4` | 403 PERMISSION_DENIED (GET de administrador: 404, no se creó) |
+| Editar el proveedor del lote PRUEBA | 403 |
+| Editar el `selloTiempo` del lote PRUEBA | 403 |
+| Editar el cliente del comprobante PRUEBA | 403 |
+| Borrar la foto PRUEBA | 403 |
+
+Después de esos intentos, los tres documentos siguieron íntegros.
+
+**`selloTiempo` después de confirmado.** No se probó contra las reglas publicadas. La consulta a la Rules API (`projects:test` con el ruleset publicado) fue bloqueada por el permiso del entorno, y en producción no hay cuentas de prueba con sesión. Se probó en el emulador con `firestore.rules` de main, con un token sin firma del administrador maestro y el lote `PRUEBA-SELLO-F4`, que se borró al terminar:
+
+- Control: pasar de pendiente a confirmado dio **200**, lo que confirma que la prueba es válida.
+- Ya confirmado, todos estos cambios dieron **403**: otra prueba .ots más larga, otro bloque, volver a pendiente, otro digest, borrarlo, y cambiarlo sin sesión.
+
+Queda pendiente comprobar que el ruleset publicado sea idéntico a `firestore.rules` de main. Se puede hacer con `firebase firestore:rules` o desde la consola.
+
+**Limpieza.** Se borraron los 4 documentos creados en producción y el GET siguiente dio 404 en cada uno. El intento sin sesión no creó nada. Se recorrieron `lotes`, `comprobantes`, `ordenes`, `fotosEntrega`, `consultasEntrega`, `inventarioLotes`, `anotaciones`, `anotacionesLote`, `clientes`, `contadores` y `entregas`: **0 documentos** con PRUEBA, `esPrueba: true`, `20260801-`, `PED-20261120-DVF5L`, `SELLO-F4` ni `SINSESION`. Los conteos son los mismos que en la Fase 2: 1 lote, 4 comprobantes, 4 órdenes, 4 fotos, 4 consultas y 1 inventario. No se tocaron datos reales. El emulador quedó detenido.

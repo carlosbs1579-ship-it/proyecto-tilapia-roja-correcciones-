@@ -33,7 +33,7 @@ export function useRevisionSello(revisar: (() => Promise<RevisionSello>) | null,
 }
 
 /**
- * Documento sellado y expediente de un lote con sello de tiempo (verificación fuera de la
+ * Documento sellado de un lote con sello de tiempo (verificación fuera de la
  * plataforma). Se preparan y se comprueban al abrir el lote; null mientras tanto o sin lote.
  */
 function usePreparacionVerificacion(lote: Lote | undefined): PreparacionVerificacion | null {
@@ -77,7 +77,7 @@ function enlaceOpenTimestamps(digest: string, otsB64: string): string | null {
 export const SelloTiempoInfo: React.FC<{
   revision: RevisionSello | null;
   nombreArchivo: string;
-  /** Lote sellado: agrega el documento sellado y el expediente para verificar en opentimestamps.org */
+  /** Lote sellado: agrega el documento sellado para verificar en opentimestamps.org */
   lote?: Lote;
   /** Comprobante sellado: su texto exacto, ya comprobado contra el digest, para descargarlo */
   documento?: { texto: string; nombre: string } | null;
@@ -110,27 +110,21 @@ export const SelloTiempoInfo: React.FC<{
         </button>
       )}
       {archivos && (
-        <>
-          <button type="button" onClick={() => descargarTexto(archivos.documento, archivos.nombreDocumento)} className={claseBoton}>
-            <Download className="w-3 h-3" aria-hidden="true" />
-            Descargar documento sellado
-          </button>
-          <button type="button" onClick={() => descargarTexto(archivos.expediente, archivos.nombreExpediente)} className={claseBoton}>
-            <Download className="w-3 h-3" aria-hidden="true" />
-            Descargar expediente de la cadena
-          </button>
-        </>
+        <button type="button" onClick={() => descargarTexto(archivos.documento, archivos.nombreDocumento)} className={claseBoton}>
+          <Download className="w-3 h-3" aria-hidden="true" />
+          Descargar documento sellado
+        </button>
       )}
     </div>
   ) : null;
   const ayudaArchivos = archivos ? (
     <p className="text-xs text-slate-500">
       Para verificar fuera de la plataforma use el enlace a opentimestamps.org, o cargue allí primero la prueba .ots y luego el documento
-      sellado. El expediente trae cada fase con su hash y las instrucciones.
+      sellado.
     </p>
   ) : prep && !prep.disponible && prep.motivo === 'correo' ? (
     <p className="text-xs text-slate-500">
-      Los textos sellados de este lote contienen un correo: el documento sellado y el expediente no se ofrecen para no publicarlo.
+      Los textos sellados de este lote contienen un correo: el documento sellado no se ofrece para no publicarlo.
     </p>
   ) : null;
 

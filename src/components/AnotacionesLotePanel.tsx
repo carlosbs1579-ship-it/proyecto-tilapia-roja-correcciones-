@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import HoraServidor from './HoraServidor';
+import { valorDatoVisible } from '../services/pdfService';
 import { FilePen, ShieldCheck, ShieldAlert, Check, X } from 'lucide-react';
 import { AnotacionesLote, Lote } from '../types';
 import { anotacionesDe, numeroValido, proponerAnotacion, resolverAnotacion, verificarAnotaciones, VerificacionAnotaciones } from '../services/anotacionesService';
@@ -150,7 +152,7 @@ export const AnotacionesLotePanel: React.FC<{
                 <option value="">Selecciona el dato</option>
                 {datosFase.map((k) => (
                   <option key={k} value={k}>
-                    {nombreDato(k)} (registrado: {String(faseSel.datos?.[k])})
+                    {nombreDato(k)} (registrado: {valorDatoVisible(faseSel.datos?.[k])})
                   </option>
                 ))}
                 <option value="_aclaracion">Aclaración general de la fase (sin valor)</option>
@@ -231,7 +233,7 @@ export const AnotacionesLotePanel: React.FC<{
                 </div>
                 {d.dato ? (
                   <p className="text-slate-700">
-                    {nombreDato(d.dato)}: registrado <strong>{registradoReal}</strong> · correcto <strong>{d.valorCorrecto}</strong>
+                    {nombreDato(d.dato)}: registrado <strong>{valorDatoVisible(registradoReal)}</strong> · correcto <strong>{d.valorCorrecto}</strong>
                   </p>
                 ) : (
                   <p className="text-slate-700">Aclaración general de la fase</p>
@@ -242,24 +244,27 @@ export const AnotacionesLotePanel: React.FC<{
                     <span className="rotulo text-slate-500 mr-2">Propuso</span>
                     <FirmaRegistro registro={a.propuesta} className="inline-block align-baseline" />
                     <span className="text-xs text-slate-500 ml-2 tabular-nums">{formatearFechaColombia(a.propuesta.fecha)}</span>
+                    <HoraServidor hora={horaServidorRegistro(datosAnotaciones?.registradoEnServidor, a.propuesta.indice, a.propuesta.fecha)} modo="sufijo" />
                   </span>
                   {a.resolucion && (
                     <span>
                       <span className="rotulo text-slate-500 mr-2">{a.estado === 'aprobada' ? 'Aprobó' : 'Rechazó'}</span>
                       <FirmaRegistro registro={a.resolucion} className="inline-block align-baseline" />
                       <span className="text-xs text-slate-500 ml-2 tabular-nums">{formatearFechaColombia(a.resolucion.fecha)}</span>
+                      <HoraServidor hora={horaServidorRegistro(datosAnotaciones?.registradoEnServidor, a.resolucion.indice, a.resolucion.fecha)} modo="sufijo" />
                     </span>
                   )}
                 </p>
                 {[a.propuesta, a.resolucion].map((r) => {
                   if (!r) return null;
-                  const h = horaServidorRegistro(datosAnotaciones?.registradoEnServidor, r.indice, r.fecha);
-                  return h.servidor ? (
-                    <p key={r.id} className={`text-xs ${h.desfase ? 'text-amber-800' : 'text-slate-500'}`}>
-                      {r.tipo === 'Propuesta' ? 'Propuesta' : 'Decisión'} registrada en el servidor: {formatearFechaColombia(h.servidor.toISOString())}
-                      {h.desfase && ' · la hora declarada por el equipo difiere en más de 10 minutos'}
-                    </p>
-                  ) : null;
+                  return (
+                    <HoraServidor
+                      key={r.id}
+                      hora={horaServidorRegistro(datosAnotaciones?.registradoEnServidor, r.indice, r.fecha)}
+                      modo="aviso"
+                      etiqueta={`${r.tipo === 'Propuesta' ? 'Propuesta' : 'Decisión'} registrada en el servidor`}
+                    />
+                  );
                 })}
                 {a.resolucion?.datos?.respuesta ? <p className="text-slate-600 italic">"{a.resolucion.datos.respuesta}"</p> : null}
                 {a.estado === 'pendiente' && puedeAprobar && !propia && !alterada && verificacion?.integra !== false && (

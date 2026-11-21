@@ -17,6 +17,16 @@ import { fichaDelLote, revisarSelloBloque, revisarSelloLote, RevisionSello, text
 // Las fuentes estándar del PDF solo tienen los caracteres latinos (WinAnsi). Uno fuera de ese
 // juego (p. ej. "→" o un emoji en una observación) hace que la línea se escriba con letras
 // espaciadas y se salga del recuadro. Todo texto se depura antes de escribirse.
+/**
+ * Valor de un dato de fase tal como se muestra (pantalla y PDF). La corrección de siembra guarda un
+ * valor vacío como "—" ("— → 5") y ese texto entra en la huella de la fase, así que no se cambia lo
+ * guardado: solo se lee "sin dato" al mostrarlo. Solo se reemplaza el guion que ocupa todo el valor
+ * o un lado de "antes → después"; un guion dentro de un texto libre queda igual.
+ */
+export function valorDatoVisible(valor: unknown): string {
+  return String(valor ?? '').replace(/^—$|^—(?= → )|(?<= → )—$/g, 'sin dato');
+}
+
 const EXTRA_WINANSI = '€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•–—˜™š›œžŸ';
 export function textoPdf(valor: unknown): string {
   return String(valor ?? '')
@@ -473,7 +483,7 @@ export async function generarLotePdfBlob(
     if (ev.datos && Object.keys(ev.datos).length > 0) {
       detalleDatos = Object.entries(ev.datos)
         .filter(([k]) => !OMITIR_DATO.has(k))
-        .map(([k, v]) => `${etiquetaDato(k)}: ${typeof v === 'boolean' ? (v ? 'sí' : 'no') : v}`)
+        .map(([k, v]) => `${etiquetaDato(k)}: ${typeof v === 'boolean' ? (v ? 'sí' : 'no') : valorDatoVisible(v)}`)
         .join(', ');
     }
     // Anotaciones aprobadas (e íntegras) que se refieren a esta fase
@@ -530,7 +540,7 @@ export async function generarLotePdfBlob(
         ...anotacionesAprobadas.map((a) => {
           const d = a.propuesta.datos;
           const ev = (lote.eventos || [])[d.fase];
-          const registrado = d.dato && ev ? String(ev.datos?.[d.dato] ?? d.valorRegistrado) : d.valorRegistrado;
+          const registrado = valorDatoVisible(d.dato && ev ? String(ev.datos?.[d.dato] ?? d.valorRegistrado) : d.valorRegistrado);
           return [
             String(a.numero),
             `#${d.fase} ${ev ? ev.tipo : ''}`,

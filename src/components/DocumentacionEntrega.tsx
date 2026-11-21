@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import HoraServidor from './HoraServidor';
 import { FileText, Download, ShieldCheck, ShieldAlert, Link2, Eye } from 'lucide-react';
 import { BloqueAnulacion, ComprobanteEntrega, OrdenEntrega } from '../types';
 import {
@@ -205,7 +206,8 @@ export const DocumentacionEntrega: React.FC<{
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="text-slate-700">
                   <strong>Comprobante N.º {c.version}</strong>
-                  {anulaciones[c.id] && <strong className="ml-1 px-1 rounded-md bg-red-100 text-red-700">ANULADO</strong>} · {formatearFechaColombia(c.emitidoEn)} ·{' '}
+                  {anulaciones[c.id] && <strong className="ml-1 px-1 rounded-md bg-red-100 text-red-700">ANULADO</strong>} · {formatearFechaColombia(c.emitidoEn)}
+                  <HoraServidor hora={horaServidorBloque(c)} modo="sufijo" etiqueta="Hora del servidor al emitir" /> ·{' '}
                   {c.estadoEntrega === 'entregado' ? 'Entrega completa' : 'Entrega parcial'} · entregado {num(c.cantidadEntregada)} {c.unidad}
                   {c.cantidadPendiente > 0 && ` · pendiente ${num(c.cantidadPendiente)} ${c.unidad}`}
                 </span>
@@ -303,15 +305,7 @@ export const DocumentacionEntrega: React.FC<{
                   {verificacion[c.id]?.ok && ' · coincide con la huella guardada en el comprobante'}
                 </span>
               )}
-              {(() => {
-                const h = horaServidorBloque(c);
-                return h.servidor ? (
-                  <span className={`block ${h.desfase ? 'text-amber-800' : 'text-slate-500'}`}>
-                    Hora del servidor al emitir: {formatearFechaColombia(h.servidor.toISOString())}
-                    {h.desfase && ' · la hora declarada por el equipo difiere en más de 10 minutos'}
-                  </span>
-                ) : null;
-              })()}
+              <HoraServidor hora={horaServidorBloque(c)} modo="aviso" etiqueta="Hora del servidor al emitir" />
               <SelloTiempoBloque bloque={c} mantener={{ puedeCrear: puedeEmitir, verificado: Boolean(verificacion[c.id]?.ok) }} />
             </li>
             ))(b)

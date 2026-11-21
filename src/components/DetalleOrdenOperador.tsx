@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import HoraServidor from './HoraServidor';
 import { Edit3, Send, History } from 'lucide-react';
 import { InventarioLote, Lote, OrdenEntrega, UsuarioPerfil } from '../types';
 import {
@@ -372,17 +373,12 @@ export const DetalleOrdenOperador: React.FC<{
                 <span className="text-slate-500">
                   {' · ' + formatearFechaColombia(ev.fecha) + ' · ' + quienRegistro(ev)}
                   {ev.funcion ? ' (' + (ETIQUETA_FUNCION[ev.funcion] || ev.funcion) + ')' : ''}
+                  <HoraServidor hora={hora} modo="sufijo" />
                 </span>
                 {(ev.descripcion || cambiosDeEvento(ev)) && (
                   <span className="block text-slate-600">{[ev.descripcion, cambiosDeEvento(ev)].filter(Boolean).join(' · ')}</span>
                 )}
-                {hora.servidor && (
-                  <span className={`block text-xs ${hora.desfase ? 'text-amber-800' : 'text-slate-500'}`}>
-                    Hora del servidor: {formatearFechaColombia(hora.servidor.toISOString())}
-                    {hora.desfase && ' · la hora declarada por el equipo difiere en más de 10 minutos'}
-                    {!hora.desfase && hora.sinConexion && ' · registrado sin conexión en el teléfono y enviado después'}
-                  </span>
-                )}
+                <HoraServidor hora={hora} modo="aviso" />
                 {anterior && <span className="block text-xs text-slate-500">Registro anterior a la cadena</span>}
               </li>
             );

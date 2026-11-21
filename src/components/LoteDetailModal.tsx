@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import HoraServidor from './HoraServidor';
 import { Pestanas } from './Pestanas';
 import { usePresencia } from '../lib/presencia';
 import { useVentana } from '../lib/ventana';
@@ -29,7 +30,7 @@ import { NuevoEventoModal } from './NuevoEventoModal';
 import { IntegrityCheckModal } from './IntegrityCheckModal';
 import { QrModal } from './QrModal';
 import { cerrarLote, modificarDatosSiembraOPiscina } from '../services/lotesService';
-import { previsualizarPdfLote, generarYSubirPdfLote, descargarPdfLoteLocal } from '../services/pdfService';
+import { previsualizarPdfLote, generarYSubirPdfLote, descargarPdfLoteLocal, valorDatoVisible } from '../services/pdfService';
 import { formatearFechaColombia } from '../utils/constants';
 import { evaluarParametroAgua } from '../services/calculosService';
 import { DiagnosticoFase, horaServidorRegistro, nombreDato, revisarLote, RevisionLote } from '../services/hashService';
@@ -439,7 +440,7 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
               </div>
             )}
             {lote.estado === 'cerrado' && (
-              <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-1">
+              <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs space-y-1">
                 <span className="rotulo text-slate-500 block">Sello de tiempo en Bitcoin (testigo externo)</span>
                 <SelloTiempoInfo revision={revisionSello} nombreArchivo={`sello-lote-${lote.codigo}`} />
                 {!lote.selloTiempo && revisionSello?.estado !== 'anterior' && puedeCerrar && (
@@ -680,6 +681,8 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
                       }
                     }
 
+                    const horaSrv = horaServidorRegistro(lote.registradoEnServidor, ev.indice, ev.registradoEn);
+
                     return (
                       <div
                         key={ev.id}
@@ -710,6 +713,7 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
                                 )}
                                 <span className="text-xs text-slate-500 font-medium">
                                   {ev.fechaEvento}
+                                  {!ev.descripcion && <HoraServidor hora={horaSrv} modo="sufijo" className="font-normal" />}
                                 </span>
                                 {alertasDelEvento.length > 0 && (
                                   <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded-sm font-semibold flex items-center space-x-1">
@@ -720,7 +724,10 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
                               </div>
 
                               {ev.descripcion && (
-                                <p className="text-xs text-slate-600 mt-1">{ev.descripcion}</p>
+                                <p className="text-xs text-slate-600 mt-1">
+                                  {ev.descripcion}
+                                  <HoraServidor hora={horaSrv} modo="sufijo" />
+                                </p>
                               )}
 
                               {/* Datos técnicos específicos formateados */}
@@ -731,7 +738,7 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
                                       key={k}
                                       className="text-xs bg-slate-100 text-slate-700 px-2 py-1 rounded-md border border-slate-200"
                                     >
-                                      <strong className="text-slate-900">{nombreDato(k)}:</strong> {typeof v === 'boolean' ? (v ? 'SÍ' : 'NO') : String(v)}
+                                      <strong className="text-slate-900">{nombreDato(k)}:</strong> {typeof v === 'boolean' ? (v ? 'SÍ' : 'NO') : valorDatoVisible(v)}
                                     </span>
                                   ))}
                                 </div>
@@ -743,15 +750,7 @@ export const LoteDetailModal: React.FC<LoteDetailModalProps> = ({
                                   {alertasDelEvento.join(' · ')}
                                 </div>
                               )}
-                              {(() => {
-                                const h = horaServidorRegistro(lote.registradoEnServidor, ev.indice, ev.registradoEn);
-                                return h.servidor ? (
-                                  <p className={`mt-2 text-xs ${h.desfase ? 'text-amber-800' : 'text-slate-500'}`}>
-                                    Hora del servidor: {formatearFechaColombia(h.servidor.toISOString())}
-                                    {h.desfase && ' · la hora declarada por el equipo difiere en más de 10 minutos'}
-                                  </p>
-                                ) : null;
-                              })()}
+                              <HoraServidor hora={horaSrv} modo="aviso" className="mt-2" />
                             </div>
                           </div>
 

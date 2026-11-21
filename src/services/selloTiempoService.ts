@@ -22,8 +22,9 @@ import { formatearFechaColombia } from '../utils/constants';
  *
  * El envío nunca bloquea ni hace fallar el cierre o la emisión: si los calendarios no responden,
  * el registro queda sin sello y se reintenta al abrir su detalle con una sesión que pueda crearlo.
- * La confirmación (prueba completa) se guarda cuando alguien de la granja abre el registro después
- * de que Bitcoin la confirma; en la consulta pública, sin sesión, solo se calcula en memoria.
+ * La confirmación (prueba completa) la guarda quien puede crear el sello (cerrar lotes o gestionar
+ * comprobantes) al abrir el registro después de que Bitcoin la confirma; los demás usuarios y la
+ * consulta pública, sin sesión, solo la calculan en memoria (las reglas no les dejan guardarla).
  */
 
 /**
@@ -39,6 +40,9 @@ const MAXIMO_RETRASO_SELLO_MS = 3 * 24 * 60 * 60 * 1000;
 
 /** Espera antes de pedir la confirmación a los calendarios (Bitcoin tarda horas en confirmar) */
 const ESPERA_CONFIRMACION_MS = 60 * 60 * 1000;
+
+/** Pausa entre dos consultas del mismo sello pendiente a los calendarios en esta pestaña */
+const PAUSA_ENTRE_CONSULTAS_MS = 60 * 60 * 1000;
 
 // ---------- Ficha nutricional congelada (H41) ----------
 
@@ -185,11 +189,69 @@ export async function sellarBloque(b: { id: string; hashComprobante: string; emi
   return enviarSello(['comprobantes', b.id], b.hashComprobante);
 }
 
+// ---------- Consultas a los calendarios, con pausa ----------
+// Mientras el sello está pendiente, los calendarios responden 404 sin cabecera CORS y el navegador
+// anota cada intento como error en la consola (no se puede silenciar desde la página). Para no
+// llenarla: no se consulta antes de una hora desde el envío (Bitcoin no puede haberlo confirmado),
+// el mismo sello se consulta a lo sumo una vez por hora en la pestaña (memoria y sessionStorage),
+// las consultas simultáneas del mismo sello comparten la respuesta y la prueba completa se recuerda.
+
+const enviado = (s: Pick<SelloTiempo, 'enviadoEn'>) =>
+  s.enviadoEn && typeof s.enviadoEn.toMillis === 'function' ? s.enviadoEn.toMillis() : 0;
+
+const consultasEnCurso = new Map<string, Promise<string | null>>();
+const pruebasCompletas = new Map<string, string>();
+const ultimasConsultas = new Map<string, number>();
+const CLAVE_SESION = 'tilapia-sello-consulta:';
+
+function ultimaConsulta(clave: string): number {
+  let t = ultimasConsultas.get(clave) || 0;
+  try {
+    t = Math.max(t, Number(window.sessionStorage.getItem(CLAVE_SESION + clave)) || 0);
+  } catch {
+    /* sin sessionStorage: basta la memoria */
+  }
+  return t;
+}
+
+function anotarConsulta(clave: string, t: number): void {
+  ultimasConsultas.set(clave, t);
+  try {
+    window.sessionStorage.setItem(CLAVE_SESION + clave, String(t));
+  } catch {
+    /* sin sessionStorage: basta la memoria */
+  }
+}
+
+/** Prueba completa del sello (base64) si los calendarios ya la tienen; null si sigue pendiente o si toca esperar */
+async function completarConPausa(sello: Pick<SelloTiempo, 'digest' | 'ots' | 'enviadoEn'>): Promise<string | null> {
+  // La respuesta se recuerda por la prueba exacta; la pausa, por el sello (digest y tamaño de la prueba)
+  const completa = pruebasCompletas.get(sello.ots);
+  if (completa) return completa;
+  const enCurso = consultasEnCurso.get(sello.ots);
+  if (enCurso) return enCurso;
+  const ahora = Date.now();
+  const envio = enviado(sello);
+  if (envio && ahora - envio < ESPERA_CONFIRMACION_MS) return null;
+  const clave = `${sello.digest}:${sello.ots.length}`;
+  if (ahora - ultimaConsulta(clave) < PAUSA_ENTRE_CONSULTAS_MS) return null;
+  anotarConsulta(clave, ahora);
+  const p = completarPruebaOts(sello.ots)
+    .catch(() => null)
+    .then((ots) => {
+      if (ots) pruebasCompletas.set(sello.ots, ots);
+      return ots;
+    })
+    .finally(() => consultasEnCurso.delete(sello.ots));
+  consultasEnCurso.set(sello.ots, p);
+  return p;
+}
+
 /** Pide la prueba completa a los calendarios; si ya llegó a Bitcoin devuelve el sello confirmado */
 export async function confirmarSello(sello: SelloTiempo): Promise<SelloTiempo | null> {
   try {
     if (sello.estado !== 'pendiente') return null;
-    const ots = await completarPruebaOts(sello.ots);
+    const ots = await completarConPausa(sello);
     if (!ots) return null;
     const a = await analizarOts(ots);
     if (a.digest !== sello.digest || !a.bitcoin.length) return null;
@@ -202,17 +264,19 @@ export async function confirmarSello(sello: SelloTiempo): Promise<SelloTiempo | 
   }
 }
 
-const enviado = (s: SelloTiempo) => (s.enviadoEn && typeof s.enviadoEn.toMillis === 'function' ? s.enviadoEn.toMillis() : 0);
-
 /**
  * Al abrir el registro con sesión: si falta el sello y quien lo abre puede crearlo, lo envía; si
- * está pendiente desde hace más de una hora, pide la confirmación y la guarda. Nunca lanza.
- * Devuelve el sello confirmado (para mostrarlo aunque no se haya podido guardar) o null.
+ * está pendiente desde hace más de una hora, pide la confirmación y, solo si quien lo abre puede
+ * crear el sello (las reglas exigen el mismo permiso), la guarda. Nunca lanza.
+ * Devuelve el sello confirmado (para mostrarlo aunque no se haya guardado) o null.
  */
 export async function mantenerSello(opciones: {
   ruta: [string, string];
   sello?: SelloTiempo;
+  /** Solo se da a quien puede crear el sello (cerrar lotes o gestionar comprobantes) */
   crear?: () => Promise<boolean>;
+  /** Si se guarda la confirmación; por defecto, solo quien puede crear el sello */
+  puedeGuardar?: boolean;
 }): Promise<SelloTiempo | null> {
   try {
     const { sello } = opciones;
@@ -222,7 +286,8 @@ export async function mantenerSello(opciones: {
     }
     if (sello.estado !== 'pendiente' || Date.now() - enviado(sello) < ESPERA_CONFIRMACION_MS) return null;
     const confirmado = await confirmarSello(sello);
-    if (confirmado) await guardarSello(opciones.ruta, confirmado as unknown as Record<string, unknown>);
+    const puedeGuardar = opciones.puedeGuardar ?? Boolean(opciones.crear);
+    if (confirmado && puedeGuardar) await guardarSello(opciones.ruta, confirmado as unknown as Record<string, unknown>);
     return confirmado;
   } catch {
     return null;
@@ -287,7 +352,7 @@ export async function revisarSello(
     };
   }
   if (!a.bitcoin.length && opciones.consultarRed !== false) {
-    const completa = await completarPruebaOts(ots).catch(() => null);
+    const completa = await completarConPausa(sello).catch(() => null);
     if (completa) {
       try {
         const b = await analizarOts(completa);

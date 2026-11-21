@@ -328,15 +328,17 @@ service cloud.firestore {
     }
 
     // a/n: documento antes y después; creaSello: si quien escribe puede crear el sello (el mismo
-    // personal que cierra el lote o emite el comprobante). Completarlo lo puede hacer cualquier
-    // usuario activo de la granja (quien abra el registro cuando Bitcoin ya lo confirmó).
+    // personal que cierra el lote o emite el comprobante). Solo ese personal lo crea y lo completa:
+    // las reglas no pueden comprobar la prueba, y una confirmación falsa ya no se podría corregir.
+    // Los demás usuarios completan la prueba solo en memoria (como la consulta pública).
     function selloTiempoValido(a, n, digest, creaSello) {
       let s = n.selloTiempo;
       let s0 = a.get('selloTiempo', null);
-      return n.diff(a).affectedKeys().hasOnly(['selloTiempo'])
+      return creaSello
+        && n.diff(a).affectedKeys().hasOnly(['selloTiempo'])
         && formaSelloTiempo(s, digest)
         && (s0 == null
-              ? (creaSello && s.estado == 'pendiente' && s.enviadoEn == request.time && !('bloque' in s) && !('confirmadoEn' in s))
+              ? (s.estado == 'pendiente' && s.enviadoEn == request.time && !('bloque' in s) && !('confirmadoEn' in s))
               : (s0.estado == 'pendiente' && s.estado == 'confirmado'
                   && s.digest == s0.digest && s.enviadoEn == s0.enviadoEn && s.calendarios == s0.calendarios
                   && s.ots.size() > s0.ots.size()
@@ -1471,7 +1473,7 @@ service cloud.firestore {
     }
 
     // Sello de tiempo de un bloque (comprobante o anulación): digest == su hashComprobante. Lo crea
-    // quien tiene el permiso de comprobantes de esa granja; lo completa cualquier usuario activo de ella.
+    // y lo completa quien tiene el permiso de comprobantes de esa granja.
     function selloTiempoComprobanteValido() {
       let maestro = isMasterAdmin();
       let p = maestro && !exists(perfilPath()) ? {} : get(perfilPath()).data;

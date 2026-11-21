@@ -1246,14 +1246,24 @@ describe('Sello de tiempo de los comprobantes (testigo externo, H03)', () => {
     await assertFails(updateDoc(ref(como('vendedor'), 'cmp-otra-granja-0000000001'), { selloTiempo: pendiente() }));
   });
 
-  test('la confirmación la guarda cualquier usuario activo de la granja, con el mismo digest', async () => {
+  test('la confirmación la guarda quien gestiona comprobantes de la granja, con el mismo digest', async () => {
     await preparar({ selloTiempo: guardado });
     await assertFails(updateDoc(ref(env.unauthenticatedContext().firestore()), { selloTiempo: confirmado() }));
-    await assertFails(updateDoc(ref(como('repartidor')), { selloTiempo: confirmado({ digest: 'e'.repeat(64) }) }));
-    await assertFails(updateDoc(ref(como('repartidor')), { selloTiempo: confirmado({ ots: OTS }) }));
-    await assertSucceeds(updateDoc(ref(como('repartidor')), { selloTiempo: confirmado() }));
+    await assertFails(updateDoc(ref(como('vendedor')), { selloTiempo: confirmado({ digest: 'e'.repeat(64) }) }));
+    await assertFails(updateDoc(ref(como('vendedor')), { selloTiempo: confirmado({ ots: OTS }) }));
+    await assertSucceeds(updateDoc(ref(como('vendedor')), { selloTiempo: confirmado() }));
     await assertFails(updateDoc(ref(como('maestro')), { selloTiempo: confirmado({ ots: OTS + 'BBBBBBBBCCCC' }) }));
     await assertFails(updateDoc(ref(como('maestro')), { selloTiempo: null }));
+  });
+
+  test('sin permiso de comprobantes o de otra granja no se guarda la confirmación', async () => {
+    await preparar({ selloTiempo: guardado });
+    await preparar({ selloTiempo: guardado }, 'cmp-otra-granja-0000000001', 'otra');
+    await assertFails(updateDoc(ref(como('repartidor')), { selloTiempo: confirmado() }));
+    await assertFails(updateDoc(ref(como('operario')), { selloTiempo: confirmado() }));
+    await assertFails(updateDoc(ref(como('vendedor'), 'cmp-otra-granja-0000000001'), { selloTiempo: confirmado() }));
+    // Sigue pendiente: el maestro (o quien gestiona comprobantes) lo completa después
+    await assertSucceeds(updateDoc(ref(como('maestro')), { selloTiempo: confirmado() }));
   });
 
   test('un bloque de anulación también admite su sello', async () => {

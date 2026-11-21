@@ -244,11 +244,17 @@ async function sembrarDatos() {
   ctx.comprobanteId = comp.id;
   ctx.token = comp.tokenConsulta;
   await esperarSello(`comprobantes/${comp.id}`);
-  // Horas después Bitcoin confirma: un usuario activo de la granja (aquí el repartidor) abre el
-  // registro y guarda la prueba completa (reglas activas)
-  await entrar(REP, 'courier');
-  for (const ruta of [`lotes/${COD}`, `comprobantes/${comp.id}`]) {
+  // Horas después Bitcoin confirma (la hora de envío se mueve dos horas atrás: la app no consulta
+  // los calendarios antes de una hora). Quien puede crear el sello (el operador para el lote, el
+  // vendedor para el comprobante) abre el registro y guarda la prueba completa (reglas activas)
+  for (const [ruta, quien] of [[`lotes/${COD}`, OPER], [`comprobantes/${comp.id}`, VEND]]) {
     const [col, id] = ruta.split('/');
+    const antes = new Date(Date.now() - 2 * 3600 * 1000).toISOString();
+    const rr = await fetch(`${RAIZ}/${ruta}?updateMask.fieldPaths=selloTiempo.enviadoEn`, {
+      method: 'PATCH', headers: OWNER, body: JSON.stringify({ fields: { selloTiempo: { mapValue: { fields: { enviadoEn: { timestampValue: antes } } } } } })
+    });
+    if (!rr.ok) throw new Error(ruta + (await rr.text()));
+    await entrar(quien);
     const d = (await getDocFromServer(doc(db, col, id))).data() as any;
     const conf = await confirmarSello(d.selloTiempo);
     if (!conf) throw new Error('No se pudo confirmar el sello simulado de ' + ruta);

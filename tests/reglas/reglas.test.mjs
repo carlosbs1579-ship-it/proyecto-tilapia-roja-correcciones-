@@ -791,9 +791,27 @@ describe('Testigo externo (H03) y ficha congelada (H41)', () => {
     await assertFails(updateDoc(ref(como('operador'), 'L-ACTIVO'), { selloTiempo: pendiente({ digest: 'h0' }) }));
   });
 
-  test('cualquier usuario activo de la granja guarda la confirmación de Bitcoin', async () => {
+  test('quien cierra lotes (o el administrador) guarda la confirmación de Bitcoin', async () => {
     await conSello();
-    await assertSucceeds(updateDoc(ref(como('repartidor')), { selloTiempo: confirmado() }));
+    await assertSucceeds(updateDoc(ref(como('operador')), { selloTiempo: confirmado() }));
+    await conSello();
+    await assertSucceeds(updateDoc(ref(como('subadmin')), { selloTiempo: confirmado() }));
+    await conSello();
+    await assertSucceeds(updateDoc(ref(como('maestro')), { selloTiempo: confirmado() }));
+  });
+
+  test('sin permiso de cierre no se guarda la confirmación (no puede dejar una confirmación falsa fija)', async () => {
+    await conSello();
+    await assertFails(updateDoc(ref(como('repartidor')), { selloTiempo: confirmado() }));
+    await assertFails(updateDoc(ref(como('engano')), { selloTiempo: confirmado() }));
+    await assertFails(updateDoc(ref(como('consulta')), { selloTiempo: confirmado() }));
+    await assertFails(updateDoc(ref(como('pendiente')), { selloTiempo: confirmado() }));
+    await env.withSecurityRulesDisabled((ctx) =>
+      setDoc(doc(ctx.firestore(), 'usuarios', 'sincierre'), perfil('sincierre', { roles: ['operator'], permisos: { ...PERMISOS_PRODUCCION, cerrarLotes: false } }))
+    );
+    await assertFails(updateDoc(ref(como('sincierre')), { selloTiempo: confirmado() }));
+    // El sello sigue pendiente: quien sí puede, lo completa después
+    await assertSucceeds(updateDoc(ref(como('operador')), { selloTiempo: confirmado() }));
   });
 
   test('sin sesión, inactivo o de otra granja no guarda la confirmación', async () => {

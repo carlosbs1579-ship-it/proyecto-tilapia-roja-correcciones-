@@ -96,7 +96,7 @@ export const LotesTab: React.FC<LotesTabProps> = ({
 
       {/* PANEL DE BÚSQUEDA Y FILTROS (solo con el permiso "Buscar y filtrar") */}
       <div className={`bg-white p-4 rounded-xl border border-slate-200 shadow-xs space-y-3 ${puedeBuscar ? '' : 'hidden'}`}>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
           {/* Buscador parcial */}
           <div className="lg:col-span-2">
             <label className="block text-xs font-semibold text-slate-600 mb-1">
@@ -150,8 +150,8 @@ export const LotesTab: React.FC<LotesTabProps> = ({
           </div>
 
           {/* Fechas de siembra */}
-          <div className="flex space-x-2">
-            <div className="flex-1">
+          <div className="flex gap-2 lg:col-span-2">
+            <div className="flex-1 min-w-0">
               <label className="block text-xs font-semibold text-slate-600 mb-1">
                 Desde
               </label>
@@ -162,7 +162,7 @@ export const LotesTab: React.FC<LotesTabProps> = ({
                 className="w-full px-2 py-1 text-xs border border-slate-300 rounded-lg"
               />
             </div>
-            <div className="flex-1">
+            <div className="flex-1 min-w-0">
               <label className="block text-xs font-semibold text-slate-600 mb-1">
                 Hasta
               </label>

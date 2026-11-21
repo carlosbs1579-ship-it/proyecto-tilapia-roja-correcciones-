@@ -5,6 +5,7 @@ import { PantallaVerificando } from './components/PantallaVerificando';
 const PantallaIngreso = lazy(() => import('./components/PantallaIngreso').then((m) => ({ default: m.PantallaIngreso })));
 import { DISTANCIA, VAR_CONTENIDO_TAB, entrada, salida } from './lib/motion';
 import { LimiteError, recargarUnaVez } from './components/LimiteError';
+import { ajustarSesionSegunFunciones, prepararIngreso, sesionCerrada } from './lib/sesion';
 import { useConservar, usePresencia } from './lib/presencia';
 import { onAuthStateChanged, signOut, User } from 'firebase/auth';
 import { auth, db } from './firebase/firebaseConfig';
@@ -244,6 +245,13 @@ export default function App() {
     });
   }, [usuario?.uid, clavefunciones, perfilUsuario?.uid]);
 
+  // 1a. La sesión se conserva al cerrar el navegador solo para quien puede actuar como repartidor
+  // (trabajo sin señal); el resto la pierde al cerrarlo. Se decide con el perfil ya cargado
+  useEffect(() => {
+    if (!usuario || !perfilUsuario) return;
+    void ajustarSesionSegunFunciones(auth, funciones.includes('courier'));
+  }, [usuario?.uid, perfilUsuario?.uid, clavefunciones]);
+
   // 1b. Preferencia elegida en el ingreso. El perfil puede llegar en dos pasos (primero la copia
   // sincronizada, luego la de tiempo real con todos los roles), así que se aplica en cuanto la cuenta
   // tiene la función; el aviso solo aparece si después de unos segundos sigue sin tenerla.
@@ -316,11 +324,13 @@ export default function App() {
       localStorage.removeItem(SESION_STORAGE_KEY_ANTIGUA);
       localStorage.removeItem('cultivos_lore_lotes_backup');
     } catch {}
+    void prepararIngreso(auth);
 
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
       if (!fbUser) {
         // La sesión terminó sin pasar por "Cerrar sesión" (vencida, revocada o cerrada en otra
         // pestaña): no quedan en el navegador copias de perfiles ni entregas de nadie (H50)
+        void sesionCerrada(auth);
         limpiarCopiasLocales(null);
         setUsuario(null);
         setPerfilUsuario(null);

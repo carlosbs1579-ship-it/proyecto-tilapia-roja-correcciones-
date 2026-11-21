@@ -45,3 +45,23 @@ Origenes vistos: localhost (self), fonts.googleapis.com, fonts.gstatic.com, a.po
 ## No cubierto
 - Entrega finalizada de punta a punta, consulta pública de entrega/comprobante, y tamaño móvil.
 - Con Chrome in Chrome desconectado no se hicieron capturas visuales revisadas en detalle; hay PNG en `scratchpad/emu-rev2/cap/`.
+
+## Producción (Fase 4)
+
+Fecha: 2026-11-20. URL: https://proyecto-tilapia-roja-correcciones.vercel.app (sesión Operador ya iniciada).
+
+Pasos:
+- Crear lote (proveedor PRUEBA-revision2, obs PRUEBA-observaciones): OK. Código 20261120-A-E1 (consecutivo #6, estanque E1).
+- Registrar fase "Calidad del agua" (nota PRUEBA-fase agua): OK, "verificada en la cadena de hashes".
+- Verificar integridad en detalle: OK, resultado ÍNTEGRO (2 fases).
+- QR: OK. URL pública ?lote=20261120-A-E1 abierta en otra pestaña: carga íntegra, sin aviso rojo, "Cadena verificada al abrir".
+- Vista Previa PDF: OK, se abre blob PDF en pestaña nueva sin diálogos (cerrada).
+- Cierre del lote: usa modal propio de la app ("¿Confirmar cierre y generar PDF final?"), no confirm() nativo. OK. Estado SELLADO · COSECHADO; "Sello de tiempo enviado, pendiente de confirmar en Bitcoin" visible.
+- Pestañas del Operador: Inicio y Lotes revisadas, OK (Lotes muestra 2 lotes cerrados).
+- Órdenes/entregas del Operador: no hay sección visible; omitido. No se creó cliente PRUEBA-cliente.
+- Repartidor: panel "Mis entregas" sin entregas asignadas (todas las pestañas vacías); avance de entrega y adjunto de imagen omitidos. Vuelto a modo Operador.
+
+Consola (patrón CSP/Refused/Error/Failed): sin mensajes en ninguna pestaña.
+Red: sin 4xx/5xx de la app ni Firestore. Solo 503 en GET de calendarios OpenTimestamps (finney.calendar.eternitywall.com, alice/bob.btc.calendar.opentimestamps.org) al consultar el sello pendiente; los POST /digest a pool OTS devolvieron 200. Sin errores CORS/CSP.
+
+Creado en producción (a borrar): lote 20261120-A-E1 (con 2 eventos: siembra y calidad del agua, sellado/cerrado, sello OTS pendiente). Sin órdenes ni clientes.

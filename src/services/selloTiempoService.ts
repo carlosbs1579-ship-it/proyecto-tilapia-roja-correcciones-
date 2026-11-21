@@ -232,7 +232,8 @@ async function completarConPausa(sello: Pick<SelloTiempo, 'digest' | 'ots' | 'en
   if (enCurso) return enCurso;
   const ahora = Date.now();
   const envio = enviado(sello);
-  if (envio && ahora - envio < ESPERA_CONFIRMACION_MS) return null;
+  // Sin la hora del servidor todavía (escritura recién hecha, aún sin confirmar) tampoco se consulta
+  if (!envio || ahora - envio < ESPERA_CONFIRMACION_MS) return null;
   const clave = `${sello.digest}:${sello.ots.length}`;
   if (ahora - ultimaConsulta(clave) < PAUSA_ENTRE_CONSULTAS_MS) return null;
   anotarConsulta(clave, ahora);

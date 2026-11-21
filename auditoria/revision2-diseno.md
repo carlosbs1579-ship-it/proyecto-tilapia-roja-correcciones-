@@ -108,3 +108,30 @@ ingreso (operador; el de repartidor usa el mismo componente, `PantallaIngreso.ts
 | D | `LoteDetailModal.tsx`, `AnotacionesLotePanel.tsx`, `PublicTraceabilityView.tsx`, `DetalleOrdenOperador.tsx`, `DocumentacionEntrega.tsx`, `ConsultaEntregaPublica.tsx` (+ componente nuevo `HoraServidor.tsx`) | 6, 7 y guion largo (b) en las vistas | opus (H19, seis archivos) |
 | E | `src/components/ConfiguracionTab.tsx` | 9 | sonnet |
 | F | `src/services/pdfService.ts` | guion largo (b) en el PDF | sonnet, después de D |
+
+## Producción (Fase 4)
+
+Verificación sin sesión en https://proyecto-tilapia-roja-correcciones.vercel.app (main 1c634db), con Chrome headless propio (CDP 9363), a 360, 390 y 1440 px (alto 900). Capturas: `capturas-revision2/prod-ingreso-{360,390,1440}.png` y `prod-qr-{360,390,1440}.png` (lote `20261031-A-E1`).
+
+| Pantalla | Ancho | scrollWidth / scrollHeight | Resultado |
+|---|---|---|---|
+| Ingreso | 360 | 360 / 900 | Coincide |
+| Ingreso | 390 | 390 / 900 | Coincide |
+| Ingreso | 1440 | 1440 / 900 | Coincide (igual píxel a píxel a la referencia a simple vista) |
+| QR lote | 360 | 360 / 3648 | Coincide |
+| QR lote | 390 | 390 / 3512 | Coincide |
+| QR lote | 1440 | 1430 / 2361 (1430 = ancho sin la barra de desplazamiento vertical) | Coincide |
+
+Sin desborde horizontal en ninguna combinación.
+
+- Tipografía: `document.fonts` cargadas en las seis páginas: Libre Caslon Text 400, Public Sans 400/500/600 (y 700 en el QR). Títulos con `"Libre Caslon Text", Georgia…` y cuerpo con `"Public Sans", ui-sans-serif…`.
+- Paleta, espaciados y estructura iguales a `antes-*-ref` y `despues-*`: cabecera azul noche, línea dorada, rótulo "CERTIFICADO · LOTE SELLADO" en dorado, tarjetas de cifras, historial con numeración en Caslon, "REGISTRÓ" con firma subrayada, huella en monoespaciada, nota de inocuidad ámbar y pie centrado.
+- En el ingreso a 360 y 390 la franja azul superior se ve unos 60 px más alta que en la referencia. La causa es el alto de la ventana (900 frente a 760 en la referencia): `PantallaIngreso.tsx` usa `min-h-dvh` con grid y la fila crece. No es una regresión.
+- Sello de tiempo: dice "Registro anterior al sello de tiempo en Bitcoin." en `text-slate-500` (rgb 93,100,112), sin ícono ni color de alarma. Correcto para este lote antiguo.
+- Hora del servidor: este lote no muestra el sufijo " · servidor h:mm". Se espera así: el lote es anterior a `registradoEnServidor` y `HoraServidor` no pinta nada cuando no hay hora del servidor. Tampoco aparece el aviso ámbar de desfase. El sufijo ya se había comprobado con datos sembrados en `despues-qr-lote-*`.
+- Firma: "Registró ca•••@gmail.com" con el estilo `firma`. La anotación muestra "Propuso Carlos · Aprobó CARLOS ALBERTO BERRIO GOMEZ" (el nombre está guardado en mayúsculas).
+- Guiones largos: ninguno en el texto visible (búsqueda de "—" en `innerText` vacía en las seis páginas).
+- Aviso de alteración: no aparece. No hay elementos rojos visibles, `[role=alert]` está vacío y el texto no contiene "alterado" ni "no coincide". Se lee "Cadena verificada al abrir." y "Cadena de anotaciones íntegra (3 registro(s)), anclada al sello del lote."
+- Animación de apertura: en el ingreso hay 1 o 2 animaciones activas entre unos 100 y 700 ms, y ninguna desde unos 750 ms. En el QR hay 13 animaciones de entrada que terminan entre unos 1,1 y 1,6 s. Todo queda con opacidad 1, sin errores y sin elementos atascados ocultos.
+- CSP y consola: ningún `securitypolicyviolation`, ningún `console.error` o `console.warn`, ninguna excepción, ningún `Network.loadingFailed` ni respuesta HTTP 400 o mayor en las seis cargas.
+- Detalles de presentación que vienen de los datos reales (no son regresión de diseño): "Proveedor:" sin valor en la siembra (cadena vacía guardada) y "Uso de hielo: true" (booleano sin traducir). Si se quiere pulir, `valorDatoVisible` en `PublicTraceabilityView.tsx` podría mostrar "sin dato" y "Sí/No", solo al mostrar, sin tocar lo que se hashea.
